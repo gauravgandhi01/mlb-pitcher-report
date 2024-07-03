@@ -283,7 +283,7 @@ def write_to_google_sheet(final_df, sheet_name):
         'https://www.googleapis.com/auth/drive'
     ]
 
-    creds = Credentials.from_service_account_file('././mlb_credentials.json', scopes=scopes)
+    creds = Credentials.from_service_account_file('../sheets_credentials.json', scopes=scopes)
 
     client = gspread.authorize(creds)
     
