@@ -326,9 +326,13 @@ def main(date, odds):
         print("NO ODDS")            
         styled_pitchers = style_dataframe(pitchers)
     else:
-        final_df = merge_with_odds_data(pitchers)
-        write_to_google_sheet(final_df, "MLB Sheet")
-        styled_pitchers = style_dataframe(final_df)
+        try:
+            final_df = merge_with_odds_data(pitchers)
+            write_to_google_sheet(final_df, "MLB Sheet")
+            styled_pitchers = style_dataframe(final_df)
+        except:
+            print("No Odds Found")
+            styled_pitchers = style_dataframe(pitchers)
     
     write_to_html(styled_pitchers, date)
 
