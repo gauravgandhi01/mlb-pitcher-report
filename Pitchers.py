@@ -7,7 +7,6 @@ from pybaseball import team_batting
 import sys
 import datetime
 from oddapi import get_pitcher_odds_by_team
-from unidecode import unidecode
 import gspread
 from gspread_dataframe import set_with_dataframe
 from google.oauth2.service_account import Credentials
@@ -83,7 +82,7 @@ def fetch_pitcher_stats(name, team, opponent, status):
 
 def fetch_pitcher_odds(name):
     try:
-     return get_pitcher_odds_by_team(name)
+     return get_pitcher_odds_by_team(name, date)
     except Exception as e:
         return {"Name": name, "Error": str(e)}
 
@@ -91,6 +90,7 @@ def get_team_full_name(abbreviation):
     team_mapping = {
         "SEA": "Seattle Mariners",
         "OAK": "Oakland Athletics",
+        "ATH": "Athletics",
         "CIN": "Cincinnati Reds",
         "BOS": "Boston Red Sox",
         "COL": "Colorado Rockies",
@@ -175,7 +175,7 @@ def get_opp_data(date):
                     data.append({"Pitcher": "TBD", "Hand": "TBD", "PA": 0, "K%": 0})
 
     else:
-        print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        print(f"\033[91mFailed to retrieve the webpage. Status code: {response.status_code}\033[0m")
 
     df = pd.DataFrame(data)
     return df
@@ -221,14 +221,17 @@ def calculate_additional_metrics(date, pitchers):
     pitchers['K/AB'] = 100 * (pitchers['K'].astype(float) / (pitchers['AB'].astype(float) + pitchers['BB'].astype(float)))
     pitchers['Ks'] = [get_strikeouts_by_player_name(date, name) for name in pitchers['Name']]
     pitchers['r'] = pitchers['SO/PA'].rank(ascending=False)
-    pitchers= pitchers[['Name', 'Hand', 'GP', 'AB', 'K','BB', 'AVG', 'AB/GP', 'K/9', 'K/AB', 'K%', 'PA', 
-                         'SO/PA','r', 'Opponent', 'Status', 'Ks']]         
-    return pitchers.sort_values(by=['K/AB'], ascending=False)
-
+    pitchers = pitchers[['Name', 'Hand', 'GP', 'AB', 'K', 'BB', 'AVG', 'AB/GP', 'K/9', 'K/AB', 'K%', 'PA', 
+                         'SO/PA', 'r', 'Opponent', 'Status', 'Ks']]         
+    return pitchers.sort_values(by=['Ks', 'K/AB'], ascending=[False, False])
 def merge_with_odds_data(pitchers):
     odds_data = [fetch_pitcher_odds(name) for name, status in zip(pitchers['Name'], pitchers['Status']) if status not in ['Final', 'In Progress']]
     if odds_data:
         odds_df_all = pd.concat(odds_data, ignore_index=True)
+        try:
+            odds_df_all = odds_df_all[['pitcher','FanDuel', 'Caesars', 'betrivers', 'BetOnline.ag', 'DraftKings', 'Novig']]
+        except:    
+            odds_df_all = odds_df_all
         final_df = pd.merge(pitchers, odds_df_all, left_on='Name', right_on='pitcher', how='left')
         final_df.drop(columns=['pitcher'], inplace=True)
     else:
@@ -239,6 +242,9 @@ def style_dataframe(df):
     df['Name'] = df['Name'].apply(make_hyperlink)
     df['Opponent'] = df['Opponent'].apply(make_hyperlink_2)
 
+    def highlight_rows(row):
+        return ['background-color: lightgreen' if float(row['K%']) > 25 and float(row['SO/PA']) > 25 and int(row['PA']) > 20 and col == 'Name' else '' for col in row.index]
+
     def highlight_columns(s, color):
         return f'background-color: {color}'
 
@@ -246,7 +252,8 @@ def style_dataframe(df):
         .background_gradient(cmap='YlGnBu', subset=['SO/PA', 'PA'])\
         .background_gradient(cmap='YlOrRd', subset=['K/AB', 'K%', 'K/9'], vmin=0, vmax=40)\
         .background_gradient(cmap='YlOrRd', subset=['K/9'])\
-        .applymap(highlight_columns, color='lightblue', subset=['Name'])\
+        .map(lambda x: highlight_columns(x, 'lightblue'), subset=['Name'])\
+        .apply(highlight_rows, axis=1)\
         .format({'SO/PA': '{:.2f}', 'AB/GP': '{:.1f}', 'K/AB': '{:.2f}', 'r': '{:.0f}', 'point': '{:.1f}'})\
         .set_properties(**{'text-align': 'center'})\
         .set_table_styles([
@@ -255,9 +262,9 @@ def style_dataframe(df):
         ])
     return styled_df
 
+
 def write_to_html(styled_pitchers, date):
-    print("WRITING TO HTML")
-    stripped_date = date.replace("/", "")
+    print("\033[92mWriting to HTML....\033[0m")
     html_content = f'''
         <!DOCTYPE html>
         <html lang="en">
@@ -272,18 +279,19 @@ def write_to_html(styled_pitchers, date):
         </body>
         </html>
     '''
-    with open(f'reports/report-{stripped_date}.html', 'w', encoding='utf-8') as f:
+    with open(f'reports/report-{date}.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
+    print(f'file:///Users/ggandhi001/Documents/MLB_2024/reports/report-{date}.html')
 
 def write_to_google_sheet(final_df, sheet_name):
-    print("WRITING TO GOOGLE SHEET")
+    print("\033[92mWriting to Google Sheet....\033[0m")
     # Define the required scopes
     scopes = [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive'
     ]
 
-    creds = Credentials.from_service_account_file('../sheets_credentials.json', scopes=scopes)
+    creds = Credentials.from_service_account_file('sheets_creds.json', scopes=scopes)
 
     client = gspread.authorize(creds)
     
@@ -301,18 +309,24 @@ def write_to_google_sheet(final_df, sheet_name):
     # if date is today open, clear and writee to today
     if date == datetime.datetime.now().strftime("%m/%d/%Y"):
         today = client.open(sheet_name).sheet1
-        print("WRITING TO TODAY")
+        current_time = datetime.datetime.now().strftime("%H:%M")
+        new_title = f"TODAY: as of {current_time}"
+        today.update_title(new_title)
         today.clear()
         set_with_dataframe(today, final_df)
 
 def main(date, odds):
+
+    stripped_date = date.replace("/", "")
+    print(f'file:///Users/ggandhi001/Documents/MLB_2024/reports/report-{stripped_date}.html')
+
     sched = fetch_schedule(date)
 
     pitcher_tasks = get_pitcher_tasks(sched)
 
     results = fetch_pitcher_stats_concurrently(pitcher_tasks)
 
-    team_batting_df = prepare_team_batting_df(2024)
+    team_batting_df = prepare_team_batting_df(2025)
 
     merged_df = merge_pitcher_with_batting_data(results, team_batting_df)
 
@@ -330,14 +344,24 @@ def main(date, odds):
             final_df = merge_with_odds_data(pitchers)
             write_to_google_sheet(final_df, "MLB Sheet")
             styled_pitchers = style_dataframe(final_df)
-        except:
-            print("No Odds Found")
+        except Exception as e:
+            print("No Odds Found", e)
+            write_to_google_sheet(pitchers, "MLB Sheet")
             styled_pitchers = style_dataframe(pitchers)
     
-    write_to_html(styled_pitchers, date)
+    write_to_html(styled_pitchers, stripped_date)
 
 if __name__ == "__main__":
     input = str(sys.argv[1])
     odds = str(sys.argv[2])
-    date = input+"/2024"
+    if input.lower() == "today":
+        # Set date to today's date in MM/DD/YYYY format
+        date = datetime.datetime.now().strftime("%m/%d/%Y")
+    elif input.lower() == "tmrw":
+        # Set date to tomorrow's date in MM/DD/YYYY format
+        date = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%m/%d/%Y")    
+    else:
+        # Assume input_arg is in MM/DD format and append the year
+        date = input + "/2025"
+    print(f"\033[94mRunning at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\033[0m")    
     main(date, odds)
