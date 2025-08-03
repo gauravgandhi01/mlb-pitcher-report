@@ -11,7 +11,7 @@ from unidecode import unidecode
 import json
 
 def load_api_keys():
-    with open("keys.json", "r") as config_file:
+    with open("/Users/ggandhi001/Documents/MLB_2024/keys.json", "r") as config_file:
         config = json.load(config_file)
         return config["api_keys"]
 
