@@ -1,5 +1,4 @@
 import requests
-
 import pandas as pd
 from typing import Dict, List, Any
 import statsapi
@@ -8,108 +7,93 @@ import json
 from datetime import datetime
 from unidecode import unidecode
 
-import json
+# Constants
+IGNORED_BOOKMAKERS = ['mybookieag', 'betmgm', 'superbook', 'bovada', 'prophetx']
+API_BASE_URL = "https://api.the-odds-api.com/v4/sports"
 
-def load_api_keys():
+def load_api_keys() -> List[str]:
+    """Load API keys from the configuration file."""
     with open("/Users/ggandhi001/Documents/MLB_2024/keys.json", "r") as config_file:
         config = json.load(config_file)
         return config["api_keys"]
 
-def check_api_requests_remaining():
+def make_api_request(url: str, params: Dict[str, Any] = None) -> requests.Response:
+    """Make an API request and handle errors."""
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        print(f"\033[91mAPI request failed: {e}\033[0m")
+        raise
+
+def check_api_requests_remaining() -> str:
+    """Check which API key has sufficient requests remaining."""
     api_keys = load_api_keys()
     for key in api_keys:
-        url = f"https://api.the-odds-api.com/v4/sports/?apiKey={key}"
+        url = f"{API_BASE_URL}/?apiKey={key}"
         try:
-            response = requests.get(url)
-            response.raise_for_status()
-
-            # Get the X-Requests-Remaining header
+            response = make_api_request(url)
             requests_remaining = response.headers.get("X-Requests-Remaining")
-
-            if requests_remaining is not None:
-                requests_remaining = int(requests_remaining)
-                if requests_remaining > 30:
-                    print(f"\033[92mUsing API Key: {key} | Requests remaining: {requests_remaining}\033[0m")
-                    return key  # Return the current key if it has sufficient requests
-            else:
-                print(f"API Key: {key} | X-Requests-Remaining header not found.")
-        except requests.exceptions.RequestException as e:
-            print(f"An error occurred while checking API key {key}: {e}")
-
+            if requests_remaining and int(requests_remaining) > 30:
+                print(f"\033[92mUsing API Key: {key} | Requests remaining: {requests_remaining}\033[0m")
+                return key
+        except Exception:
+            continue
     print("No API keys with sufficient requests remaining.")
     return None
 
 api_key = check_api_requests_remaining()
 
-def get_event_id_by_team(team_name, api_key, date):
-
-    event_data = {}
-
+def get_event_id_by_team(team_name: str, api_key: str, date: str) -> str:
+    """Retrieve the event ID for a given team."""
+    url = f"{API_BASE_URL}/baseball_mlb/events?apiKey={api_key}"
     try:
-        event_id = request_event_id(team_name, api_key, date, event_data)
-        return event_id
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred while requesting the API: {e}")
-        return None
+        response = make_api_request(url)
+        games = response.json()
+        for game in games:
+            if team_name in (game["home_team"], game["away_team"]):
+                return game["id"]
+    except Exception as e:
+        print(f"An error occurred while fetching event ID: {e}")
+    return None
 
-def request_event_id(team_name, api_key, date, event_data):
-
-    api_url = f"https://api.the-odds-api.com/v4/sports/baseball_mlb/events?apiKey={api_key}" 
-
-
-    response = requests.get(api_url)
-    response.raise_for_status()
-    games = response.json()
-
-    for game in games:
-        if team_name in (game["home_team"], game["away_team"]):
-            event_id = game["id"]
-
-            return event_id
-
-def fetch_game_data(event_id: str, apiKey: str) -> Dict[str, Any]:
-    """Fetch game data from the API."""
-    url = f"https://api.the-odds-api.com/v4/sports/baseball_mlb/events/{event_id}/odds"
+def fetch_game_data(event_id: str, api_key: str) -> Dict[str, Any]:
+    """Fetch game data for a specific event."""
+    url = f"{API_BASE_URL}/baseball_mlb/events/{event_id}/odds"
     params = {
-        "apiKey": apiKey,
+        "apiKey": api_key,
         "regions": "us,us_ex",
         "markets": "pitcher_strikeouts",
         "oddsFormat": "american"
     }
-    response = requests.get(url, params=params)
-    response.raise_for_status()
+    response = make_api_request(url, params)
     return response.json()
 
-def collect_pitcher_points(game_data: Dict[str, Any], ignored_bookmakers: List[str]) -> Dict[str, List[float]]:
+def collect_pitcher_points(game_data: Dict[str, Any]) -> Dict[str, List[float]]:
     """Collect all points for each pitcher."""
     pitcher_points: Dict[str, List[float]] = {}
-    for bookmaker in game_data['bookmakers']:
-        if bookmaker['key'] in ignored_bookmakers:
+    for bookmaker in game_data.get('bookmakers', []):
+        if bookmaker['key'] in IGNORED_BOOKMAKERS:
             continue
         for market in bookmaker['markets']:
             if market['key'] == 'pitcher_strikeouts':
                 for outcome in market['outcomes']:
                     pitcher = outcome['description']
                     point = outcome['point']
-                    if pitcher not in pitcher_points:
-                        pitcher_points[pitcher] = []
-                    pitcher_points[pitcher].append(point)
+                    pitcher_points.setdefault(pitcher, []).append(point)
     return pitcher_points
 
 def determine_most_common_points(pitcher_points: Dict[str, List[float]]) -> Dict[str, float]:
     """Determine the most common point for each pitcher."""
-    return {
-        pitcher: max(set(points), key=points.count)
-        for pitcher, points in pitcher_points.items()
-    }
+    return {pitcher: max(set(points), key=points.count) for pitcher, points in pitcher_points.items()}
 
 def process_bookmaker_outcomes(
     bookmaker: Dict[str, Any], 
-    most_common_points: Dict[str, float], 
-    ignored_bookmakers: List[str]
+    most_common_points: Dict[str, float]
 ) -> List[Dict[str, str]]:
     """Process outcomes for a single bookmaker."""
-    if bookmaker['key'] in ignored_bookmakers:
+    if bookmaker['key'] in IGNORED_BOOKMAKERS:
         return []
 
     data: List[Dict[str, str]] = []
@@ -119,30 +103,17 @@ def process_bookmaker_outcomes(
             for outcome in market['outcomes']:
                 pitcher = outcome['description']
                 point = outcome['point']
+                price = f'+{outcome["price"]}' if outcome["price"] >= 0 else str(outcome["price"])
 
-                # Check if the point matches the most common point
                 if point == most_common_points.get(pitcher):
-                    if (pitcher, point) not in over_under_dict:
-                        over_under_dict[(pitcher, point)] = {}
+                    over_under_dict.setdefault((pitcher, point), {})[outcome['name']] = price
 
-                    price = outcome['price']
-                    price = f'+{price}' if price >= 0 else str(price)
-
-                    over_under_dict[(pitcher, point)][outcome['name']] = price
-
-            # Fallback: Include all outcomes if no match for the most common point
             if not over_under_dict:
                 for outcome in market['outcomes']:
                     pitcher = outcome['description']
                     point = outcome['point']
-
-                    if (pitcher, point) not in over_under_dict:
-                        over_under_dict[(pitcher, point)] = {}
-
-                    price = outcome['price']
-                    price = f'+{price}' if price >= 0 else str(price)
-
-                    over_under_dict[(pitcher, point)][outcome['name']] = price
+                    price = f'+{outcome["price"]}' if outcome["price"] >= 0 else str(outcome["price"])
+                    over_under_dict.setdefault((pitcher, point), {})[outcome['name']] = price
 
             for (pitcher, point), odds in over_under_dict.items():
                 data.append({
@@ -155,50 +126,44 @@ def build_dataframe(data: List[Dict[str, str]], pitcher_name: str) -> pd.DataFra
     """Build and filter the DataFrame."""
     df = pd.DataFrame(data)
     df_pivot = df.pivot_table(index='pitcher', aggfunc='first').reset_index()
-    
     clean_pitcher_name = unidecode(pitcher_name)
-    if clean_pitcher_name:
-        df_filtered = df_pivot[df_pivot['pitcher'] == clean_pitcher_name]
-    else:
-        df_filtered = df_pivot
-
+    df_filtered = df_pivot[df_pivot['pitcher'] == clean_pitcher_name] if clean_pitcher_name else df_pivot
+    df_filtered = df_filtered.copy()  # Avoid SettingWithCopyWarning
     df_filtered.loc[:, 'pitcher'] = pitcher_name
     return df_filtered
 
-def get_pitcher_odds(event_id: str, apiKey: str, pitcher_name: str) -> pd.DataFrame:
+def get_pitcher_odds(event_id: str, api_key: str, pitcher_name: str) -> pd.DataFrame:
     """Main function to get pitcher odds."""
     try:
-        game_data = fetch_game_data(event_id, apiKey)
-
+        game_data = fetch_game_data(event_id, api_key)
         if not game_data.get('bookmakers'):
-            return pd.DataFrame()  # Return an empty DataFrame if no bookmakers are found
+            return pd.DataFrame()
 
-        ignored_bookmakers = ['mybookieag', 'betmgm', 'superbook', 'bovada', 'prophetx']
-        pitcher_points = collect_pitcher_points(game_data, ignored_bookmakers)
+        pitcher_points = collect_pitcher_points(game_data)
         most_common_points = determine_most_common_points(pitcher_points)
 
         data: List[Dict[str, str]] = []
         for bookmaker in game_data['bookmakers']:
-            data.extend(process_bookmaker_outcomes(bookmaker, most_common_points, ignored_bookmakers))
+            data.extend(process_bookmaker_outcomes(bookmaker, most_common_points))
 
         return build_dataframe(data, pitcher_name)
-    except requests.exceptions.RequestException as e:
-        print(f"\033[91mAn error occurred while requesting the API: {e}\033[0m")
+    except Exception as e:
+        print(f"\033[91mAn error occurred while fetching pitcher odds: {e}\033[0m")
         return pd.DataFrame()
 
-def get_pitcher_team(pitcher_name):
+def get_pitcher_team(pitcher_name: str) -> str:
+    """Retrieve the team name for a given pitcher."""
     try:
         player = statsapi.lookup_player(pitcher_name)
         team_id = player[0]['currentTeam']['id']
         team_name = statsapi.get('team', {'teamId': team_id})['teams'][0]['name']
-        if team_name == "Athletics":
-            team_name = "Oakland Athletics"
-        return team_name
+        return "Oakland Athletics" if team_name == "Athletics" else team_name
     except Exception as e:
-        print(f"\033[91mCould not get pitcher {pitcher_name} team with error: {e}\033[0m")
+        print(f"\033[91mCould not get team for pitcher {pitcher_name}: {e}\033[0m")
         return None
 
-def get_pitcher_odds_by_team(pitcher_name, date):
+def get_pitcher_odds_by_team(pitcher_name: str, date: str) -> pd.DataFrame:
+    """Retrieve pitcher odds by team."""
     try:
         team_name = get_pitcher_team(pitcher_name)
         if not team_name:
