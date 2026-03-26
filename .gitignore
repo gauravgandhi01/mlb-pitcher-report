@@ -6,3 +6,5 @@ venv/
 ids/
 sheets_creds.json
 keys.json
+log.txt
+debug/
