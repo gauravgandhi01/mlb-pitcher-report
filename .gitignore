@@ -8,3 +8,5 @@ sheets_creds.json
 keys.json
 log.txt
 debug/
+cron.log
+cron_update.log
