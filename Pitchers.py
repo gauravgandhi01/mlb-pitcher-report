@@ -783,31 +783,13 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     return report_df.fillna("-")
 
 
-def _build_summary_cards(df: pd.DataFrame) -> str:
-    total_pitchers = len(df)
-    active_pitchers = int(df["Status"].isin(NOT_STARTED_STATUSES).sum()) if "Status" in df.columns else 0
-    completed_pitchers = int(df["Status"].isin(COMPLETED_STATUSES).sum()) if "Status" in df.columns else 0
-
-    odds_columns = _odds_columns_from_df(df)
-    with_odds = int(df[odds_columns].notna().any(axis=1).sum()) if odds_columns else 0
-
-    return f"""
-    <section class="summary-grid">
-      <article class="card"><h3>Pitchers</h3><p>{total_pitchers}</p></article>
-      <article class="card"><h3>Upcoming</h3><p>{active_pitchers}</p></article>
-      <article class="card"><h3>Live/Final</h3><p>{completed_pitchers}</p></article>
-      <article class="card"><h3>Odds Found</h3><p>{with_odds}</p></article>
-    </section>
-    """
-
-
 def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) -> Path:
     print("\033[92mWriting to HTML....\033[0m")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     report_df = _format_for_report_table(final_df)
     table_html = _build_conditional_table_html(report_df, final_df)
-    summary_cards = _build_summary_cards(final_df)
+    updated_at = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -852,35 +834,10 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
       font-size: 28px;
       letter-spacing: 0.2px;
     }}
-    .hero p {{
+    .hero .updated-at {{
       margin: 0;
       opacity: 0.95;
-    }}
-    .summary-grid {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-    }}
-    .card {{
-      background: var(--panel);
-      border-radius: 12px;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
-    }}
-    .card h3 {{
-      margin: 0;
       font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }}
-    .card p {{
-      margin: 8px 0 0;
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--accent);
     }}
     .panel {{
       background: var(--panel);
@@ -888,26 +845,6 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
       border: 1px solid var(--line);
       box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
       overflow: hidden;
-    }}
-    .panel-head {{
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }}
-    .panel-head h2 {{
-      margin: 0;
-      font-size: 18px;
-    }}
-    .search {{
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px 10px;
-      min-width: 220px;
-      font-size: 14px;
     }}
     .table-wrap {{
       overflow-y: auto;
@@ -1175,39 +1112,21 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
     @media (max-width: 900px) {{
       body {{ padding: 12px; }}
       .hero h1 {{ font-size: 23px; }}
-      .panel-head {{ flex-direction: column; align-items: flex-start; }}
-      .search {{ width: 100%; min-width: 0; }}
     }}
   </style>
 </head>
 <body>
   <div class="layout">
     <header class="hero">
-      <h1>MLB Pitcher Strikeout Report</h1>
-      <p>Game day: {display_date} | Includes season profile, opponent K tendencies, live/finished Ks, and available strikeout lines.</p>
+      <h1>MLB Pitcher Strikeout Report - {display_date}</h1>
+      <p class="updated-at">Last updated: {updated_at}</p>
     </header>
-    {summary_cards}
     <section class="panel">
-      <div class="panel-head">
-        <h2>Pitcher Stats + Strikeout Odds</h2>
-        <input id="tableSearch" class="search" type="text" placeholder="Filter by pitcher, team, status, or odds...">
-      </div>
       <div class="table-wrap">
         {table_html}
       </div>
     </section>
   </div>
-  <script>
-    const searchInput = document.getElementById("tableSearch");
-    const rows = Array.from(document.querySelectorAll(".pitchers-table tbody tr"));
-    searchInput.addEventListener("input", () => {{
-      const value = searchInput.value.toLowerCase();
-      rows.forEach((row) => {{
-        const match = row.innerText.toLowerCase().includes(value);
-        row.style.display = match ? "" : "none";
-      }});
-    }});
-  </script>
 </body>
 </html>
 """
