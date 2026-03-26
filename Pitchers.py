@@ -307,6 +307,37 @@ def merge_with_opponent_data(merged_df: pd.DataFrame, opp_df: pd.DataFrame) -> p
     return pd.merge(merged_df, opp_df, left_on="Name", right_on="Pitcher", how="left")
 
 
+def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
+    if pitchers.empty:
+        return pitchers
+
+    sorted_df = pitchers.copy()
+    status_series = (
+        sorted_df["Status"].astype(str).str.strip()
+        if "Status" in sorted_df.columns
+        else pd.Series([""] * len(sorted_df), index=sorted_df.index)
+    )
+    kab_series = (
+        pd.to_numeric(sorted_df["K/AB"], errors="coerce")
+        if "K/AB" in sorted_df.columns
+        else pd.Series([pd.NA] * len(sorted_df), index=sorted_df.index, dtype="object")
+    )
+
+    sorted_df["__status_sort"] = status_series.map(lambda status: 0 if status in NOT_STARTED_STATUSES else 1)
+    sorted_df["__kab_missing"] = kab_series.isna().astype(int)
+    sorted_df["__kab_sort"] = kab_series.fillna(float("-inf"))
+    if "Name" in sorted_df.columns:
+        sorted_df["__name_sort"] = sorted_df["Name"].astype(str)
+        sort_by = ["__status_sort", "__kab_missing", "__kab_sort", "__name_sort"]
+        ascending = [True, True, False, True]
+    else:
+        sort_by = ["__status_sort", "__kab_missing", "__kab_sort"]
+        ascending = [True, True, False]
+
+    sorted_df = sorted_df.sort_values(by=sort_by, ascending=ascending, kind="mergesort")
+    return sorted_df.drop(columns=["__status_sort", "__kab_missing", "__kab_sort", "__name_sort"], errors="ignore")
+
+
 def calculate_additional_metrics(date: str, pitchers: pd.DataFrame) -> pd.DataFrame:
     pitchers = pitchers.copy()
 
@@ -331,11 +362,7 @@ def calculate_additional_metrics(date: str, pitchers: pd.DataFrame) -> pd.DataFr
             pitchers[col] = pd.NA
 
     pitchers = pitchers[REPORT_COLUMN_ORDER].copy()
-    pitchers["__ks_sort"] = pd.to_numeric(pitchers["Ks"], errors="coerce").fillna(-1)
-    pitchers["__kab_sort"] = pd.to_numeric(pitchers["K/AB"], errors="coerce").fillna(-1)
-    pitchers = pitchers.sort_values(by=["__ks_sort", "__kab_sort"], ascending=[False, False])
-    pitchers = pitchers.drop(columns=["__ks_sort", "__kab_sort"], errors="ignore")
-    return pitchers
+    return sort_pitchers_for_report(pitchers)
 
 
 def merge_with_odds_data(pitchers: pd.DataFrame, report_date: str) -> pd.DataFrame:
@@ -1269,6 +1296,9 @@ def main(report_date: str, odds: str) -> None:
             print(f"No Odds Found {exc}")
             final_df = pitchers
 
+    final_df = sort_pitchers_for_report(final_df)
+
+    if odds.lower() != "n":
         try:
             write_to_google_sheet(final_df, SPREADSHEET_NAME, report_date)
         except Exception as exc:
