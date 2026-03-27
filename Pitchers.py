@@ -1064,22 +1064,12 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
       opacity: 0;
     }}
     .odds-over.best-over {{
-      background: #bbf7d0;
-      color: #14532d;
+      color: #15803d;
       font-weight: 800;
-      display: inline-block;
-      padding: 1px 4px;
-      border-radius: 999px;
-      box-shadow: inset 0 0 0 1px #16a34a;
     }}
     .odds-under.best-under {{
-      background: #bfdbfe;
-      color: #1e3a8a;
+      color: #1d4ed8;
       font-weight: 800;
-      display: inline-block;
-      padding: 1px 4px;
-      border-radius: 999px;
-      box-shadow: inset 0 0 0 1px #2563eb;
     }}
     .status-pill {{
       display: inline-block;

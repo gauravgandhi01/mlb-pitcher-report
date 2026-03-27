@@ -5,16 +5,9 @@ REPO_DIR="/Users/ggandhi001/mlb-pitcher-report"
 BRANCH="master"
 REPORT_DATE="${1:-today}"
 INCLUDE_ODDS="${2:-y}"
-LOCK_FILE="/tmp/mlb_pitcher_report_cron.lock"
 
 # Keep cron environment predictable.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] Skipping: previous run still active."
-  exit 0
-fi
 
 cd "$REPO_DIR"
 
