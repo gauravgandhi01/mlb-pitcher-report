@@ -129,6 +129,13 @@
     table.pitchers-table tbody tr:hover {
       background: #eef7ff;
     }
+    table.pitchers-table tbody tr.pitcher-row-selectable {
+      cursor: pointer;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable.row-selected {
+      outline: 2px solid #0f766e;
+      outline-offset: -2px;
+    }
     table.pitchers-table tbody tr.row-upcoming {
       background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
     }
@@ -320,9 +327,120 @@
     table.pitchers-table a:hover {
       text-decoration: underline;
     }
+    .arsenal-card {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .arsenal-card h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #0b2540;
+    }
+    .arsenal-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .arsenal-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .arsenal-metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fbff;
+      display: grid;
+      gap: 4px;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .arsenal-metric.metric-above {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    .arsenal-metric.metric-below {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .arsenal-metric.metric-neutral {
+      background: #f8fbff;
+      border-color: var(--line);
+    }
+    .arsenal-metric-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .arsenal-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .arsenal-metric-meta {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.1;
+      min-height: 12px;
+    }
+    .arsenal-pitches {
+      display: grid;
+      gap: 8px;
+      min-height: 42px;
+    }
+    .arsenal-pitch-row {
+      display: grid;
+      grid-template-columns: 90px 56px minmax(120px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .arsenal-pitch-label {
+      font-weight: 600;
+    }
+    .arsenal-pitch-value {
+      text-align: right;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .arsenal-pitch-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+    .arsenal-pitch-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f766e, #0284c7);
+      border-radius: inherit;
+    }
+    .arsenal-empty {
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }
+    .arsenal-future-slot {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #64748b;
+      font-size: 12px;
+      background: #fafcff;
+    }
     @media (max-width: 900px) {
       body { padding: 12px; }
       .hero h1 { font-size: 23px; }
+      .arsenal-metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .arsenal-pitch-row {
+        grid-template-columns: 78px 56px minmax(100px, 1fr);
+      }
     }
   </style>
 </head>
@@ -330,7 +448,7 @@
   <div class="layout">
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - 03/30/2026</h1>
-      <p class="updated-at">Last updated: 2026-03-30 21:40:28 EDT</p>
+      <p class="updated-at">Last updated: 2026-03-30 22:00:26 EDT</p>
     </header>
     <section class="panel">
       <div class="table-wrap">
@@ -364,7 +482,7 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-upcoming">
+<tr class="pitcher-row-selectable row-upcoming" data-pitcher-key="justin verlander">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Justin%20Verlander-k-log">Justin Verlander</a></td>
 <td>R</td>
 <td>-</td>
@@ -382,67 +500,15 @@
 <td class="column-opp-hand cell-elite">29.41</td>
 <td>14</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Arizona%20Diamondbacks-k-per-pa-log">Arizona Diamondbacks</a></td>
-<td class="column-status"><span class="status-pill status-pre-game">Pre-Game</span></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
 <td>N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-136</span><span class="odds-pipe">|</span><span class="odds-under">+102</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 <td class="sportsbook-column odds-even" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-121</span><span class="odds-pipe">|</span><span class="odds-under">-110</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+185</span><span class="odds-pipe">|</span><span class="odds-under">-265</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-295</span><span class="odds-pipe">|</span><span class="odds-under">+210</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-118</span><span class="odds-pipe">|</span><span class="odds-under">+105</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-110</span><span class="odds-pipe">|</span><span class="odds-under">+105</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4</span><span class="odds-sep">:</span><span class="odds-over">+138</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-118</span><span class="odds-pipe">|</span><span class="odds-under">+105</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-128</span><span class="odds-pipe">|</span><span class="odds-under">+105</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4</span><span class="odds-sep">:</span><span class="odds-over">+138</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-139</span><span class="odds-pipe">|</span><span class="odds-under best-under">+109</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 </tr>
-<tr class="row-upcoming">
-<td class="column-name"><a href="https://statmuse.com/mlb/ask/Landen%20Roupp-k-log">Landen Roupp</a></td>
-<td>R</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>20.6</td>
-<td>63</td>
-<td class="cell-strong">23.36</td>
-<td class="column-opp-hand">22.92</td>
-<td>19</td>
-<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Diego%20Padres-k-per-pa-log">San Diego Padres</a></td>
-<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
-<td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+110</span><span class="odds-pipe">|</span><span class="odds-under">-146</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+110</span><span class="odds-pipe">|</span><span class="odds-under">-148</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-200</span><span class="odds-pipe">|</span><span class="odds-under">+150</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+235</span><span class="odds-pipe">|</span><span class="odds-under">-335</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-500</span><span class="odds-pipe">|</span><span class="odds-under">+310</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">+115</span><span class="odds-pipe">|</span><span class="odds-under best-under">-125</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+114</span><span class="odds-pipe">|</span><span class="odds-under">-134</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-265</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+101</span><span class="odds-pipe">|</span><span class="odds-under">-128</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-</tr>
-<tr class="row-upcoming row-target">
-<td class="column-name"><a href="https://statmuse.com/mlb/ask/Luis%20Castillo-k-log">Luis Castillo</a></td>
-<td>R</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td class="cell-strong">26.8</td>
-<td>153</td>
-<td class="cell-elite">25.89</td>
-<td class="column-opp-hand cell-elite">30.99</td>
-<td>16</td>
-<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/New%20York%20Yankees-k-per-pa-log">New York Yankees</a></td>
-<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
-<td>N/A</td>
-<td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-125</span><span class="odds-pipe">|</span><span class="odds-under">-104</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-136</span><span class="odds-pipe">|</span><span class="odds-under">+102</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+150</span><span class="odds-pipe">|</span><span class="odds-under">-200</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-286</span><span class="odds-pipe">|</span><span class="odds-under">+205</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">7.5</span><span class="odds-sep">:</span><span class="odds-over">+300</span><span class="odds-pipe">|</span><span class="odds-under">-455</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-670</span><span class="odds-pipe">|</span><span class="odds-under">+400</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-even" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-111</span><span class="odds-pipe">|</span><span class="odds-under">-106</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-124</span><span class="odds-pipe">|</span><span class="odds-under best-under">+105</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-even" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-122</span><span class="odds-pipe">|</span><span class="odds-under">-105</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-</tr>
-<tr class="row-upcoming">
+<tr class="pitcher-row-selectable row-upcoming" data-pitcher-key="michael soroka">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Michael%20Soroka-k-log">Michael Soroka</a></td>
 <td>R</td>
 <td>-</td>
@@ -460,15 +526,15 @@
 <td class="column-opp-hand cell-elite">28.87</td>
 <td>9</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Detroit%20Tigers-k-per-pa-log">Detroit Tigers</a></td>
-<td class="column-status"><span class="status-pill status-pre-game">Pre-Game</span></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
 <td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-172</span><span class="odds-pipe">|</span><span class="odds-under">+126</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-172</span><span class="odds-pipe">|</span><span class="odds-under">+126</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+110</span><span class="odds-pipe">|</span><span class="odds-under best-under">-148</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-182</span><span class="odds-pipe">|</span><span class="odds-under">+135</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+220</span><span class="odds-pipe">|</span><span class="odds-under">-315</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-400</span><span class="odds-pipe">|</span><span class="odds-under">+270</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-173</span><span class="odds-pipe">|</span><span class="odds-under best-under">+144</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-170</span><span class="odds-pipe">|</span><span class="odds-under best-under">+145</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">N/A</span><span class="odds-pipe">|</span><span class="odds-under">-150</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over best-over">+120</span><span class="odds-pipe">|</span><span class="odds-under">-150</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-160</span><span class="odds-pipe">|</span><span class="odds-under">+154</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+118</span><span class="odds-pipe">|</span><span class="odds-under">-151</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 </tr>
-<tr class="row-upcoming row-caution">
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-pitcher-key="parker messick">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Parker%20Messick-k-log">Parker Messick</a></td>
 <td>L</td>
 <td>-</td>
@@ -486,15 +552,15 @@
 <td class="column-opp-hand cell-elite">25.00</td>
 <td class="cell-low-rank">27</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Dodgers-k-per-pa-log">Los Angeles Dodgers</a></td>
-<td class="column-status"><span class="status-pill status-pre-game">Pre-Game</span></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
 <td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-174</span><span class="odds-pipe">|</span><span class="odds-under">+128</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-174</span><span class="odds-pipe">|</span><span class="odds-under">+130</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+125</span><span class="odds-pipe">|</span><span class="odds-under">-167</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-180</span><span class="odds-pipe">|</span><span class="odds-under">+135</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+270</span><span class="odds-pipe">|</span><span class="odds-under">-400</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-455</span><span class="odds-pipe">|</span><span class="odds-under">+300</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-167</span><span class="odds-pipe">|</span><span class="odds-under best-under">+134</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+161</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-163</span><span class="odds-pipe">|</span><span class="odds-under best-under">+135</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+161</span><span class="odds-pipe">|</span><span class="odds-under">-199</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-180</span><span class="odds-pipe">|</span><span class="odds-under">+116</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+156</span><span class="odds-pipe">|</span><span class="odds-under">-160</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">+126</span><span class="odds-pipe">|</span><span class="odds-under best-under">-162</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 </tr>
-<tr class="row-upcoming row-caution">
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-pitcher-key="roki sasaki">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Roki%20Sasaki-k-log">Roki Sasaki</a></td>
 <td>R</td>
 <td>-</td>
@@ -512,93 +578,67 @@
 <td class="column-opp-hand cell-elite">34.33</td>
 <td class="cell-top-rank">3</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Cleveland%20Guardians-k-per-pa-log">Cleveland Guardians</a></td>
-<td class="column-status"><span class="status-pill status-pre-game">Pre-Game</span></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
 <td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-154</span><span class="odds-pipe">|</span><span class="odds-under">+116</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-152</span><span class="odds-pipe">|</span><span class="odds-under">+114</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-157</span><span class="odds-pipe">|</span><span class="odds-under">+118</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+148</span><span class="odds-pipe">|</span><span class="odds-under">-200</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-420</span><span class="odds-pipe">|</span><span class="odds-under">+280</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+335</span><span class="odds-pipe">|</span><span class="odds-under">-530</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-144</span><span class="odds-pipe">|</span><span class="odds-under best-under">+130</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+150</span><span class="odds-pipe">|</span><span class="odds-under">-178</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-143</span><span class="odds-pipe">|</span><span class="odds-under best-under">+131</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+151</span><span class="odds-pipe">|</span><span class="odds-under">-165</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-148</span><span class="odds-pipe">|</span><span class="odds-under">+117</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+160</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-147</span><span class="odds-pipe">|</span><span class="odds-under">+115</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
 </tr>
-<tr class="row-upcoming">
-<td class="column-name"><a href="https://statmuse.com/mlb/ask/Ryan%20Weathers-k-log">Ryan Weathers</a></td>
-<td>L</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td class="cell-elite">28.6</td>
-<td>7</td>
-<td class="cell-elite">28.57</td>
-<td class="column-opp-hand cell-elite">30.00</td>
-<td>6</td>
-<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Seattle%20Mariners-k-per-pa-log">Seattle Mariners</a></td>
-<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
-<td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+126</span><span class="odds-pipe">|</span><span class="odds-under">-166</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-159</span><span class="odds-pipe">|</span><span class="odds-under best-under">+120</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+128</span><span class="odds-pipe">|</span><span class="odds-under">-175</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-335</span><span class="odds-pipe">|</span><span class="odds-under">+235</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+260</span><span class="odds-pipe">|</span><span class="odds-under">-385</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over best-over">+137</span><span class="odds-pipe">|</span><span class="odds-under">-145</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">N/A</span><span class="odds-pipe">|</span><span class="odds-under">+120</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+160</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+122</span><span class="odds-pipe">|</span><span class="odds-under">-150</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">N/A</span><span class="odds-pipe">|</span><span class="odds-under">+111</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+113</span><span class="odds-pipe">|</span><span class="odds-under best-under">-144</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-</tr>
-<tr class="row-upcoming row-caution">
-<td class="column-name"><a href="https://statmuse.com/mlb/ask/Walker%20Buehler-k-log">Walker Buehler</a></td>
-<td>R</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-<td class="cell-weak">17.9</td>
-<td>28</td>
-<td class="cell-elite">27.27</td>
-<td class="column-opp-hand cell-elite">29.51</td>
-<td>12</td>
-<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Francisco%20Giants-k-per-pa-log">San Francisco Giants</a></td>
-<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
-<td>N/A</td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-136</span><span class="odds-pipe">|</span><span class="odds-under">+102</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-132</span><span class="odds-pipe">|</span><span class="odds-under">+100</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+163</span><span class="odds-pipe">|</span><span class="odds-under">-230</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-335</span><span class="odds-pipe">|</span><span class="odds-under">+225</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+350</span><span class="odds-pipe">|</span><span class="odds-under">-590</span></span></li></ul></details></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-130</span><span class="odds-pipe">|</span><span class="odds-under best-under">+111</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #7C3AED;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-132</span><span class="odds-pipe">|</span><span class="odds-under">+105</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-<td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-139</span><span class="odds-pipe">|</span><span class="odds-under">+109</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
-</tr>
-<tr class="row-live row-ks-hot">
-<td class="column-name"><a href="https://statmuse.com/mlb/ask/Lance%20McCullers%20Jr.-k-log">Lance McCullers Jr.</a></td>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="landen roupp">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Landen%20Roupp-k-log">Landen Roupp</a></td>
 <td>R</td>
 <td>1</td>
-<td>15</td>
-<td>7</td>
+<td>4</td>
+<td>2</td>
 <td>0</td>
-<td>.133</td>
-<td>15.0</td>
-<td class="cell-strong">12.6</td>
+<td>.000</td>
+<td>4.0</td>
+<td class="cell-strong">13.5</td>
 <td>-</td>
-<td class="cell-elite">46.67</td>
-<td class="cell-weak">14.3</td>
-<td>21</td>
-<td class="cell-strong">23.20</td>
-<td class="column-opp-hand cell-elite">27.59</td>
-<td>20</td>
-<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log">Boston Red Sox</a></td>
+<td class="cell-elite">50.00</td>
+<td>20.6</td>
+<td>63</td>
+<td class="cell-strong">23.36</td>
+<td class="column-opp-hand">22.92</td>
+<td>19</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Diego%20Padres-k-per-pa-log">San Diego Padres</a></td>
 <td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
-<td class="cell-elite">8</td>
+<td class="cell-weak">2</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-hot">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="ryan weathers">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Ryan%20Weathers-k-log">Ryan Weathers</a></td>
+<td>L</td>
+<td>1</td>
+<td>3</td>
+<td>2</td>
+<td>1</td>
+<td>.000</td>
+<td>3.0</td>
+<td class="cell-strong">18.0</td>
+<td>-</td>
+<td class="cell-elite">50.00</td>
+<td class="cell-elite">28.6</td>
+<td>7</td>
+<td class="cell-elite">28.57</td>
+<td class="column-opp-hand cell-elite">30.00</td>
+<td>6</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Seattle%20Mariners-k-per-pa-log">Seattle Mariners</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-hot" data-pitcher-key="kyle harrison">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Kyle%20Harrison-k-log">Kyle Harrison</a></td>
 <td>L</td>
 <td>1</td>
@@ -624,7 +664,33 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="walker buehler">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Walker%20Buehler-k-log">Walker Buehler</a></td>
+<td>R</td>
+<td>1</td>
+<td>5</td>
+<td>2</td>
+<td>0</td>
+<td>.200</td>
+<td>5.0</td>
+<td>10.8</td>
+<td>-</td>
+<td class="cell-elite">40.00</td>
+<td class="cell-weak">17.9</td>
+<td>28</td>
+<td class="cell-elite">27.27</td>
+<td class="column-opp-hand cell-elite">29.51</td>
+<td>12</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Francisco%20Giants-k-per-pa-log">San Francisco Giants</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="chase burns">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Chase%20Burns-k-log">Chase Burns</a></td>
 <td>R</td>
 <td>1</td>
@@ -650,7 +716,33 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final row-ks-hot">
+<tr class="pitcher-row-selectable row-live row-ks-hot" data-pitcher-key="lance mccullers jr">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Lance%20McCullers%20Jr.-k-log">Lance McCullers Jr.</a></td>
+<td>R</td>
+<td>1</td>
+<td>22</td>
+<td>8</td>
+<td>1</td>
+<td>.182</td>
+<td>22.0</td>
+<td>10.8</td>
+<td>-</td>
+<td class="cell-elite">34.78</td>
+<td class="cell-weak">14.3</td>
+<td>21</td>
+<td class="cell-strong">23.20</td>
+<td class="column-opp-hand cell-elite">27.59</td>
+<td>20</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log">Boston Red Sox</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-elite">8</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final row-ks-hot" data-pitcher-key="jack leiter">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Jack%20Leiter-k-log">Jack Leiter</a></td>
 <td>R</td>
 <td>1</td>
@@ -676,7 +768,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final">
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="chris paddack">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Chris%20Paddack-k-log">Chris Paddack</a></td>
 <td>R</td>
 <td>1</td>
@@ -702,7 +794,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="cody ponce">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Cody%20Ponce-k-log">Cody Ponce</a></td>
 <td>R</td>
 <td>1</td>
@@ -728,7 +820,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final">
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="davis martin">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Davis%20Martin-k-log">Davis Martin</a></td>
 <td>R</td>
 <td>1</td>
@@ -754,7 +846,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live">
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="edward cabrera">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Edward%20Cabrera-k-log">Edward Cabrera</a></td>
 <td>R</td>
 <td>1</td>
@@ -780,7 +872,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live">
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="foster griffin">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Foster%20Griffin-k-log">Foster Griffin</a></td>
 <td>L</td>
 <td>1</td>
@@ -795,10 +887,10 @@
 <td class="cell-weak">0.0</td>
 <td>1</td>
 <td class="cell-elite">27.43</td>
-<td class="column-opp-hand cell-elite">27.12</td>
+<td class="column-opp-hand cell-elite">26.25</td>
 <td>10</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Philadelphia%20Phillies-k-per-pa-log">Philadelphia Phillies</a></td>
-<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
 <td>5</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
@@ -806,7 +898,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live">
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="tomoyuki sugano">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Tomoyuki%20Sugano-k-log">Tomoyuki Sugano</a></td>
 <td>R</td>
 <td>1</td>
@@ -832,7 +924,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live">
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="bryce elder">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Bryce%20Elder-k-log">Bryce Elder</a></td>
 <td>R</td>
 <td>1</td>
@@ -847,10 +939,10 @@
 <td>18.2</td>
 <td>44</td>
 <td class="cell-elite">45.45</td>
-<td class="column-opp-hand cell-elite">46.34</td>
+<td class="column-opp-hand cell-elite">38.39</td>
 <td class="cell-top-rank">1</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Athletics-k-per-pa-log">Athletics</a></td>
-<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
 <td>5</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
@@ -858,7 +950,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live">
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="clay holmes">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Clay%20Holmes-k-log">Clay Holmes</a></td>
 <td>R</td>
 <td>1</td>
@@ -884,7 +976,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final">
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="kris bubic">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Kris%20Bubic-k-log">Kris Bubic</a></td>
 <td>L</td>
 <td>1</td>
@@ -910,7 +1002,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="ranger suarez">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Ranger%20Suarez-k-log">Ranger Suarez</a></td>
 <td>L</td>
 <td>1</td>
@@ -936,7 +1028,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final row-ks-cold">
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="chris bassitt">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Chris%20Bassitt-k-log">Chris Bassitt</a></td>
 <td>R</td>
 <td>1</td>
@@ -962,7 +1054,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final row-ks-cold">
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="braxton ashcraft">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Braxton%20Ashcraft-k-log">Braxton Ashcraft</a></td>
 <td>R</td>
 <td>1</td>
@@ -988,7 +1080,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="nick martinez">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Nick%20Martinez-k-log">Nick Martinez</a></td>
 <td>R</td>
 <td>1</td>
@@ -1014,7 +1106,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="ryan johnson">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Ryan%20Johnson-k-log">Ryan Johnson</a></td>
 <td>R</td>
 <td>1</td>
@@ -1040,7 +1132,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-final row-ks-cold">
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="simeon woods richardson">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Simeon%20Woods%20Richardson-k-log">Simeon Woods Richardson</a></td>
 <td>R</td>
 <td>1</td>
@@ -1066,7 +1158,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="taijuan walker">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Taijuan%20Walker-k-log">Taijuan Walker</a></td>
 <td>R</td>
 <td>1</td>
@@ -1081,10 +1173,10 @@
 <td>18.8</td>
 <td>69</td>
 <td class="cell-strong">24.11</td>
-<td class="column-opp-hand">20.34</td>
+<td class="column-opp-hand cell-weak">15.46</td>
 <td>17</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Washington%20Nationals-k-per-pa-log">Washington Nationals</a></td>
-<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
 <td class="cell-weak">2</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
@@ -1092,7 +1184,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="kyle leahy">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Kyle%20Leahy-k-log">Kyle Leahy</a></td>
 <td>R</td>
 <td>1</td>
@@ -1118,7 +1210,7 @@
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
 </tr>
-<tr class="row-live row-ks-cold">
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="jacob lopez">
 <td class="column-name"><a href="https://statmuse.com/mlb/ask/Jacob%20Lopez-k-log">Jacob Lopez</a></td>
 <td>L</td>
 <td>1</td>
@@ -1133,11 +1225,37 @@
 <td class="cell-elite">30.0</td>
 <td>10</td>
 <td>21.70</td>
-<td class="column-opp-hand cell-strong">24.39</td>
+<td class="column-opp-hand cell-weak">15.87</td>
 <td class="cell-low-rank">24</td>
 <td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Atlanta%20Braves-k-per-pa-log">Atlanta Braves</a></td>
-<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
 <td class="cell-weak">0</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #7C3AED;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="luis castillo">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Luis%20Castillo-k-log">Luis Castillo</a></td>
+<td>R</td>
+<td>1</td>
+<td>3</td>
+<td>0</td>
+<td>0</td>
+<td>.000</td>
+<td>3.0</td>
+<td class="cell-weak">0.0</td>
+<td>-</td>
+<td class="cell-weak">0.00</td>
+<td class="cell-strong">26.8</td>
+<td>153</td>
+<td class="cell-elite">25.89</td>
+<td class="column-opp-hand cell-elite">30.99</td>
+<td>16</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/New%20York%20Yankees-k-per-pa-log">New York Yankees</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">1</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
@@ -1148,6 +1266,196 @@
 </table>
       </div>
     </section>
+    <section class="panel">
+      <div class="arsenal-card">
+        <div>
+          <h2 id="arsenal-name">Pitcher Arsenal Snapshot</h2>
+          <p class="arsenal-subtitle">Select a pitcher row above to inspect swing-and-miss profile and pitch mix.</p>
+        </div>
+        <div class="arsenal-metrics">
+          <div class="arsenal-metric metric-neutral" id="arsenal-whiff-box">
+            <span class="arsenal-metric-label">Whiff%</span>
+            <span class="arsenal-metric-value" id="arsenal-whiff">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-whiff-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-z-miss-box">
+            <span class="arsenal-metric-label">Z-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-z-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-z-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-oz-miss-box">
+            <span class="arsenal-metric-label">OZ-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-oz-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-oz-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-fastball-box">
+            <span class="arsenal-metric-label">Fastball%</span>
+            <span class="arsenal-metric-value" id="arsenal-fastball">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-fastball-avg"></span>
+          </div>
+        </div>
+        <div class="arsenal-pitches" id="arsenal-pitches"></div>
+        <div class="arsenal-empty" id="arsenal-empty">
+          Arsenal details are only available for pitchers returned by the Savant qualified leaderboard feed.
+        </div>
+        <div class="arsenal-future-slot">
+          Reserved for additional pitcher detail modules.
+        </div>
+      </div>
+    </section>
   </div>
+  <script>
+    const arsenalData = {"__league_averages__": {"whiff_percent": 26.957142857142856, "z_swing_miss_percent": 17.53333333333333, "oz_swing_miss_percent": 45.07142857142857}};
+    const leagueAverages = arsenalData["__league_averages__"] || {};
+    const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const nameEl = document.getElementById("arsenal-name");
+    const whiffBoxEl = document.getElementById("arsenal-whiff-box");
+    const whiffEl = document.getElementById("arsenal-whiff");
+    const whiffAvgEl = document.getElementById("arsenal-whiff-avg");
+    const zMissBoxEl = document.getElementById("arsenal-z-miss-box");
+    const zMissEl = document.getElementById("arsenal-z-miss");
+    const zMissAvgEl = document.getElementById("arsenal-z-miss-avg");
+    const ozMissBoxEl = document.getElementById("arsenal-oz-miss-box");
+    const ozMissEl = document.getElementById("arsenal-oz-miss");
+    const ozMissAvgEl = document.getElementById("arsenal-oz-miss-avg");
+    const fastballBoxEl = document.getElementById("arsenal-fastball-box");
+    const fastballEl = document.getElementById("arsenal-fastball");
+    const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
+    const pitchesEl = document.getElementById("arsenal-pitches");
+    const emptyEl = document.getElementById("arsenal-empty");
+
+    function toNumberOrNull(value) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function formatPercent(value) {
+      const numeric = toNumberOrNull(value);
+      if (numeric === null) {
+        return "-";
+      }
+      return `${numeric.toFixed(1)}%`;
+    }
+
+    function setMetricTile(boxEl, valueEl, avgEl, value, leagueAvg, useComparison = true) {
+      const numericValue = toNumberOrNull(value);
+      const numericLeagueAvg = toNumberOrNull(leagueAvg);
+
+      valueEl.textContent = formatPercent(numericValue);
+
+      if (avgEl) {
+        avgEl.textContent = useComparison ? `Lg Avg: ${formatPercent(numericLeagueAvg)}` : "";
+      }
+
+      boxEl.classList.remove("metric-above", "metric-below", "metric-neutral");
+      if (!useComparison || numericValue === null || numericLeagueAvg === null) {
+        boxEl.classList.add("metric-neutral");
+        return;
+      }
+
+      const delta = numericValue - numericLeagueAvg;
+      if (delta >= 1.0) {
+        boxEl.classList.add("metric-above");
+      } else if (delta <= -1.0) {
+        boxEl.classList.add("metric-below");
+      } else {
+        boxEl.classList.add("metric-neutral");
+      }
+    }
+
+    function clearPitches() {
+      while (pitchesEl.firstChild) {
+        pitchesEl.removeChild(pitchesEl.firstChild);
+      }
+    }
+
+    function renderPitchMix(arsenalList) {
+      clearPitches();
+      if (!Array.isArray(arsenalList) || arsenalList.length === 0) {
+        return false;
+      }
+
+      arsenalList.forEach((pitch) => {
+        const usage = Number(pitch.usage_percent);
+        if (Number.isNaN(usage)) {
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "arsenal-pitch-row";
+
+        const label = document.createElement("span");
+        label.className = "arsenal-pitch-label";
+        label.textContent = pitch.label || pitch.code || "Pitch";
+
+        const value = document.createElement("span");
+        value.className = "arsenal-pitch-value";
+        value.textContent = formatPercent(usage);
+
+        const track = document.createElement("div");
+        track.className = "arsenal-pitch-track";
+        const fill = document.createElement("div");
+        fill.className = "arsenal-pitch-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, usage))}%`;
+        track.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(value);
+        row.appendChild(track);
+        pitchesEl.appendChild(row);
+      });
+
+      return pitchesEl.children.length > 0;
+    }
+
+    function selectPitcher(pitcherKey) {
+      pitcherRows.forEach((row) => {
+        row.classList.toggle("row-selected", row.dataset.pitcherKey === pitcherKey);
+      });
+
+      const details = arsenalData[pitcherKey];
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === pitcherKey);
+      const fallbackName = selectedRow ? selectedRow.querySelector("td")?.innerText?.trim() : "Pitcher Arsenal Snapshot";
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+
+      if (!details) {
+        nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
+        setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+        setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+        setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+        setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+        clearPitches();
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      nameEl.textContent = details.name || fallbackName || "Pitcher Arsenal Snapshot";
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, details.whiff_percent, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, details.z_swing_miss_percent, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, details.oz_swing_miss_percent, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, details.fastball_percent, null, false);
+
+      const hasPitches = renderPitchMix(details.arsenal);
+      emptyEl.style.display = hasPitches ? "none" : "block";
+    }
+
+    pitcherRows.forEach((row) => {
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("a")) {
+          return;
+        }
+        selectPitcher(row.dataset.pitcherKey);
+      });
+    });
+
+    const defaultKey = pitcherRows.map((row) => row.dataset.pitcherKey).find((key) => Object.prototype.hasOwnProperty.call(arsenalData, key))
+      || (pitcherRows[0] ? pitcherRows[0].dataset.pitcherKey : null);
+
+    if (defaultKey) {
+      selectPitcher(defaultKey);
+    }
+  </script>
 </body>
 </html>
