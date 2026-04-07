@@ -32,6 +32,36 @@ _pitcher_team_cache: Dict[str, Optional[str]] = {}
 ALT_LINES_TOKEN = " || ALT: "
 
 
+def _normalize_person_name(name: Any) -> str:
+    text = unidecode(str(name or "")).lower().strip()
+    text = text.replace(".", "").replace("'", "")
+    return " ".join(text.split())
+
+
+def _choose_best_player_match(players: List[Dict[str, Any]], pitcher_name: str) -> Optional[Dict[str, Any]]:
+    if not players:
+        return None
+
+    target = _normalize_person_name(pitcher_name)
+    if not target:
+        return players[0]
+
+    exact_full = [p for p in players if _normalize_person_name(p.get("fullName")) == target]
+    if exact_full:
+        return exact_full[0]
+
+    exact_first_last = [
+        p
+        for p in players
+        if _normalize_person_name(p.get("firstLastName")) == target
+        or _normalize_person_name(p.get("nameFirstLast")) == target
+    ]
+    if exact_first_last:
+        return exact_first_last[0]
+
+    return players[0]
+
+
 def _is_429_error(exc: requests.exceptions.RequestException) -> bool:
     return bool(
         isinstance(exc, requests.exceptions.HTTPError)
@@ -420,12 +450,17 @@ def get_pitcher_team(pitcher_name: str) -> Optional[str]:
         return _pitcher_team_cache[pitcher_name]
 
     try:
-        player = statsapi.lookup_player(pitcher_name)
+        players = statsapi.lookup_player(pitcher_name)
+        player = _choose_best_player_match(players or [], pitcher_name)
         if not player:
             _pitcher_team_cache[pitcher_name] = None
             return None
 
-        team_id = player[0]["currentTeam"]["id"]
+        current_team = player.get("currentTeam") or {}
+        team_id = current_team.get("id")
+        if team_id is None:
+            _pitcher_team_cache[pitcher_name] = None
+            return None
         team_name = statsapi.get("team", {"teamId": team_id})["teams"][0]["name"]
         if team_name == "Athletics":
             team_name = "Oakland Athletics"

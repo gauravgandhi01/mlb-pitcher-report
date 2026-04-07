@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import datetime
+import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from html import escape
+from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from urllib.parse import quote
@@ -17,6 +19,7 @@ from bs4 import BeautifulSoup
 from google.oauth2.service_account import Credentials
 from gspread_dataframe import set_with_dataframe
 from pybaseball import team_batting
+from unidecode import unidecode
 
 from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
 
@@ -28,6 +31,30 @@ SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 COMPLETED_STATUSES = {"Final", "In Progress"}
 PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX","DraftKings"]
+OPP_HAND_K_COLUMN = "Opp K% (Hand)"
+WHIFF_CSV_URL_TEMPLATE = (
+    "https://baseballsavant.mlb.com/leaderboard/custom"
+    "?year={year}&type=pitcher&filter=&min=0"
+    "&selections=z_swing_miss_percent%2Coz_swing_miss_percent%2Cwhiff_percent"
+    "%2Cn_ff_formatted%2Cn_sl_formatted%2Cn_ch_formatted%2Cn_cu_formatted"
+    "%2Cn_si_formatted%2Cn_fc_formatted%2Cn_fs_formatted%2Cn_st_formatted"
+    "%2Cn_sv_formatted%2Cn_fastball_formatted"
+    "&chart=false&x=whiff_percent&y=whiff_percent&r=no&chartType=beeswarm"
+    "&sort=z_swing_miss_percent&sortDir=desc"
+    "&csv=true"
+)
+ARSENAL_PITCH_COLUMNS = [
+    ("n_ff_formatted", "FF", "Four-Seam"),
+    ("n_sl_formatted", "SL", "Slider"),
+    ("n_ch_formatted", "CH", "Changeup"),
+    ("n_cu_formatted", "CU", "Curveball"),
+    ("n_si_formatted", "SI", "Sinker"),
+    ("n_fc_formatted", "FC", "Cutter"),
+    ("n_fs_formatted", "FS", "Splitter"),
+    ("n_st_formatted", "ST", "Sweeper"),
+    ("n_sv_formatted", "SV", "Slurve"),
+]
+ARSENAL_META_KEY = "__league_averages__"
 REPORT_COLUMN_ORDER = [
     "Name",
     "Hand",
@@ -38,10 +65,12 @@ REPORT_COLUMN_ORDER = [
     "AVG",
     "AB/GP",
     "K/9",
+    "Whiff%",
     "K/AB",
     "K%",
     "PA",
     "SO/PA",
+    OPP_HAND_K_COLUMN,
     "r",
     "Opponent",
     "Status",
@@ -102,6 +131,37 @@ SPORTSBOOK_FALLBACK_COLORS = [
     "#0891B2",
     "#BE123C",
 ]
+TEAM_HAND_SPLIT_CACHE: Dict[Tuple[int, int], Dict[str, Optional[float]]] = {}
+
+
+def _normalize_person_name(name: Any) -> str:
+    text = unidecode(str(name or "")).lower().strip()
+    text = text.replace(".", "").replace("'", "")
+    return " ".join(text.split())
+
+
+def _choose_best_player_match(players: List[Dict[str, Any]], player_name: str) -> Optional[Dict[str, Any]]:
+    if not players:
+        return None
+
+    target = _normalize_person_name(player_name)
+    if not target:
+        return players[0]
+
+    exact_full = [p for p in players if _normalize_person_name(p.get("fullName")) == target]
+    if exact_full:
+        return exact_full[0]
+
+    exact_first_last = [
+        p
+        for p in players
+        if _normalize_person_name(p.get("firstLastName")) == target
+        or _normalize_person_name(p.get("nameFirstLast")) == target
+    ]
+    if exact_first_last:
+        return exact_first_last[0]
+
+    return players[0]
 
 
 def parse_pitcher_stats(raw_data: str, name: str) -> Dict[str, Any]:
@@ -159,10 +219,11 @@ def get_strikeouts_by_player_name(date: str, full_name: str) -> Any:
 
 def fetch_pitcher_stats(name: str, team: str, opponent: str, status: str) -> Dict[str, Any]:
     try:
-        player = statsapi.lookup_player(name)
+        players = statsapi.lookup_player(name)
+        player = _choose_best_player_match(players or [], name)
         if not player:
             raise ValueError(f"Player {name} not found")
-        player_id = player[0]["id"]
+        player_id = player["id"]
         stats = statsapi.player_stats(player_id, group="[pitching]", type="season")
         pitcher_stats = parse_pitcher_stats(stats, name)
         pitcher_stats["Opponent"] = opponent
@@ -282,6 +343,36 @@ def fetch_pitcher_stats_concurrently(pitcher_tasks: Sequence[Tuple[str, str, str
 
 def prepare_team_batting_df(year: int) -> pd.DataFrame:
     last_error: Optional[Exception] = None
+
+    for candidate_year in [year, year - 1]:
+        try:
+            data = statsapi.get(
+                "teams_stats",
+                {
+                    "season": candidate_year,
+                    "group": "hitting",
+                    "stats": "season",
+                    "sportIds": 1,
+                },
+            )
+            stats_blocks = data.get("stats") or []
+            if not stats_blocks:
+                continue
+            splits = stats_blocks[0].get("splits") or []
+            rows: List[Dict[str, Any]] = []
+            for split in splits:
+                team_name = str((split.get("team") or {}).get("name", "")).strip()
+                stat = split.get("stat") or {}
+                strikeouts = pd.to_numeric(stat.get("strikeOuts"), errors="coerce")
+                plate_appearances = pd.to_numeric(stat.get("plateAppearances"), errors="coerce")
+                if not team_name or pd.isna(strikeouts) or pd.isna(plate_appearances) or plate_appearances <= 0:
+                    continue
+                rows.append({"Team": team_name, "SO/PA": float(100 * strikeouts / plate_appearances)})
+            if rows:
+                return pd.DataFrame(rows).sort_values(by="SO/PA", ascending=False).reset_index(drop=True)
+        except Exception as exc:
+            last_error = exc
+
     for candidate_year in [year, year - 1]:
         try:
             df = team_batting(candidate_year)
@@ -291,8 +382,90 @@ def prepare_team_batting_df(year: int) -> pd.DataFrame:
             return df
         except Exception as exc:
             last_error = exc
+
     print(f"\033[91mFailed to load team batting data: {last_error}\033[0m")
     return pd.DataFrame(columns=["Team", "SO/PA"])
+
+
+def _to_optional_float(value: Any) -> Optional[float]:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return None
+    return float(numeric)
+
+
+def _last_first_to_full_name(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if "," not in text:
+        return text
+    last, first = text.split(",", 1)
+    return f"{first.strip()} {last.strip()}".strip()
+
+
+def prepare_pitcher_arsenal_lookup(year: int) -> Dict[str, Dict[str, Any]]:
+    try:
+        response = requests.get(WHIFF_CSV_URL_TEMPLATE.format(year=year), timeout=20)
+        response.raise_for_status()
+        df = pd.read_csv(StringIO(response.text), encoding="utf-8-sig")
+    except Exception as exc:
+        print(f"\033[91mFailed to load pitcher arsenal data: {exc}\033[0m")
+        return {}
+
+    required_columns = {"last_name, first_name", "whiff_percent", "z_swing_miss_percent", "oz_swing_miss_percent"}
+    if df.empty or not required_columns.issubset(df.columns):
+        return {}
+
+    metric_columns = ["whiff_percent", "z_swing_miss_percent", "oz_swing_miss_percent"]
+    league_averages = {
+        metric: _to_optional_float(pd.to_numeric(df[metric], errors="coerce").mean())
+        for metric in metric_columns
+    }
+
+    arsenal_lookup: Dict[str, Dict[str, Any]] = {}
+    arsenal_lookup[ARSENAL_META_KEY] = league_averages
+    for _, row in df.iterrows():
+        display_name = _last_first_to_full_name(row.get("last_name, first_name"))
+        name_key = _normalize_person_name(display_name)
+        if not name_key:
+            continue
+
+        arsenal_entries: List[Dict[str, Any]] = []
+        for column_name, pitch_code, pitch_label in ARSENAL_PITCH_COLUMNS:
+            usage_percent = _to_optional_float(row.get(column_name))
+            if usage_percent is None or usage_percent <= 0:
+                continue
+            arsenal_entries.append(
+                {
+                    "code": pitch_code,
+                    "label": pitch_label,
+                    "usage_percent": usage_percent,
+                }
+            )
+        arsenal_entries.sort(key=lambda pitch: pitch["usage_percent"], reverse=True)
+
+        arsenal_lookup[name_key] = {
+            "name": display_name,
+            "whiff_percent": _to_optional_float(row.get("whiff_percent")),
+            "z_swing_miss_percent": _to_optional_float(row.get("z_swing_miss_percent")),
+            "oz_swing_miss_percent": _to_optional_float(row.get("oz_swing_miss_percent")),
+            "fastball_percent": _to_optional_float(row.get("n_fastball_formatted")),
+            "league_averages": league_averages,
+            "arsenal": arsenal_entries,
+        }
+
+    return arsenal_lookup
+
+
+def prepare_pitcher_whiff_lookup(year: int) -> Dict[str, float]:
+    arsenal_lookup = prepare_pitcher_arsenal_lookup(year)
+    return {
+        name_key: details["whiff_percent"]
+        for name_key, details in arsenal_lookup.items()
+        if name_key != ARSENAL_META_KEY
+        if details.get("whiff_percent") is not None
+    }
 
 
 def merge_pitcher_with_batting_data(
@@ -305,6 +478,127 @@ def merge_pitcher_with_batting_data(
 
 def merge_with_opponent_data(merged_df: pd.DataFrame, opp_df: pd.DataFrame) -> pd.DataFrame:
     return pd.merge(merged_df, opp_df, left_on="Name", right_on="Pitcher", how="left")
+
+
+def _to_int(value: Any) -> Optional[int]:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _fetch_team_split_k_percent(team_id: int, season: int, sit_code: str) -> Optional[float]:
+    try:
+        data = statsapi.get(
+            "team_stats",
+            {
+                "teamId": team_id,
+                "season": season,
+                "group": "hitting",
+                "stats": "statSplits",
+                "sitCodes": sit_code,
+            },
+        )
+    except Exception:
+        return None
+
+    stats_blocks = data.get("stats") or []
+    if not stats_blocks:
+        return None
+    splits = stats_blocks[0].get("splits") or []
+    if not splits:
+        return None
+    stat = splits[0].get("stat") or {}
+
+    strikeouts = pd.to_numeric(stat.get("strikeOuts"), errors="coerce")
+    plate_appearances = pd.to_numeric(stat.get("plateAppearances"), errors="coerce")
+    if pd.isna(strikeouts) or pd.isna(plate_appearances) or plate_appearances <= 0:
+        return None
+    return float(100 * strikeouts / plate_appearances)
+
+
+def _get_team_hand_split_k_lookup(team_id: int, season: int) -> Dict[str, Optional[float]]:
+    cache_key = (team_id, season)
+    cached = TEAM_HAND_SPLIT_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    candidate_seasons = [season]
+    if season > 1900:
+        candidate_seasons.append(season - 1)
+
+    result = {"vs_lhp": None, "vs_rhp": None}
+    for candidate_season in candidate_seasons:
+        vs_lhp = _fetch_team_split_k_percent(team_id, candidate_season, "vl")
+        vs_rhp = _fetch_team_split_k_percent(team_id, candidate_season, "vr")
+        if vs_lhp is not None or vs_rhp is not None:
+            result = {"vs_lhp": vs_lhp, "vs_rhp": vs_rhp}
+            break
+
+    TEAM_HAND_SPLIT_CACHE[cache_key] = result
+    return result
+
+
+def build_opponent_hand_k_lookup(
+    schedule: Sequence[Dict[str, Any]],
+    season: int,
+) -> Dict[str, Dict[str, Optional[float]]]:
+    team_name_to_id: Dict[str, int] = {}
+    for game in schedule:
+        away_name = str(game.get("away_name", "")).strip()
+        home_name = str(game.get("home_name", "")).strip()
+        away_id = _to_int(game.get("away_id"))
+        home_id = _to_int(game.get("home_id"))
+        if away_name and away_id is not None:
+            team_name_to_id[away_name] = away_id
+        if home_name and home_id is not None:
+            team_name_to_id[home_name] = home_id
+
+    return {
+        team_name: _get_team_hand_split_k_lookup(team_id, season)
+        for team_name, team_id in team_name_to_id.items()
+    }
+
+
+def add_opponent_hand_matchup_k_percent(
+    pitchers: pd.DataFrame,
+    opponent_hand_lookup: Dict[str, Dict[str, Optional[float]]],
+) -> pd.DataFrame:
+    enriched = pitchers.copy()
+    if enriched.empty:
+        enriched[OPP_HAND_K_COLUMN] = pd.NA
+        return enriched
+
+    values: List[Optional[float]] = []
+    for _, row in enriched.iterrows():
+        hand = str(row.get("Hand", "")).strip().upper()
+        opponent = str(row.get("Opponent", "")).strip()
+        split_lookup = opponent_hand_lookup.get(opponent, {})
+        if hand == "L":
+            values.append(split_lookup.get("vs_lhp"))
+        elif hand == "R":
+            values.append(split_lookup.get("vs_rhp"))
+        else:
+            values.append(None)
+
+    enriched[OPP_HAND_K_COLUMN] = values
+    return enriched
+
+
+def add_pitcher_whiff_percent(
+    pitchers: pd.DataFrame,
+    whiff_lookup: Dict[str, float],
+) -> pd.DataFrame:
+    enriched = pitchers.copy()
+    if enriched.empty:
+        enriched["Whiff%"] = pd.NA
+        return enriched
+
+    values: List[Optional[float]] = []
+    for name in enriched.get("Name", pd.Series(index=enriched.index, dtype=object)):
+        values.append(whiff_lookup.get(_normalize_person_name(name)))
+    enriched["Whiff%"] = values
+    return enriched
 
 
 def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
@@ -320,22 +614,31 @@ def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
     kab_series = (
         pd.to_numeric(sorted_df["K/AB"], errors="coerce")
         if "K/AB" in sorted_df.columns
-        else pd.Series([pd.NA] * len(sorted_df), index=sorted_df.index, dtype="object")
+        else pd.Series([float("nan")] * len(sorted_df), index=sorted_df.index)
     )
+    so_pa_series = (
+        pd.to_numeric(sorted_df["SO/PA"], errors="coerce")
+        if "SO/PA" in sorted_df.columns
+        else pd.Series([float("nan")] * len(sorted_df), index=sorted_df.index)
+    )
+    sort_metric_series = kab_series if kab_series.notna().any() else so_pa_series
 
     sorted_df["__status_sort"] = status_series.map(lambda status: 0 if status in NOT_STARTED_STATUSES else 1)
-    sorted_df["__kab_missing"] = kab_series.isna().astype(int)
-    sorted_df["__kab_sort"] = kab_series.fillna(float("-inf"))
+    sorted_df["__metric_missing"] = sort_metric_series.isna().astype(int)
+    sorted_df["__metric_sort"] = sort_metric_series.fillna(float("-inf"))
     if "Name" in sorted_df.columns:
         sorted_df["__name_sort"] = sorted_df["Name"].astype(str)
-        sort_by = ["__status_sort", "__kab_missing", "__kab_sort", "__name_sort"]
+        sort_by = ["__status_sort", "__metric_missing", "__metric_sort", "__name_sort"]
         ascending = [True, True, False, True]
     else:
-        sort_by = ["__status_sort", "__kab_missing", "__kab_sort"]
+        sort_by = ["__status_sort", "__metric_missing", "__metric_sort"]
         ascending = [True, True, False]
 
     sorted_df = sorted_df.sort_values(by=sort_by, ascending=ascending, kind="mergesort")
-    return sorted_df.drop(columns=["__status_sort", "__kab_missing", "__kab_sort", "__name_sort"], errors="ignore")
+    return sorted_df.drop(
+        columns=["__status_sort", "__metric_missing", "__metric_sort", "__name_sort"],
+        errors="ignore",
+    )
 
 
 def calculate_additional_metrics(date: str, pitchers: pd.DataFrame) -> pd.DataFrame:
@@ -572,6 +875,56 @@ def _add_cell_class(cells: List[Any], column_map: Dict[str, int], column_name: s
         cells[column_index]["class"] = existing_classes
 
 
+def _build_pitcher_arsenal_payload(
+    raw_df: pd.DataFrame,
+    pitcher_arsenal_lookup: Dict[str, Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    if raw_df.empty or not pitcher_arsenal_lookup:
+        return {}
+
+    payload: Dict[str, Dict[str, Any]] = {}
+    league_averages = pitcher_arsenal_lookup.get(ARSENAL_META_KEY, {})
+    if isinstance(league_averages, dict):
+        payload[ARSENAL_META_KEY] = {
+            "whiff_percent": _to_optional_float(league_averages.get("whiff_percent")),
+            "z_swing_miss_percent": _to_optional_float(league_averages.get("z_swing_miss_percent")),
+            "oz_swing_miss_percent": _to_optional_float(league_averages.get("oz_swing_miss_percent")),
+        }
+    names = raw_df["Name"] if "Name" in raw_df.columns else pd.Series(dtype=object)
+    for name in names:
+        name_text = str(name).strip()
+        name_key = _normalize_person_name(name_text)
+        if not name_key:
+            continue
+        details = pitcher_arsenal_lookup.get(name_key)
+        if not details:
+            continue
+
+        arsenal_items = []
+        for pitch in details.get("arsenal", []):
+            usage_percent = _to_optional_float(pitch.get("usage_percent"))
+            if usage_percent is None:
+                continue
+            arsenal_items.append(
+                {
+                    "code": str(pitch.get("code", "")),
+                    "label": str(pitch.get("label", "")),
+                    "usage_percent": usage_percent,
+                }
+            )
+
+        payload[name_key] = {
+            "name": name_text,
+            "whiff_percent": _to_optional_float(details.get("whiff_percent")),
+            "z_swing_miss_percent": _to_optional_float(details.get("z_swing_miss_percent")),
+            "oz_swing_miss_percent": _to_optional_float(details.get("oz_swing_miss_percent")),
+            "fastball_percent": _to_optional_float(details.get("fastball_percent")),
+            "arsenal": arsenal_items,
+        }
+
+    return payload
+
+
 def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> str:
     table_html = report_df.to_html(index=False, escape=False, classes="pitchers-table", border=0)
     soup = BeautifulSoup(table_html, "html.parser")
@@ -592,6 +945,7 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
         "Name": "column-name",
         "Opponent": "column-opponent",
         "Status": "column-status",
+        OPP_HAND_K_COLUMN: "column-opp-hand",
     }
 
     thead = table.find("thead")
@@ -615,6 +969,12 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
             break
         row_data = raw_df.iloc[row_index]
         row_classes = row_tag.get("class", [])
+        pitcher_name = str(row_data.get("Name", "")).strip()
+        pitcher_key = _normalize_person_name(pitcher_name)
+        if pitcher_key:
+            row_tag["data-pitcher-key"] = pitcher_key
+            if "pitcher-row-selectable" not in row_classes:
+                row_classes.append("pitcher-row-selectable")
 
         status = str(row_data.get("Status", "")).strip()
         if status in NOT_STARTED_STATUSES:
@@ -626,6 +986,7 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
 
         k_pct = _to_float(row_data.get("K%"))
         so_pa = _to_float(row_data.get("SO/PA"))
+        opp_k_vs_hand = _to_float(row_data.get(OPP_HAND_K_COLUMN))
         pa = _to_float(row_data.get("PA"))
         if status in NOT_STARTED_STATUSES and k_pct is not None and so_pa is not None:
             if k_pct >= 25 and so_pa >= 24 and (pa is None or pa >= 20):
@@ -695,6 +1056,14 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
             elif so_pa <= 20:
                 _add_cell_class(cells, column_map, "SO/PA", "cell-weak")
 
+        if opp_k_vs_hand is not None:
+            if opp_k_vs_hand >= 25:
+                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-elite")
+            elif opp_k_vs_hand >= 23:
+                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-strong")
+            elif opp_k_vs_hand <= 20:
+                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-weak")
+
         if k_pct is not None:
             if k_pct >= 27:
                 _add_cell_class(cells, column_map, "K%", "cell-elite")
@@ -709,6 +1078,15 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
                 _add_cell_class(cells, column_map, "K/9", "cell-strong")
             elif k_per_nine <= 7:
                 _add_cell_class(cells, column_map, "K/9", "cell-weak")
+
+        whiff_pct = _to_float(row_data.get("Whiff%"))
+        if whiff_pct is not None:
+            if whiff_pct >= 15:
+                _add_cell_class(cells, column_map, "Whiff%", "cell-elite")
+            elif whiff_pct >= 13:
+                _add_cell_class(cells, column_map, "Whiff%", "cell-strong")
+            elif whiff_pct <= 9:
+                _add_cell_class(cells, column_map, "Whiff%", "cell-weak")
 
         rank = _to_float(row_data.get("r"))
         if rank is not None:
@@ -770,10 +1148,12 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
 
     format_map = {
         "SO/PA": "{:.2f}",
+        OPP_HAND_K_COLUMN: "{:.2f}",
         "AB/GP": "{:.1f}",
         "K/AB": "{:.2f}",
         "r": "{:.0f}",
         "K/9": "{:.1f}",
+        "Whiff%": "{:.1f}",
     }
     for col, fmt in format_map.items():
         if col in report_df.columns:
@@ -783,12 +1163,19 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     return report_df.fillna("-")
 
 
-def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) -> Path:
+def write_to_html(
+    final_df: pd.DataFrame,
+    report_key: str,
+    display_date: str,
+    pitcher_arsenal_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Path:
     print("\033[92mWriting to HTML....\033[0m")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     report_df = _format_for_report_table(final_df)
     table_html = _build_conditional_table_html(report_df, final_df)
+    arsenal_payload = _build_pitcher_arsenal_payload(final_df, pitcher_arsenal_lookup or {})
+    arsenal_payload_json = json.dumps(arsenal_payload).replace("</", "<\\/")
     updated_at = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
     html_content = f"""<!DOCTYPE html>
@@ -900,6 +1287,14 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
     table.pitchers-table td.column-status {{
       min-width: 74px;
     }}
+    table.pitchers-table th.column-opp-hand,
+    table.pitchers-table td.column-opp-hand {{
+      min-width: 82px;
+    }}
+    table.pitchers-table th.column-opp-hand {{
+      white-space: normal;
+      line-height: 1.05;
+    }}
     table.pitchers-table th.sportsbook-column,
     table.pitchers-table td.sportsbook-column {{
       min-width: 112px;
@@ -913,6 +1308,13 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
     }}
     table.pitchers-table tbody tr:hover {{
       background: #eef7ff;
+    }}
+    table.pitchers-table tbody tr.pitcher-row-selectable {{
+      cursor: pointer;
+    }}
+    table.pitchers-table tbody tr.pitcher-row-selectable.row-selected {{
+      outline: 2px solid #0f766e;
+      outline-offset: -2px;
     }}
     table.pitchers-table tbody tr.row-upcoming {{
       background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
@@ -1105,9 +1507,120 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
     table.pitchers-table a:hover {{
       text-decoration: underline;
     }}
+    .arsenal-card {{
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }}
+    .arsenal-card h2 {{
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #0b2540;
+    }}
+    .arsenal-subtitle {{
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    .arsenal-metrics {{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }}
+    .arsenal-metric {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fbff;
+      display: grid;
+      gap: 4px;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }}
+    .arsenal-metric.metric-above {{
+      background: #dcfce7;
+      border-color: #86efac;
+    }}
+    .arsenal-metric.metric-below {{
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }}
+    .arsenal-metric.metric-neutral {{
+      background: #f8fbff;
+      border-color: var(--line);
+    }}
+    .arsenal-metric-label {{
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .arsenal-metric-value {{
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+    }}
+    .arsenal-metric-meta {{
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.1;
+      min-height: 12px;
+    }}
+    .arsenal-pitches {{
+      display: grid;
+      gap: 8px;
+      min-height: 42px;
+    }}
+    .arsenal-pitch-row {{
+      display: grid;
+      grid-template-columns: 90px 56px minmax(120px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #0f172a;
+    }}
+    .arsenal-pitch-label {{
+      font-weight: 600;
+    }}
+    .arsenal-pitch-value {{
+      text-align: right;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }}
+    .arsenal-pitch-track {{
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }}
+    .arsenal-pitch-fill {{
+      height: 100%;
+      background: linear-gradient(90deg, #0f766e, #0284c7);
+      border-radius: inherit;
+    }}
+    .arsenal-empty {{
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }}
+    .arsenal-future-slot {{
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #64748b;
+      font-size: 12px;
+      background: #fafcff;
+    }}
     @media (max-width: 900px) {{
       body {{ padding: 12px; }}
       .hero h1 {{ font-size: 23px; }}
+      .arsenal-metrics {{
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }}
+      .arsenal-pitch-row {{
+        grid-template-columns: 78px 56px minmax(100px, 1fr);
+      }}
     }}
   </style>
 </head>
@@ -1122,7 +1635,197 @@ def write_to_html(final_df: pd.DataFrame, report_key: str, display_date: str) ->
         {table_html}
       </div>
     </section>
+    <section class="panel">
+      <div class="arsenal-card">
+        <div>
+          <h2 id="arsenal-name">Pitcher Arsenal Snapshot</h2>
+          <p class="arsenal-subtitle">Select a pitcher row above to inspect swing-and-miss profile and pitch mix.</p>
+        </div>
+        <div class="arsenal-metrics">
+          <div class="arsenal-metric metric-neutral" id="arsenal-whiff-box">
+            <span class="arsenal-metric-label">Whiff%</span>
+            <span class="arsenal-metric-value" id="arsenal-whiff">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-whiff-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-z-miss-box">
+            <span class="arsenal-metric-label">Z-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-z-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-z-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-oz-miss-box">
+            <span class="arsenal-metric-label">OZ-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-oz-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-oz-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-fastball-box">
+            <span class="arsenal-metric-label">Fastball%</span>
+            <span class="arsenal-metric-value" id="arsenal-fastball">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-fastball-avg"></span>
+          </div>
+        </div>
+        <div class="arsenal-pitches" id="arsenal-pitches"></div>
+        <div class="arsenal-empty" id="arsenal-empty">
+          Arsenal details are only available for pitchers returned by the Savant qualified leaderboard feed.
+        </div>
+        <div class="arsenal-future-slot">
+          Reserved for additional pitcher detail modules.
+        </div>
+      </div>
+    </section>
   </div>
+  <script>
+    const arsenalData = {arsenal_payload_json};
+    const leagueAverages = arsenalData["__league_averages__"] || {{}};
+    const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const nameEl = document.getElementById("arsenal-name");
+    const whiffBoxEl = document.getElementById("arsenal-whiff-box");
+    const whiffEl = document.getElementById("arsenal-whiff");
+    const whiffAvgEl = document.getElementById("arsenal-whiff-avg");
+    const zMissBoxEl = document.getElementById("arsenal-z-miss-box");
+    const zMissEl = document.getElementById("arsenal-z-miss");
+    const zMissAvgEl = document.getElementById("arsenal-z-miss-avg");
+    const ozMissBoxEl = document.getElementById("arsenal-oz-miss-box");
+    const ozMissEl = document.getElementById("arsenal-oz-miss");
+    const ozMissAvgEl = document.getElementById("arsenal-oz-miss-avg");
+    const fastballBoxEl = document.getElementById("arsenal-fastball-box");
+    const fastballEl = document.getElementById("arsenal-fastball");
+    const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
+    const pitchesEl = document.getElementById("arsenal-pitches");
+    const emptyEl = document.getElementById("arsenal-empty");
+
+    function toNumberOrNull(value) {{
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }}
+
+    function formatPercent(value) {{
+      const numeric = toNumberOrNull(value);
+      if (numeric === null) {{
+        return "-";
+      }}
+      return `${{numeric.toFixed(1)}}%`;
+    }}
+
+    function setMetricTile(boxEl, valueEl, avgEl, value, leagueAvg, useComparison = true) {{
+      const numericValue = toNumberOrNull(value);
+      const numericLeagueAvg = toNumberOrNull(leagueAvg);
+
+      valueEl.textContent = formatPercent(numericValue);
+
+      if (avgEl) {{
+        avgEl.textContent = useComparison ? `Lg Avg: ${{formatPercent(numericLeagueAvg)}}` : "";
+      }}
+
+      boxEl.classList.remove("metric-above", "metric-below", "metric-neutral");
+      if (!useComparison || numericValue === null || numericLeagueAvg === null) {{
+        boxEl.classList.add("metric-neutral");
+        return;
+      }}
+
+      const delta = numericValue - numericLeagueAvg;
+      if (delta >= 1.0) {{
+        boxEl.classList.add("metric-above");
+      }} else if (delta <= -1.0) {{
+        boxEl.classList.add("metric-below");
+      }} else {{
+        boxEl.classList.add("metric-neutral");
+      }}
+    }}
+
+    function clearPitches() {{
+      while (pitchesEl.firstChild) {{
+        pitchesEl.removeChild(pitchesEl.firstChild);
+      }}
+    }}
+
+    function renderPitchMix(arsenalList) {{
+      clearPitches();
+      if (!Array.isArray(arsenalList) || arsenalList.length === 0) {{
+        return false;
+      }}
+
+      arsenalList.forEach((pitch) => {{
+        const usage = Number(pitch.usage_percent);
+        if (Number.isNaN(usage)) {{
+          return;
+        }}
+
+        const row = document.createElement("div");
+        row.className = "arsenal-pitch-row";
+
+        const label = document.createElement("span");
+        label.className = "arsenal-pitch-label";
+        label.textContent = pitch.label || pitch.code || "Pitch";
+
+        const value = document.createElement("span");
+        value.className = "arsenal-pitch-value";
+        value.textContent = formatPercent(usage);
+
+        const track = document.createElement("div");
+        track.className = "arsenal-pitch-track";
+        const fill = document.createElement("div");
+        fill.className = "arsenal-pitch-fill";
+        fill.style.width = `${{Math.max(0, Math.min(100, usage))}}%`;
+        track.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(value);
+        row.appendChild(track);
+        pitchesEl.appendChild(row);
+      }});
+
+      return pitchesEl.children.length > 0;
+    }}
+
+    function selectPitcher(pitcherKey) {{
+      pitcherRows.forEach((row) => {{
+        row.classList.toggle("row-selected", row.dataset.pitcherKey === pitcherKey);
+      }});
+
+      const details = arsenalData[pitcherKey];
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === pitcherKey);
+      const fallbackName = selectedRow ? selectedRow.querySelector("td")?.innerText?.trim() : "Pitcher Arsenal Snapshot";
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+
+      if (!details) {{
+        nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
+        setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+        setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+        setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+        setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+        clearPitches();
+        emptyEl.style.display = "block";
+        return;
+      }}
+
+      nameEl.textContent = details.name || fallbackName || "Pitcher Arsenal Snapshot";
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, details.whiff_percent, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, details.z_swing_miss_percent, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, details.oz_swing_miss_percent, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, details.fastball_percent, null, false);
+
+      const hasPitches = renderPitchMix(details.arsenal);
+      emptyEl.style.display = hasPitches ? "none" : "block";
+    }}
+
+    pitcherRows.forEach((row) => {{
+      row.addEventListener("click", (event) => {{
+        if (event.target.closest("a")) {{
+          return;
+        }}
+        selectPitcher(row.dataset.pitcherKey);
+      }});
+    }});
+
+    const defaultKey = pitcherRows.map((row) => row.dataset.pitcherKey).find((key) => Object.prototype.hasOwnProperty.call(arsenalData, key))
+      || (pitcherRows[0] ? pitcherRows[0].dataset.pitcherKey : null);
+
+    if (defaultKey) {{
+      selectPitcher(defaultKey);
+    }}
+  </script>
 </body>
 </html>
 """
@@ -1181,17 +1884,40 @@ def resolve_date_input(raw_input: str) -> str:
     raise ValueError("Date must be 'today', 'tmrw', 'MM/DD', or 'MM/DD/YYYY'.")
 
 
+def _next_report_date(report_date: str) -> str:
+    date_obj = datetime.datetime.strptime(report_date, "%m/%d/%Y")
+    return (date_obj + datetime.timedelta(days=1)).strftime("%m/%d/%Y")
+
+
+def _has_not_started_games(schedule: Sequence[Dict[str, Any]]) -> bool:
+    return any(game.get("status") in NOT_STARTED_STATUSES for game in schedule)
+
+
+def resolve_effective_report_date_and_schedule(report_date: str) -> Tuple[str, List[Dict[str, Any]]]:
+    schedule = fetch_schedule(report_date)
+    if _has_not_started_games(schedule):
+        return report_date, schedule
+
+    next_report_date = _next_report_date(report_date)
+    next_schedule = fetch_schedule(next_report_date)
+    print(
+        "\033[93mNo games remain in a not-started state on "
+        f"{report_date}. Rolling report forward to {next_report_date}.\033[0m"
+    )
+    return next_report_date, next_schedule
+
+
 def main(report_date: str, odds: str) -> None:
+    report_date, schedule = resolve_effective_report_date_and_schedule(report_date)
     report_key = report_date.replace("/", "")
     print((REPORTS_DIR / f"report-{report_key}.html").resolve().as_uri())
 
-    schedule = fetch_schedule(report_date)
     pitcher_tasks = get_pitcher_tasks(schedule)
     results = fetch_pitcher_stats_concurrently(pitcher_tasks)
     if not results:
         print("\033[93mNo probable pitchers found for the selected date.\033[0m")
         empty_df = pd.DataFrame(columns=REPORT_COLUMN_ORDER)
-        write_to_html(empty_df, report_key, report_date)
+        write_to_html(empty_df, report_key, report_date, pitcher_arsenal_lookup={})
         return
 
     report_year = datetime.datetime.strptime(report_date, "%m/%d/%Y").year
@@ -1199,6 +1925,16 @@ def main(report_date: str, odds: str) -> None:
     merged_df = merge_pitcher_with_batting_data(results, team_batting_df)
     opp_df = get_opp_data(report_date)
     pitchers = merge_with_opponent_data(merged_df, opp_df)
+    arsenal_lookup = prepare_pitcher_arsenal_lookup(report_year)
+    whiff_lookup = {
+        name_key: details["whiff_percent"]
+        for name_key, details in arsenal_lookup.items()
+        if name_key != ARSENAL_META_KEY
+        if details.get("whiff_percent") is not None
+    }
+    pitchers = add_pitcher_whiff_percent(pitchers, whiff_lookup)
+    opponent_hand_lookup = build_opponent_hand_k_lookup(schedule, report_year)
+    pitchers = add_opponent_hand_matchup_k_percent(pitchers, opponent_hand_lookup)
     pitchers = calculate_additional_metrics(report_date, pitchers)
 
     final_df = pitchers
@@ -1219,7 +1955,7 @@ def main(report_date: str, odds: str) -> None:
         except Exception as exc:
             print(f"\033[91mGoogle Sheet write failed: {exc}\033[0m")
 
-    write_to_html(final_df, report_key, report_date)
+    write_to_html(final_df, report_key, report_date, pitcher_arsenal_lookup=arsenal_lookup)
 
 
 if __name__ == "__main__":
