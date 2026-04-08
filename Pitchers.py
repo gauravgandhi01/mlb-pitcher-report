@@ -31,7 +31,11 @@ SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 COMPLETED_STATUSES = {"Final", "In Progress"}
 PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX","DraftKings"]
-OPP_HAND_K_COLUMN = "Opp K% (Hand)"
+OPP_HAND_K_COLUMN = "Opp K% vH"
+MATCHUP_SOURCE_COLUMN = "Matchup Src"
+START_TIME_COLUMN = "Start"
+MATCHUP_SOURCE_ESPN = "ESPN (AB)"
+MATCHUP_SOURCE_SAVANT = "Savant (PA)"
 WHIFF_CSV_URL_TEMPLATE = (
     "https://baseballsavant.mlb.com/leaderboard/custom"
     "?year={year}&type=pitcher&filter=&min=0"
@@ -69,13 +73,59 @@ REPORT_COLUMN_ORDER = [
     "K/AB",
     "K%",
     "PA",
+    MATCHUP_SOURCE_COLUMN,
     "SO/PA",
     OPP_HAND_K_COLUMN,
     "r",
     "Opponent",
+    START_TIME_COLUMN,
     "Status",
     "Ks",
 ]
+PITCHER_STAT_COLUMNS = {
+    "Hand",
+    "GP",
+    "AB",
+    "K",
+    "BB",
+    "AVG",
+    "AB/GP",
+    "K/9",
+    "K/AB",
+    "Ks",
+}
+OPPONENT_STAT_COLUMNS = {
+    "K%",
+    "PA",
+    MATCHUP_SOURCE_COLUMN,
+    "SO/PA",
+    OPP_HAND_K_COLUMN,
+    "r",
+}
+SAVANT_STAT_COLUMNS = {"Whiff%"}
+STAT_HEADER_TOOLTIPS = {
+    "Name": "Probable starting pitcher.",
+    "Hand": "Pitching handedness (R/L).",
+    "GP": "Games pitched this season.",
+    "AB": "At-bats against this pitcher this season.",
+    "K": "Pitcher strikeouts this season.",
+    "BB": "Walks issued by this pitcher this season.",
+    "AVG": "Opponent batting average allowed by this pitcher.",
+    "AB/GP": "Average at-bats faced per game pitched.",
+    "K/9": "Strikeouts per 9 innings pitched.",
+    "Whiff%": "Statcast whiff rate (swing-and-miss rate) from Baseball Savant.",
+    "K/AB": "Strikeout rate proxy: K divided by (AB + BB), shown as a percent.",
+    "K%": "Opponent-lineup strikeout rate vs this pitcher. Tiny suffix indicates source: E = ESPN confirmed lineup (K/AB), S = Savant probable lineup (K/PA).",
+    "PA": "Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits.",
+    MATCHUP_SOURCE_COLUMN: "Source for K% and PA sample: ESPN confirmed lineup (AB-based) or Savant probable-lineup (PA-based).",
+    "SO/PA": "Opponent team strikeouts per plate appearance (season percent).",
+    OPP_HAND_K_COLUMN: "Opponent team strikeout percent versus the pitcher's handedness.",
+    "r": "Rank of SO/PA among today's probable-pitcher matchups (1 = most strikeout-prone opponent).",
+    "Opponent": "Team this pitcher is facing, with scheduled local start time.",
+    START_TIME_COLUMN: "Scheduled game start time (local time).",
+    "Status": "Game status.",
+    "Ks": "Strikeouts recorded by this pitcher in the game once started/final.",
+}
 TEAM_MAPPING = {
     "SEA": "Seattle Mariners",
     "OAK": "Oakland Athletics",
@@ -138,6 +188,25 @@ def _normalize_person_name(name: Any) -> str:
     text = unidecode(str(name or "")).lower().strip()
     text = text.replace(".", "").replace("'", "")
     return " ".join(text.split())
+
+
+def _normalize_team_name(name: Any) -> str:
+    text = unidecode(str(name or "")).lower().strip()
+    text = text.replace(".", "").replace("'", "")
+    text = re.sub(r"[^a-z0-9 ]+", " ", text)
+    return " ".join(text.split())
+
+
+def _format_local_start_time(game_datetime: Any) -> str:
+    text = str(game_datetime or "").strip()
+    if not text:
+        return ""
+    try:
+        dt = datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    local_time = dt.astimezone().strftime("%I:%M %p").lstrip("0")
+    return local_time.replace(" AM", "a").replace(" PM", "p")
 
 
 def _choose_best_player_match(players: List[Dict[str, Any]], player_name: str) -> Optional[Dict[str, Any]]:
@@ -217,7 +286,7 @@ def get_strikeouts_by_player_name(date: str, full_name: str) -> Any:
     return player_data.get("stats", {}).get("pitching", {}).get("strikeOuts", 0)
 
 
-def fetch_pitcher_stats(name: str, team: str, opponent: str, status: str) -> Dict[str, Any]:
+def fetch_pitcher_stats(name: str, team: str, opponent: str, status: str, start_time: str) -> Dict[str, Any]:
     try:
         players = statsapi.lookup_player(name)
         player = _choose_best_player_match(players or [], name)
@@ -228,9 +297,17 @@ def fetch_pitcher_stats(name: str, team: str, opponent: str, status: str) -> Dic
         pitcher_stats = parse_pitcher_stats(stats, name)
         pitcher_stats["Opponent"] = opponent
         pitcher_stats["Status"] = status
+        pitcher_stats[START_TIME_COLUMN] = start_time
         return pitcher_stats
     except Exception as exc:
-        return {"Name": name, "Team": team, "Opponent": opponent, "Error": str(exc)}
+        return {
+            "Name": name,
+            "Team": team,
+            "Opponent": opponent,
+            "Status": status,
+            START_TIME_COLUMN: start_time,
+            "Error": str(exc),
+        }
 
 
 def fetch_pitcher_odds(name: str, report_date: str) -> Optional[pd.DataFrame]:
@@ -283,7 +360,7 @@ def get_pitcher_data(pitcher_div: Any) -> Tuple[str, Any, Any, str]:
     return name, 0, 0, handedness
 
 
-def get_opp_data(date: str) -> pd.DataFrame:
+def get_savant_opp_data(date: str) -> pd.DataFrame:
     date_obj = datetime.datetime.strptime(date, "%m/%d/%Y")
     converted_date = date_obj.strftime("%Y-%m-%d")
     url = f"https://baseballsavant.mlb.com/probable-pitchers?date={converted_date}"
@@ -294,7 +371,7 @@ def get_opp_data(date: str) -> pd.DataFrame:
         response.raise_for_status()
     except requests.RequestException as exc:
         print(f"\033[91mFailed to retrieve probable pitcher data: {exc}\033[0m")
-        return pd.DataFrame(columns=["Pitcher", "Hand", "PA", "K%"])
+        return pd.DataFrame(columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN])
 
     soup = BeautifulSoup(response.content, "html.parser")
     blocks = soup.find_all("div", class_="mod")
@@ -303,11 +380,263 @@ def get_opp_data(date: str) -> pd.DataFrame:
         for col in cols:
             try:
                 name, pa, k_percentage, handedness = get_pitcher_data(col)
-                data.append({"Pitcher": name, "Hand": handedness, "PA": pa, "K%": k_percentage})
+                data.append(
+                    {
+                        "Pitcher": name,
+                        "Hand": handedness,
+                        "PA": pa,
+                        "K%": k_percentage,
+                        MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+                    }
+                )
             except Exception:
-                data.append({"Pitcher": "TBD", "Hand": "TBD", "PA": 0, "K%": 0})
+                data.append(
+                    {
+                        "Pitcher": "TBD",
+                        "Hand": "TBD",
+                        "PA": 0,
+                        "K%": 0,
+                        MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+                    }
+                )
 
     return pd.DataFrame(data)
+
+
+def _fetch_espn_scoreboard_events(date: str) -> List[Dict[str, Any]]:
+    date_obj = datetime.datetime.strptime(date, "%m/%d/%Y")
+    url = (
+        "https://site.web.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+        f"?dates={date_obj.strftime('%Y%m%d')}"
+    )
+    try:
+        response = requests.get(url, timeout=20)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception as exc:
+        print(f"\033[91mFailed to load ESPN scoreboard data: {exc}\033[0m")
+        return []
+    return payload.get("events") or []
+
+
+def _build_espn_event_id_lookup(date: str) -> Dict[Tuple[str, str], str]:
+    lookup: Dict[Tuple[str, str], str] = {}
+    for event in _fetch_espn_scoreboard_events(date):
+        event_id = str(event.get("id", "")).strip()
+        comp = (event.get("competitions") or [{}])[0]
+        competitors = comp.get("competitors") or []
+        away_name = ""
+        home_name = ""
+        for competitor in competitors:
+            team = competitor.get("team") or {}
+            display_name = str(team.get("displayName", "")).strip()
+            home_away = str(competitor.get("homeAway", "")).strip().lower()
+            if home_away == "away":
+                away_name = display_name
+            elif home_away == "home":
+                home_name = display_name
+        if not event_id or not away_name or not home_name:
+            continue
+        lookup[(_normalize_team_name(away_name), _normalize_team_name(home_name))] = event_id
+    return lookup
+
+
+def _fetch_espn_summary(event_id: str) -> Optional[Dict[str, Any]]:
+    if not event_id:
+        return None
+    url = f"https://site.web.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event={event_id}"
+    try:
+        response = requests.get(url, timeout=20)
+        response.raise_for_status()
+        return response.json()
+    except Exception:
+        return None
+
+
+def _is_espn_lineup_confirmed(
+    summary_data: Dict[str, Any],
+    team_abbrev: str,
+    batting_athletes: Sequence[Dict[str, Any]],
+) -> bool:
+    target = str(team_abbrev or "").strip().upper()
+    roster_checked = False
+    for roster_block in summary_data.get("rosters") or []:
+        roster_team = (roster_block.get("team") or {}).get("abbreviation")
+        if str(roster_team or "").strip().upper() != target:
+            continue
+        roster_checked = True
+        roster = roster_block.get("roster") or []
+        starters = [player for player in roster if player.get("starter")]
+        roster_with_order = [player for player in roster if _to_int(player.get("batOrder")) is not None]
+        starters_with_order = [player for player in starters if _to_int(player.get("batOrder")) is not None]
+        if len(starters_with_order) >= 9 or len(roster_with_order) >= 9:
+            return True
+
+    starters = [athlete for athlete in batting_athletes if athlete.get("starter")]
+    athletes_with_order = [athlete for athlete in batting_athletes if _to_int(athlete.get("batOrder")) is not None]
+    starters_with_order = [athlete for athlete in starters if _to_int(athlete.get("batOrder")) is not None]
+    if len(starters_with_order) >= 9 or len(athletes_with_order) >= 9:
+        return True
+    if roster_checked:
+        return False
+    return False
+
+
+def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    matchup_by_team: Dict[str, Dict[str, Any]] = {}
+    boxscore_players = (summary_data.get("boxscore") or {}).get("players") or []
+    for team_block in boxscore_players:
+        team = team_block.get("team") or {}
+        team_abbrev = str(team.get("abbreviation", "")).strip().upper()
+        if not team_abbrev:
+            continue
+        statistics = team_block.get("statistics") or []
+        batting_block = next((item for item in statistics if item.get("type") == "batting"), None)
+        if not batting_block:
+            continue
+        athletes = batting_block.get("athletes") or []
+        confirmed = _is_espn_lineup_confirmed(summary_data, team_abbrev, athletes)
+        if not confirmed:
+            continue
+
+        lineup_athletes = [athlete for athlete in athletes if athlete.get("starter")]
+        if not lineup_athletes:
+            lineup_athletes = athletes
+        lineup_athletes = sorted(
+            lineup_athletes,
+            key=lambda athlete: (_to_int(athlete.get("batOrder")) is None, _to_int(athlete.get("batOrder")) or 99),
+        )[:9]
+
+        keys = batting_block.get("keys") or []
+        try:
+            at_bats_idx = keys.index("atBats")
+            strikeouts_idx = keys.index("strikeouts")
+        except ValueError:
+            continue
+
+        total_ab = 0.0
+        total_ks = 0.0
+        has_any_vs_stats = False
+        has_any_numeric_value = False
+        for athlete in lineup_athletes:
+            vs_stats = athlete.get("vsStats") or []
+            if vs_stats:
+                has_any_vs_stats = True
+            raw_ab = vs_stats[at_bats_idx] if at_bats_idx < len(vs_stats) else None
+            raw_ks = vs_stats[strikeouts_idx] if strikeouts_idx < len(vs_stats) else None
+            ab_value = pd.to_numeric(raw_ab, errors="coerce")
+            ks_value = pd.to_numeric(raw_ks, errors="coerce")
+            if pd.notna(ab_value):
+                total_ab += float(ab_value)
+                has_any_numeric_value = True
+            if pd.notna(ks_value):
+                total_ks += float(ks_value)
+                has_any_numeric_value = True
+
+        # ESPN removes lineup vsStats after first pitch for many games.
+        # When that happens, keep Savant fallback instead of forcing zeroes.
+        if not has_any_vs_stats or not has_any_numeric_value:
+            continue
+
+        k_percent = float(100 * total_ks / total_ab) if total_ab > 0 else 0.0
+        matchup_by_team[team_abbrev] = {"PA": total_ab, "K%": k_percent}
+
+    return matchup_by_team
+
+
+def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
+    rows: List[Dict[str, Any]] = []
+    event_lookup = _build_espn_event_id_lookup(date)
+    if not event_lookup:
+        return pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN])
+
+    for game in schedule:
+        away_team = str(game.get("away_name", "")).strip()
+        home_team = str(game.get("home_name", "")).strip()
+        away_pitcher = str(game.get("away_probable_pitcher", "")).strip()
+        home_pitcher = str(game.get("home_probable_pitcher", "")).strip()
+        event_id = event_lookup.get((_normalize_team_name(away_team), _normalize_team_name(home_team)))
+        if not event_id:
+            continue
+
+        summary_data = _fetch_espn_summary(event_id)
+        if not summary_data:
+            continue
+
+        comp = ((summary_data.get("header") or {}).get("competitions") or [{}])[0]
+        competitors = comp.get("competitors") or []
+        home_abbrev = ""
+        away_abbrev = ""
+        for competitor in competitors:
+            team_abbrev = str((competitor.get("team") or {}).get("abbreviation", "")).strip().upper()
+            home_away = str(competitor.get("homeAway", "")).strip().lower()
+            if home_away == "home":
+                home_abbrev = team_abbrev
+            elif home_away == "away":
+                away_abbrev = team_abbrev
+        if not home_abbrev or not away_abbrev:
+            continue
+
+        lineup_stats = _extract_espn_lineup_matchup_stats(summary_data)
+        if away_pitcher and home_abbrev in lineup_stats:
+            rows.append(
+                {
+                    "Pitcher": away_pitcher,
+                    "PA": lineup_stats[home_abbrev]["PA"],
+                    "K%": lineup_stats[home_abbrev]["K%"],
+                    MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
+                }
+            )
+        if home_pitcher and away_abbrev in lineup_stats:
+            rows.append(
+                {
+                    "Pitcher": home_pitcher,
+                    "PA": lineup_stats[away_abbrev]["PA"],
+                    "K%": lineup_stats[away_abbrev]["K%"],
+                    MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
+    savant_df = get_savant_opp_data(date)
+    espn_df = get_espn_opp_data(date, schedule)
+
+    columns = ["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN]
+    merged_lookup: Dict[str, Dict[str, Any]] = {}
+
+    for _, row in savant_df.iterrows():
+        name = str(row.get("Pitcher", "")).strip()
+        if not name:
+            continue
+        key = _normalize_person_name(name)
+        merged_lookup[key] = {
+            "Pitcher": name,
+            "Hand": row.get("Hand"),
+            "PA": row.get("PA"),
+            "K%": row.get("K%"),
+            MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+        }
+
+    for _, row in espn_df.iterrows():
+        name = str(row.get("Pitcher", "")).strip()
+        if not name:
+            continue
+        key = _normalize_person_name(name)
+        existing = merged_lookup.get(
+            key,
+            {"Pitcher": name, "Hand": pd.NA, "PA": pd.NA, "K%": pd.NA, MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN},
+        )
+        existing["PA"] = row.get("PA")
+        existing["K%"] = row.get("K%")
+        existing[MATCHUP_SOURCE_COLUMN] = MATCHUP_SOURCE_ESPN
+        merged_lookup[key] = existing
+
+    if not merged_lookup:
+        return pd.DataFrame(columns=columns)
+    return pd.DataFrame(list(merged_lookup.values()), columns=columns)
 
 
 def fetch_schedule(date: str) -> List[Dict[str, Any]]:
@@ -315,28 +644,29 @@ def fetch_schedule(date: str) -> List[Dict[str, Any]]:
     return [game for game in sched if game.get("status") in SCHEDULE_STATUSES]
 
 
-def get_pitcher_tasks(schedule: Sequence[Dict[str, Any]]) -> List[Tuple[str, str, str, str]]:
-    pitcher_tasks: List[Tuple[str, str, str, str]] = []
+def get_pitcher_tasks(schedule: Sequence[Dict[str, Any]]) -> List[Tuple[str, str, str, str, str]]:
+    pitcher_tasks: List[Tuple[str, str, str, str, str]] = []
     for game in schedule:
         status = game.get("status", "")
+        start_time = _format_local_start_time(game.get("game_datetime"))
         away_team, home_team = game.get("away_name", ""), game.get("home_name", "")
         away_pitcher = game.get("away_probable_pitcher")
         home_pitcher = game.get("home_probable_pitcher")
         if away_pitcher:
-            pitcher_tasks.append((away_pitcher, away_team, home_team, status))
+            pitcher_tasks.append((away_pitcher, away_team, home_team, status, start_time))
         if home_pitcher:
-            pitcher_tasks.append((home_pitcher, home_team, away_team, status))
+            pitcher_tasks.append((home_pitcher, home_team, away_team, status, start_time))
     return pitcher_tasks
 
 
-def fetch_pitcher_stats_concurrently(pitcher_tasks: Sequence[Tuple[str, str, str, str]]) -> List[Dict[str, Any]]:
+def fetch_pitcher_stats_concurrently(pitcher_tasks: Sequence[Tuple[str, str, str, str, str]]) -> List[Dict[str, Any]]:
     if not pitcher_tasks:
         return []
     max_workers = min(16, len(pitcher_tasks))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(fetch_pitcher_stats, pitcher, team, opponent, status)
-            for pitcher, team, opponent, status in pitcher_tasks
+            executor.submit(fetch_pitcher_stats, pitcher, team, opponent, status, start_time)
+            for pitcher, team, opponent, status, start_time in pitcher_tasks
         ]
         return [future.result() for future in futures]
 
@@ -845,6 +1175,47 @@ def _status_badge(status: Any) -> str:
     return f'<span class="status-pill status-{status_slug}">{status_text}</span>'
 
 
+def _render_matchup_source_marker(value: Any) -> str:
+    text = str(value or "").strip()
+    if text == MATCHUP_SOURCE_ESPN:
+        return '<span class="k-src-marker src-espn" title="ESPN confirmed lineup source (K/AB)">E</span>'
+    if text == MATCHUP_SOURCE_SAVANT:
+        return '<span class="k-src-marker src-savant" title="Savant probable lineup source (K/PA)">S</span>'
+    return ""
+
+
+def _annotate_k_percent_with_source(k_percent_value: Any, source_value: Any) -> str:
+    text = str(k_percent_value or "").strip()
+    if text in {"", "-", "N/A", "nan", "None"}:
+        return "-"
+    marker_html = _render_matchup_source_marker(source_value)
+    if not marker_html:
+        return escape(text)
+    return f'{escape(text)}<span class="k-src-gap" aria-hidden="true"></span>{marker_html}'
+
+
+def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
+    opponent_text = str(opponent or "").strip()
+    start_text = str(start_time or "").strip()
+    if opponent_text in {"", "-", "N/A", "nan", "None"} and start_text in {"", "-", "N/A", "nan", "None"}:
+        return "-"
+
+    if opponent_text in {"", "-", "N/A", "nan", "None"}:
+        opponent_html = "-"
+    else:
+        opponent_html = make_opponent_hyperlink(opponent_text)
+
+    if start_text in {"", "-", "N/A", "nan", "None"}:
+        return opponent_html
+
+    return (
+        '<span class="opp-cell">'
+        f'<span class="opp-team">{opponent_html}</span>'
+        f'<span class="opp-time" title="Scheduled local start time">{escape(start_text)}</span>'
+        "</span>"
+    )
+
+
 def _classify_odds_cell(cell_text: str) -> str:
     text = cell_text.strip()
     if text in {"", "-", "N/A"}:
@@ -873,6 +1244,95 @@ def _add_cell_class(cells: List[Any], column_map: Dict[str, int], column_name: s
     if class_name not in existing_classes:
         existing_classes.append(class_name)
         cells[column_index]["class"] = existing_classes
+
+
+def _column_group_class(column_name: str) -> Optional[str]:
+    if column_name in PITCHER_STAT_COLUMNS:
+        return "group-pitcher"
+    if column_name in OPPONENT_STAT_COLUMNS:
+        return "group-opponent"
+    if column_name in SAVANT_STAT_COLUMNS:
+        return "group-savant"
+    return None
+
+
+def _column_tooltip_text(column_name: str, is_odds_column: bool) -> Optional[str]:
+    if column_name in STAT_HEADER_TOOLTIPS:
+        return STAT_HEADER_TOOLTIPS[column_name]
+    if is_odds_column:
+        return "Strikeout prop line and prices (line: over | under). Expand for alternate lines."
+    return None
+
+
+def _build_numeric_metric_context(series: pd.Series, mean_override: Optional[float] = None) -> Dict[str, Optional[float]]:
+    numeric = pd.to_numeric(series, errors="coerce").dropna()
+    mean = mean_override if mean_override is not None else (float(numeric.mean()) if not numeric.empty else None)
+    std = float(numeric.std(ddof=0)) if len(numeric) >= 2 else None
+    if std is not None and std <= 0:
+        std = None
+    return {"mean": mean, "std": std}
+
+
+def _metric_highlight_bands(metric_context: Dict[str, Optional[float]]) -> Tuple[Optional[float], Optional[float]]:
+    mean = _to_optional_float(metric_context.get("mean"))
+    std = _to_optional_float(metric_context.get("std"))
+    if mean is None:
+        return None, None
+
+    if std is None or std < 0.25:
+        strong = max(abs(mean) * 0.06, 0.6)
+        elite = max(abs(mean) * 0.12, 1.2, strong + 0.4)
+        return float(strong), float(elite)
+
+    strong = max(std * 0.5, 0.45)
+    elite = max(std, strong + 0.35)
+    return float(strong), float(elite)
+
+
+def _build_metric_contexts(
+    raw_df: pd.DataFrame,
+    pitcher_arsenal_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Dict[str, Optional[float]]]:
+    contexts: Dict[str, Dict[str, Optional[float]]] = {}
+    for column_name in ["K/AB", "SO/PA", OPP_HAND_K_COLUMN, "K%", "K/9", "Whiff%", "PA", "Ks"]:
+        series = raw_df[column_name] if column_name in raw_df.columns else pd.Series(dtype="float64")
+        contexts[column_name] = _build_numeric_metric_context(series)
+
+    league_averages = {}
+    if pitcher_arsenal_lookup:
+        candidate = pitcher_arsenal_lookup.get(ARSENAL_META_KEY, {})
+        if isinstance(candidate, dict):
+            league_averages = candidate
+    whiff_league_avg = _to_optional_float(league_averages.get("whiff_percent"))
+    if whiff_league_avg is not None and "Whiff%" in contexts:
+        contexts["Whiff%"]["mean"] = whiff_league_avg
+
+    return contexts
+
+
+def _apply_relative_metric_class(
+    cells: List[Any],
+    column_map: Dict[str, int],
+    column_name: str,
+    value: Optional[float],
+    metric_contexts: Dict[str, Dict[str, Optional[float]]],
+) -> None:
+    if value is None:
+        return
+
+    metric_context = metric_contexts.get(column_name, {})
+    mean = _to_optional_float(metric_context.get("mean"))
+    strong_band, elite_band = _metric_highlight_bands(metric_context)
+    if mean is None or strong_band is None or elite_band is None:
+        return
+
+    delta = value - mean
+    if delta >= elite_band:
+        _add_cell_class(cells, column_map, column_name, "cell-elite")
+    elif delta >= strong_band:
+        _add_cell_class(cells, column_map, column_name, "cell-strong")
+    elif delta <= -elite_band:
+        _add_cell_class(cells, column_map, column_name, "cell-weak")
 
 
 def _build_pitcher_arsenal_payload(
@@ -925,7 +1385,11 @@ def _build_pitcher_arsenal_payload(
     return payload
 
 
-def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> str:
+def _build_conditional_table_html(
+    report_df: pd.DataFrame,
+    raw_df: pd.DataFrame,
+    pitcher_arsenal_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> str:
     table_html = report_df.to_html(index=False, escape=False, classes="pitchers-table", border=0)
     soup = BeautifulSoup(table_html, "html.parser")
 
@@ -947,6 +1411,7 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
         "Status": "column-status",
         OPP_HAND_K_COLUMN: "column-opp-hand",
     }
+    metric_contexts = _build_metric_contexts(raw_df, pitcher_arsenal_lookup=pitcher_arsenal_lookup)
 
     thead = table.find("thead")
     header_cells = thead.find_all("th") if thead else []
@@ -955,6 +1420,19 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
         if col_index is None or col_index >= len(header_cells):
             continue
         _add_tag_class(header_cells[col_index], col_class)
+
+    for col_name, col_index in column_map.items():
+        if col_index >= len(header_cells):
+            continue
+        header_cell = header_cells[col_index]
+        group_class = _column_group_class(col_name)
+        if group_class:
+            _add_tag_class(header_cell, group_class)
+        tooltip_text = _column_tooltip_text(col_name, col_name in odds_columns)
+        if tooltip_text:
+            _add_tag_class(header_cell, "stat-tooltip")
+            header_cell["title"] = tooltip_text
+            header_cell["aria-label"] = f"{col_name}: {tooltip_text}"
 
     for odds_col in odds_columns:
         col_index = column_map.get(odds_col)
@@ -989,17 +1467,58 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
         opp_k_vs_hand = _to_float(row_data.get(OPP_HAND_K_COLUMN))
         pa = _to_float(row_data.get("PA"))
         if status in NOT_STARTED_STATUSES and k_pct is not None and so_pa is not None:
-            if k_pct >= 25 and so_pa >= 24 and (pa is None or pa >= 20):
-                row_classes.append("row-target")
-            elif k_pct <= 18 or so_pa <= 20:
-                row_classes.append("row-caution")
+            k_context = metric_contexts.get("K%", {})
+            so_context = metric_contexts.get("SO/PA", {})
+            pa_context = metric_contexts.get("PA", {})
+            k_mean = _to_optional_float(k_context.get("mean"))
+            so_mean = _to_optional_float(so_context.get("mean"))
+            pa_mean = _to_optional_float(pa_context.get("mean"))
+            k_strong, _ = _metric_highlight_bands(k_context)
+            so_strong, _ = _metric_highlight_bands(so_context)
+            pa_strong, _ = _metric_highlight_bands(pa_context)
+
+            if (
+                k_mean is not None
+                and so_mean is not None
+                and k_strong is not None
+                and so_strong is not None
+            ):
+                is_target = (
+                    k_pct >= (k_mean + k_strong)
+                    and so_pa >= (so_mean + so_strong)
+                    and (
+                        pa is None
+                        or pa_mean is None
+                        or pa_strong is None
+                        or pa >= (pa_mean - pa_strong)
+                    )
+                )
+                is_caution = (k_pct <= (k_mean - k_strong)) or (so_pa <= (so_mean - so_strong))
+                if is_target:
+                    row_classes.append("row-target")
+                elif is_caution:
+                    row_classes.append("row-caution")
+            else:
+                if k_pct >= 25 and so_pa >= 24 and (pa is None or pa >= 20):
+                    row_classes.append("row-target")
+                elif k_pct <= 18 or so_pa <= 20:
+                    row_classes.append("row-caution")
 
         ks = _to_float(row_data.get("Ks"))
         if status in COMPLETED_STATUSES and ks is not None:
-            if ks >= 8:
-                row_classes.append("row-ks-hot")
-            elif ks <= 3:
-                row_classes.append("row-ks-cold")
+            ks_context = metric_contexts.get("Ks", {})
+            ks_mean = _to_optional_float(ks_context.get("mean"))
+            _, ks_elite = _metric_highlight_bands(ks_context)
+            if ks_mean is not None and ks_elite is not None:
+                if ks >= (ks_mean + ks_elite):
+                    row_classes.append("row-ks-hot")
+                elif ks <= (ks_mean - ks_elite):
+                    row_classes.append("row-ks-cold")
+            else:
+                if ks >= 8:
+                    row_classes.append("row-ks-hot")
+                elif ks <= 3:
+                    row_classes.append("row-ks-cold")
 
         if row_classes:
             row_tag["class"] = row_classes
@@ -1031,6 +1550,13 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
                 continue
             _add_tag_class(cells[col_index], col_class)
 
+        for col_name, col_index in column_map.items():
+            if col_index >= len(cells):
+                continue
+            group_class = _column_group_class(col_name)
+            if group_class:
+                _add_tag_class(cells[col_index], group_class)
+
         for odds_col in odds_columns:
             col_index = column_map.get(odds_col)
             if col_index is None or col_index >= len(cells):
@@ -1040,53 +1566,16 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
             _set_tag_style_var(odds_cell, "--sportsbook-color", odds_col_colors[odds_col])
 
         k_ab = _to_float(row_data.get("K/AB"))
-        if k_ab is not None:
-            if k_ab >= 30:
-                _add_cell_class(cells, column_map, "K/AB", "cell-elite")
-            elif k_ab >= 24:
-                _add_cell_class(cells, column_map, "K/AB", "cell-strong")
-            elif k_ab <= 16:
-                _add_cell_class(cells, column_map, "K/AB", "cell-weak")
-
-        if so_pa is not None:
-            if so_pa >= 25:
-                _add_cell_class(cells, column_map, "SO/PA", "cell-elite")
-            elif so_pa >= 23:
-                _add_cell_class(cells, column_map, "SO/PA", "cell-strong")
-            elif so_pa <= 20:
-                _add_cell_class(cells, column_map, "SO/PA", "cell-weak")
-
-        if opp_k_vs_hand is not None:
-            if opp_k_vs_hand >= 25:
-                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-elite")
-            elif opp_k_vs_hand >= 23:
-                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-strong")
-            elif opp_k_vs_hand <= 20:
-                _add_cell_class(cells, column_map, OPP_HAND_K_COLUMN, "cell-weak")
-
-        if k_pct is not None:
-            if k_pct >= 27:
-                _add_cell_class(cells, column_map, "K%", "cell-elite")
-            elif k_pct >= 23:
-                _add_cell_class(cells, column_map, "K%", "cell-strong")
-            elif k_pct <= 18:
-                _add_cell_class(cells, column_map, "K%", "cell-weak")
+        _apply_relative_metric_class(cells, column_map, "K/AB", k_ab, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, "SO/PA", so_pa, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, OPP_HAND_K_COLUMN, opp_k_vs_hand, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, "K%", k_pct, metric_contexts)
 
         k_per_nine = _to_float(row_data.get("K/9"))
-        if k_per_nine is not None:
-            if k_per_nine >= 11:
-                _add_cell_class(cells, column_map, "K/9", "cell-strong")
-            elif k_per_nine <= 7:
-                _add_cell_class(cells, column_map, "K/9", "cell-weak")
+        _apply_relative_metric_class(cells, column_map, "K/9", k_per_nine, metric_contexts)
 
         whiff_pct = _to_float(row_data.get("Whiff%"))
-        if whiff_pct is not None:
-            if whiff_pct >= 15:
-                _add_cell_class(cells, column_map, "Whiff%", "cell-elite")
-            elif whiff_pct >= 13:
-                _add_cell_class(cells, column_map, "Whiff%", "cell-strong")
-            elif whiff_pct <= 9:
-                _add_cell_class(cells, column_map, "Whiff%", "cell-weak")
+        _apply_relative_metric_class(cells, column_map, "Whiff%", whiff_pct, metric_contexts)
 
         rank = _to_float(row_data.get("r"))
         if rank is not None:
@@ -1096,10 +1585,7 @@ def _build_conditional_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame)
                 _add_cell_class(cells, column_map, "r", "cell-low-rank")
 
         if ks is not None and status in COMPLETED_STATUSES:
-            if ks >= 8:
-                _add_cell_class(cells, column_map, "Ks", "cell-elite")
-            elif ks <= 3:
-                _add_cell_class(cells, column_map, "Ks", "cell-weak")
+            _apply_relative_metric_class(cells, column_map, "Ks", ks, metric_contexts)
 
         for odds_col in odds_columns:
             odds_col_index = column_map.get(odds_col)
@@ -1139,8 +1625,6 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     odds_columns = _odds_columns_from_df(report_df)
     if "Name" in report_df.columns:
         report_df["Name"] = report_df["Name"].apply(make_pitcher_hyperlink)
-    if "Opponent" in report_df.columns:
-        report_df["Opponent"] = report_df["Opponent"].apply(make_opponent_hyperlink)
     if "Status" in report_df.columns:
         report_df["Status"] = report_df["Status"].apply(_status_badge)
     for col in odds_columns:
@@ -1151,6 +1635,8 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
         OPP_HAND_K_COLUMN: "{:.2f}",
         "AB/GP": "{:.1f}",
         "K/AB": "{:.2f}",
+        "K%": "{:.1f}",
+        "PA": "{:.0f}",
         "r": "{:.0f}",
         "K/9": "{:.1f}",
         "Whiff%": "{:.1f}",
@@ -1160,6 +1646,18 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
             numeric_col = pd.to_numeric(report_df[col], errors="coerce")
             report_df[col] = numeric_col.apply(lambda val: fmt.format(val) if pd.notna(val) else "-")
 
+    if "K%" in report_df.columns and MATCHUP_SOURCE_COLUMN in report_df.columns:
+        report_df["K%"] = report_df.apply(
+            lambda row: _annotate_k_percent_with_source(row.get("K%"), row.get(MATCHUP_SOURCE_COLUMN)),
+            axis=1,
+        )
+    if "Opponent" in report_df.columns:
+        report_df["Opponent"] = report_df.apply(
+            lambda row: _render_opponent_with_start(row.get("Opponent"), row.get(START_TIME_COLUMN)),
+            axis=1,
+        )
+
+    report_df.drop(columns=[MATCHUP_SOURCE_COLUMN, START_TIME_COLUMN], inplace=True, errors="ignore")
     return report_df.fillna("-")
 
 
@@ -1173,7 +1671,11 @@ def write_to_html(
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     report_df = _format_for_report_table(final_df)
-    table_html = _build_conditional_table_html(report_df, final_df)
+    table_html = _build_conditional_table_html(
+        report_df,
+        final_df,
+        pitcher_arsenal_lookup=pitcher_arsenal_lookup,
+    )
     arsenal_payload = _build_pitcher_arsenal_payload(final_df, pitcher_arsenal_lookup or {})
     arsenal_payload_json = json.dumps(arsenal_payload).replace("</", "<\\/")
     updated_at = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -1194,6 +1696,9 @@ def write_to_html(
       --accent: #0f766e;
       --line: #dbe3ee;
       --header: #e5eef9;
+      --group-pitcher: #0f766e;
+      --group-opponent: #b45309;
+      --group-savant: #0369a1;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -1238,6 +1743,44 @@ def write_to_html(
       overflow-x: auto;
       max-height: 78vh;
     }}
+    .table-legend {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+      padding: 6px 12px 0;
+      font-size: 11px;
+      color: #334155;
+    }}
+    .legend-item {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }}
+    .legend-swatch {{
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      border: 1px solid rgba(15, 23, 42, 0.22);
+      display: inline-block;
+    }}
+    .legend-pitcher .legend-swatch {{
+      background: color-mix(in srgb, var(--group-pitcher) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-pitcher) 62%, #ffffff);
+    }}
+    .legend-opponent .legend-swatch {{
+      background: color-mix(in srgb, var(--group-opponent) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-opponent) 62%, #ffffff);
+    }}
+    .legend-savant .legend-swatch {{
+      background: color-mix(in srgb, var(--group-savant) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-savant) 62%, #ffffff);
+    }}
+    .legend-note {{
+      color: #475569;
+      font-size: 11px;
+    }}
     table.pitchers-table {{
       width: 100%;
       border-collapse: separate;
@@ -1258,6 +1801,23 @@ def write_to_html(
       white-space: nowrap;
       line-height: 1.15;
     }}
+    table.pitchers-table thead th.stat-tooltip {{
+      cursor: help;
+      text-decoration: underline dotted rgba(15, 23, 42, 0.35);
+      text-underline-offset: 2px;
+    }}
+    table.pitchers-table thead th.group-pitcher {{
+      border-top: 4px solid var(--group-pitcher);
+      background: color-mix(in srgb, var(--group-pitcher) 10%, var(--header));
+    }}
+    table.pitchers-table thead th.group-opponent {{
+      border-top: 4px solid var(--group-opponent);
+      background: color-mix(in srgb, var(--group-opponent) 11%, var(--header));
+    }}
+    table.pitchers-table thead th.group-savant {{
+      border-top: 4px solid var(--group-savant);
+      background: color-mix(in srgb, var(--group-savant) 11%, var(--header));
+    }}
     table.pitchers-table thead th.sportsbook-column {{
       border-top: 4px solid var(--sportsbook-color);
       color: var(--sportsbook-color);
@@ -1271,6 +1831,24 @@ def write_to_html(
       line-height: 1.12;
       vertical-align: middle;
     }}
+    table.pitchers-table tbody td.group-pitcher {{
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-pitcher) 28%, #ffffff);
+    }}
+    table.pitchers-table tbody td.group-opponent {{
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-opponent) 28%, #ffffff);
+    }}
+    table.pitchers-table tbody td.group-savant {{
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-savant) 30%, #ffffff);
+    }}
+    table.pitchers-table tbody td.group-pitcher:not(.cell-elite):not(.cell-strong):not(.cell-weak) {{
+      background: color-mix(in srgb, var(--group-pitcher) 4%, #ffffff);
+    }}
+    table.pitchers-table tbody td.group-opponent:not(.cell-elite):not(.cell-strong):not(.cell-weak) {{
+      background: color-mix(in srgb, var(--group-opponent) 5%, #ffffff);
+    }}
+    table.pitchers-table tbody td.group-savant:not(.cell-elite):not(.cell-strong):not(.cell-weak) {{
+      background: color-mix(in srgb, var(--group-savant) 5%, #ffffff);
+    }}
     table.pitchers-table th.column-name,
     table.pitchers-table td.column-name {{
       min-width: 140px;
@@ -1279,7 +1857,7 @@ def write_to_html(
     }}
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {{
-      min-width: 130px;
+      min-width: 138px;
       white-space: normal;
       overflow-wrap: anywhere;
     }}
@@ -1376,6 +1954,58 @@ def write_to_html(
     }}
     table.pitchers-table td.sportsbook-column.odds-missing {{
       background: color-mix(in srgb, var(--sportsbook-color) 6%, #f8fafc);
+    }}
+    .opp-cell {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      line-height: 1.08;
+      text-align: center;
+    }}
+    .opp-cell .opp-team a {{
+      font-weight: 600;
+    }}
+    .opp-time {{
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }}
+    .k-src-gap {{
+      display: inline-block;
+      width: 4px;
+    }}
+    .k-src-marker {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 4px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      transform: translateY(-1px);
+      letter-spacing: 0.03em;
+    }}
+    .k-src-marker.src-espn {{
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }}
+    .k-src-marker.src-savant {{
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
     }}
     .odds-cell {{
       display: inline-grid;
@@ -1631,6 +2261,12 @@ def write_to_html(
       <p class="updated-at">Last updated: {updated_at}</p>
     </header>
     <section class="panel">
+      <div class="table-legend">
+        <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
+        <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
+        <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
+        <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+      </div>
       <div class="table-wrap">
         {table_html}
       </div>
@@ -1923,7 +2559,7 @@ def main(report_date: str, odds: str) -> None:
     report_year = datetime.datetime.strptime(report_date, "%m/%d/%Y").year
     team_batting_df = prepare_team_batting_df(report_year)
     merged_df = merge_pitcher_with_batting_data(results, team_batting_df)
-    opp_df = get_opp_data(report_date)
+    opp_df = get_opp_data(report_date, schedule)
     pitchers = merge_with_opponent_data(merged_df, opp_df)
     arsenal_lookup = prepare_pitcher_arsenal_lookup(report_year)
     whiff_lookup = {
