@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import datetime
 import json
 import re
@@ -26,7 +27,7 @@ from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
 REPORTS_DIR = Path("reports")
 ROOT_INDEX_FILE = Path(__file__).resolve().parent / "index.html"
 SHEETS_CREDS_FILE = Path("sheets_creds.json")
-TEAM_LOGOS_FILE = Path(__file__).resolve().parent / "All Teams Completed - No players.json"
+TEAM_LOGOS_FILE = Path(__file__).resolve().parent / "All Real Teams and Logos v2.json"
 SPREADSHEET_NAME = "MLB Sheet"
 SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
@@ -190,8 +191,12 @@ TEAM_LOGO_ABBREVIATION_ALIASES = {
     "TPA": ["TBR"],
     "WAS": ["WSN"],
 }
+TEAM_LOGO_URL_FALLBACKS = {
+    "MIN": ["https://upload.wikimedia.org/wikipedia/commons/2/2f/Minnesota_Twins_Insignia.svg"],
+}
 TEAM_HAND_SPLIT_CACHE: Dict[Tuple[int, int], Dict[str, Optional[float]]] = {}
-TEAM_LOGO_LOOKUP: Optional[Dict[str, Dict[str, str]]] = None
+TEAM_LOGO_LOOKUP: Optional[Dict[str, Dict[str, Any]]] = None
+TEAM_LOGO_SRC_CACHE: Dict[Tuple[str, ...], str] = {}
 
 
 def _normalize_person_name(name: Any) -> str:
@@ -218,12 +223,24 @@ def _team_logo_lookup_keys(team: Dict[str, Any]) -> List[str]:
     return [key for key in normalized_keys if key]
 
 
-def _load_team_logo_lookup() -> Dict[str, Dict[str, str]]:
+def _unique_logo_urls(urls: Sequence[Any]) -> List[str]:
+    unique_urls: List[str] = []
+    seen_urls = set()
+    for url in urls:
+        text = str(url or "").strip()
+        if not text or text in seen_urls:
+            continue
+        seen_urls.add(text)
+        unique_urls.append(text)
+    return unique_urls
+
+
+def _load_team_logo_lookup() -> Dict[str, Dict[str, Any]]:
     global TEAM_LOGO_LOOKUP
     if TEAM_LOGO_LOOKUP is not None:
         return TEAM_LOGO_LOOKUP
 
-    lookup: Dict[str, Dict[str, str]] = {}
+    lookup: Dict[str, Dict[str, Any]] = {}
     try:
         with TEAM_LOGOS_FILE.open("r", encoding="utf-8") as team_file:
             team_data = json.load(team_file)
@@ -235,17 +252,24 @@ def _load_team_logo_lookup() -> Dict[str, Dict[str, str]]:
     for team in team_data.get("teams", []):
         if not isinstance(team, dict):
             continue
-        logo_url = str(team.get("imgURLSmall") or team.get("imgURL") or "").strip()
-        if not logo_url:
+        abbrev = str(team.get("abbrev") or "").strip()
+        logo_urls = _unique_logo_urls(
+            [
+                team.get("imgURLSmall"),
+                team.get("imgURL"),
+                *TEAM_LOGO_URL_FALLBACKS.get(abbrev, []),
+            ]
+        )
+        if not logo_urls:
             continue
         region = str(team.get("region") or "").strip()
         name = str(team.get("name") or "").strip()
         display_name = (
             " ".join(part for part in [region, name] if part)
             or name
-            or str(team.get("abbrev") or "")
+            or abbrev
         )
-        logo_details = {"name": display_name, "url": logo_url}
+        logo_details = {"name": display_name, "url": logo_urls[0], "urls": logo_urls}
         for key in _team_logo_lookup_keys(team):
             lookup[key] = logo_details
 
@@ -253,11 +277,78 @@ def _load_team_logo_lookup() -> Dict[str, Dict[str, str]]:
     return lookup
 
 
-def _team_logo_details(team_name: Any) -> Optional[Dict[str, str]]:
+def _team_logo_details(team_name: Any) -> Optional[Dict[str, Any]]:
     normalized = _normalize_team_name(team_name)
     if not normalized:
         return None
     return _load_team_logo_lookup().get(normalized)
+
+
+def _logo_mime_type(url: str, content_type: str) -> Optional[str]:
+    mime_type = content_type.split(";", 1)[0].strip().lower()
+    if mime_type.startswith("image/"):
+        return mime_type
+    lower_url = url.lower()
+    if lower_url.endswith(".svg"):
+        return "image/svg+xml"
+    if lower_url.endswith(".png"):
+        return "image/png"
+    if lower_url.endswith(".jpg") or lower_url.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower_url.endswith(".gif"):
+        return "image/gif"
+    if lower_url.endswith(".webp"):
+        return "image/webp"
+    return None
+
+
+def _fetch_logo_data_uri(url: str) -> Optional[Tuple[str, int]]:
+    if not url.startswith(("http://", "https://")):
+        return None
+
+    try:
+        response = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    mime_type = _logo_mime_type(url, response.headers.get("content-type", ""))
+    if not mime_type:
+        return None
+
+    image_data = response.content
+    if not image_data or len(image_data) > 1_500_000:
+        return None
+
+    encoded = base64.b64encode(image_data).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}", len(image_data)
+
+
+def _team_logo_src(logo_details: Dict[str, Any]) -> str:
+    logo_urls = tuple(_unique_logo_urls(logo_details.get("urls") or [logo_details.get("url")]))
+    if not logo_urls:
+        return ""
+
+    cached = TEAM_LOGO_SRC_CACHE.get(logo_urls)
+    if cached is not None:
+        return cached
+
+    data_uri_candidates = [
+        candidate
+        for candidate in (_fetch_logo_data_uri(url) for url in logo_urls)
+        if candidate is not None
+    ]
+    if data_uri_candidates:
+        src = min(data_uri_candidates, key=lambda item: item[1])[0]
+    else:
+        src = logo_urls[0]
+
+    TEAM_LOGO_SRC_CACHE[logo_urls] = src
+    return src
 
 
 def _format_local_start_time(game_datetime: Any) -> str:
@@ -1270,11 +1361,11 @@ def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
     else:
         logo_details = _team_logo_details(opponent_text)
         if logo_details:
-            logo_url = escape(logo_details["url"], quote=True)
+            logo_url = escape(_team_logo_src(logo_details), quote=True)
             logo_alt = escape(f'{logo_details["name"]} logo', quote=True)
             logo_html = (
                 f'<img class="opp-logo" src="{logo_url}" alt="{logo_alt}" '
-                'loading="lazy" decoding="async">'
+                'loading="lazy" decoding="async" referrerpolicy="no-referrer">'
             )
             opponent_html = make_opponent_hyperlink(opponent_text, logo_html)
         else:
