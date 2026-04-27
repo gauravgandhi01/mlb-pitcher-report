@@ -26,6 +26,7 @@ from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
 REPORTS_DIR = Path("reports")
 ROOT_INDEX_FILE = Path(__file__).resolve().parent / "index.html"
 SHEETS_CREDS_FILE = Path("sheets_creds.json")
+TEAM_LOGOS_FILE = Path(__file__).resolve().parent / "All Teams Completed - No players.json"
 SPREADSHEET_NAME = "MLB Sheet"
 SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
@@ -181,7 +182,16 @@ SPORTSBOOK_FALLBACK_COLORS = [
     "#0891B2",
     "#BE123C",
 ]
+TEAM_LOGO_ABBREVIATION_ALIASES = {
+    "CCB": ["CHC"],
+    "CWS": ["CHW"],
+    "KC": ["KCR"],
+    "SD": ["SDP"],
+    "TPA": ["TBR"],
+    "WAS": ["WSN"],
+}
 TEAM_HAND_SPLIT_CACHE: Dict[Tuple[int, int], Dict[str, Optional[float]]] = {}
+TEAM_LOGO_LOOKUP: Optional[Dict[str, Dict[str, str]]] = None
 
 
 def _normalize_person_name(name: Any) -> str:
@@ -195,6 +205,59 @@ def _normalize_team_name(name: Any) -> str:
     text = text.replace(".", "").replace("'", "")
     text = re.sub(r"[^a-z0-9 ]+", " ", text)
     return " ".join(text.split())
+
+
+def _team_logo_lookup_keys(team: Dict[str, Any]) -> List[str]:
+    abbrev = str(team.get("abbrev") or "").strip()
+    region = str(team.get("region") or "").strip()
+    name = str(team.get("name") or "").strip()
+    full_name = " ".join(part for part in [region, name] if part)
+
+    keys = [full_name, name, abbrev, *TEAM_LOGO_ABBREVIATION_ALIASES.get(abbrev, [])]
+    normalized_keys = [_normalize_team_name(key) for key in keys]
+    return [key for key in normalized_keys if key]
+
+
+def _load_team_logo_lookup() -> Dict[str, Dict[str, str]]:
+    global TEAM_LOGO_LOOKUP
+    if TEAM_LOGO_LOOKUP is not None:
+        return TEAM_LOGO_LOOKUP
+
+    lookup: Dict[str, Dict[str, str]] = {}
+    try:
+        with TEAM_LOGOS_FILE.open("r", encoding="utf-8") as team_file:
+            team_data = json.load(team_file)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"\033[91mFailed to load team logos: {exc}\033[0m")
+        TEAM_LOGO_LOOKUP = lookup
+        return lookup
+
+    for team in team_data.get("teams", []):
+        if not isinstance(team, dict):
+            continue
+        logo_url = str(team.get("imgURLSmall") or team.get("imgURL") or "").strip()
+        if not logo_url:
+            continue
+        region = str(team.get("region") or "").strip()
+        name = str(team.get("name") or "").strip()
+        display_name = (
+            " ".join(part for part in [region, name] if part)
+            or name
+            or str(team.get("abbrev") or "")
+        )
+        logo_details = {"name": display_name, "url": logo_url}
+        for key in _team_logo_lookup_keys(team):
+            lookup[key] = logo_details
+
+    TEAM_LOGO_LOOKUP = lookup
+    return lookup
+
+
+def _team_logo_details(team_name: Any) -> Optional[Dict[str, str]]:
+    normalized = _normalize_team_name(team_name)
+    if not normalized:
+        return None
+    return _load_team_logo_lookup().get(normalized)
 
 
 def _format_local_start_time(game_datetime: Any) -> str:
@@ -327,9 +390,11 @@ def make_pitcher_hyperlink(name: str) -> str:
     return f'<a href="https://statmuse.com/mlb/ask/{safe_name}-k-log">{name}</a>'
 
 
-def make_opponent_hyperlink(team: str) -> str:
+def make_opponent_hyperlink(team: str, label_html: Optional[str] = None) -> str:
     safe_team = quote(str(team))
-    return f'<a href="https://statmuse.com/mlb/ask/{safe_team}-k-per-pa-log">{team}</a>'
+    title = escape(str(team), quote=True)
+    label = label_html if label_html is not None else escape(str(team))
+    return f'<a href="https://statmuse.com/mlb/ask/{safe_team}-k-per-pa-log" title="{title}">{label}</a>'
 
 
 def get_pitcher_data(pitcher_div: Any) -> Tuple[str, Any, Any, str]:
@@ -1203,7 +1268,17 @@ def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
     if opponent_text in {"", "-", "N/A", "nan", "None"}:
         opponent_html = "-"
     else:
-        opponent_html = make_opponent_hyperlink(opponent_text)
+        logo_details = _team_logo_details(opponent_text)
+        if logo_details:
+            logo_url = escape(logo_details["url"], quote=True)
+            logo_alt = escape(f'{logo_details["name"]} logo', quote=True)
+            logo_html = (
+                f'<img class="opp-logo" src="{logo_url}" alt="{logo_alt}" '
+                'loading="lazy" decoding="async">'
+            )
+            opponent_html = make_opponent_hyperlink(opponent_text, logo_html)
+        else:
+            opponent_html = make_opponent_hyperlink(opponent_text)
 
     if start_text in {"", "-", "N/A", "nan", "None"}:
         return opponent_html
@@ -1857,9 +1932,8 @@ def write_to_html(
     }}
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {{
-      min-width: 138px;
-      white-space: normal;
-      overflow-wrap: anywhere;
+      min-width: 74px;
+      white-space: nowrap;
     }}
     table.pitchers-table th.column-status,
     table.pitchers-table td.column-status {{
@@ -1959,13 +2033,31 @@ def write_to_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 4px;
+      flex-wrap: nowrap;
+      gap: 5px;
       line-height: 1.08;
       text-align: center;
     }}
+    .opp-cell .opp-team {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }}
     .opp-cell .opp-team a {{
-      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px #e2e8f0;
+    }}
+    .opp-logo {{
+      display: block;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
     }}
     .opp-time {{
       display: inline-block;

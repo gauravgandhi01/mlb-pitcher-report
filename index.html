@@ -175,9 +175,8 @@
     }
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {
-      min-width: 138px;
-      white-space: normal;
-      overflow-wrap: anywhere;
+      min-width: 74px;
+      white-space: nowrap;
     }
     table.pitchers-table th.column-status,
     table.pitchers-table td.column-status {
@@ -277,13 +276,31 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 4px;
+      flex-wrap: nowrap;
+      gap: 5px;
       line-height: 1.08;
       text-align: center;
     }
+    .opp-cell .opp-team {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
     .opp-cell .opp-team a {
-      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px #e2e8f0;
+    }
+    .opp-logo {
+      display: block;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
     }
     .opp-time {
       display: inline-block;
@@ -632,7 +649,7 @@
 <td class="group-opponent">21.53</td>
 <td class="column-opp-hand group-opponent">19.93</td>
 <td class="group-opponent">11</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/St.%20Louis%20Cardinals-k-per-pa-log">St. Louis Cardinals</a></span><span class="opp-time" title="Scheduled local start time">6:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/St.%20Louis%20Cardinals-k-per-pa-log" title="St. Louis Cardinals"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/72/thumbs/3zhma0aeq17tktge1huh7yok5.gif" alt="St. Louis Cardinals logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">6:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
@@ -657,7 +674,7 @@
 <td class="group-opponent">22.30</td>
 <td class="column-opp-hand group-opponent">22.51</td>
 <td class="group-opponent">8</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log">Boston Red Sox</a></span><span class="opp-time" title="Scheduled local start time">7:07p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log" title="Boston Red Sox"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/53/thumbs/c0whfsa9j0vbs079opk2s05lx.gif" alt="Boston Red Sox logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:07p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">7.5</span><span class="odds-sep">:</span><span class="odds-over">-102</span><span class="odds-pipe">|</span><span class="odds-under">-130</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -682,7 +699,7 @@
 <td class="group-opponent">21.89</td>
 <td class="column-opp-hand group-opponent">22.29</td>
 <td class="group-opponent">9</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/San%20Diego%20Padres-k-per-pa-log">San Diego Padres</a></span><span class="opp-time" title="Scheduled local start time">9:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/San%20Diego%20Padres-k-per-pa-log" title="San Diego Padres"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/73/thumbs/7375172020.gif" alt="San Diego Padres logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">9:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-174</span><span class="odds-pipe">|</span><span class="odds-under">+130</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -707,7 +724,7 @@
 <td class="group-opponent cell-strong">23.98</td>
 <td class="column-opp-hand group-opponent">22.48</td>
 <td class="group-opponent">6</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Seattle%20Mariners-k-per-pa-log">Seattle Mariners</a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Seattle%20Mariners-k-per-pa-log" title="Seattle Mariners"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/75/thumbs/1305.gif" alt="Seattle Mariners logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+112</span><span class="odds-pipe">|</span><span class="odds-under best-under">-148</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -732,7 +749,7 @@
 <td class="group-opponent">21.42</td>
 <td class="column-opp-hand group-opponent">21.16</td>
 <td class="group-opponent">12</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Chicago%20Cubs-k-per-pa-log">Chicago Cubs</a></span><span class="opp-time" title="Scheduled local start time">9:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Chicago%20Cubs-k-per-pa-log" title="Chicago Cubs"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/54/thumbs/q9gvs07u72gc9xr3395u6jh68.gif" alt="Chicago Cubs logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">9:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+138</span><span class="odds-pipe">|</span><span class="odds-under best-under">-186</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -757,7 +774,7 @@
 <td class="group-opponent cell-strong">24.30</td>
 <td class="column-opp-hand group-opponent cell-strong">23.86</td>
 <td class="group-opponent cell-top-rank">5</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/New%20York%20Yankees-k-per-pa-log">New York Yankees</a></span><span class="opp-time" title="Scheduled local start time">8:05p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/New%20York%20Yankees-k-per-pa-log" title="New York Yankees"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/68/thumbs/1256.gif" alt="New York Yankees logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">8:05p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-140</span><span class="odds-pipe">|</span><span class="odds-under">+106</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -782,7 +799,7 @@
 <td class="group-opponent cell-weak">18.17</td>
 <td class="column-opp-hand group-opponent cell-weak">18.60</td>
 <td class="group-opponent">16</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Tampa%20Bay%20Rays-k-per-pa-log">Tampa Bay Rays</a></span><span class="opp-time" title="Scheduled local start time">6:10p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Tampa%20Bay%20Rays-k-per-pa-log" title="Tampa Bay Rays"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/2535/thumbs/253594482019.gif" alt="Tampa Bay Rays logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">6:10p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-138</span><span class="odds-pipe">|</span><span class="odds-under">+104</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -807,7 +824,7 @@
 <td class="group-opponent">21.19</td>
 <td class="column-opp-hand group-opponent cell-weak">18.00</td>
 <td class="group-opponent">13</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Cleveland%20Guardians-k-per-pa-log">Cleveland Guardians</a></span><span class="opp-time" title="Scheduled local start time">6:10p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Cleveland%20Guardians-k-per-pa-log" title="Cleveland Guardians"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/6804/thumbs/680455382022.gif" alt="Cleveland Guardians logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">6:10p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+112</span><span class="odds-pipe">|</span><span class="odds-under best-under">-148</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -832,7 +849,7 @@
 <td class="group-opponent">20.30</td>
 <td class="column-opp-hand group-opponent">20.59</td>
 <td class="group-opponent">14</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Miami%20Marlins-k-per-pa-log">Miami Marlins</a></span><span class="opp-time" title="Scheduled local start time">10:10p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Miami%20Marlins-k-per-pa-log" title="Miami Marlins"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/3637/thumbs/363775442019.gif" alt="Miami Marlins logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">10:10p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+128</span><span class="odds-pipe">|</span><span class="odds-under">-172</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -857,7 +874,7 @@
 <td class="group-opponent">21.53</td>
 <td class="column-opp-hand group-opponent">21.86</td>
 <td class="group-opponent">10</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Dodgers-k-per-pa-log">Los Angeles Dodgers</a></span><span class="opp-time" title="Scheduled local start time">10:10p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Dodgers-k-per-pa-log" title="Los Angeles Dodgers"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/63/thumbs/efvfv5b5g1zgpsf56gb04lthx.gif" alt="Los Angeles Dodgers logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">10:10p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+114</span><span class="odds-pipe">|</span><span class="odds-under">-152</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -882,7 +899,7 @@
 <td class="group-opponent">23.14</td>
 <td class="column-opp-hand group-opponent cell-strong">24.49</td>
 <td class="group-opponent">7</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Minnesota%20Twins-k-per-pa-log">Minnesota Twins</a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Minnesota%20Twins-k-per-pa-log" title="Minnesota Twins"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/65/thumbs/6539532023.gif" alt="Minnesota Twins logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-138</span><span class="odds-pipe">|</span><span class="odds-under">+104</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -907,7 +924,7 @@
 <td class="group-opponent cell-elite">24.50</td>
 <td class="column-opp-hand group-opponent cell-elite">29.70</td>
 <td class="group-opponent cell-top-rank">4</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Texas%20Rangers-k-per-pa-log">Texas Rangers</a></span><span class="opp-time" title="Scheduled local start time">8:05p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Texas%20Rangers-k-per-pa-log" title="Texas Rangers"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/77/thumbs/ajfeh4oqeealq37er15r3673h.gif" alt="Texas Rangers logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">8:05p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">-118</span><span class="odds-pipe">|</span><span class="odds-under">-112</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -932,7 +949,7 @@
 <td class="group-opponent cell-elite">24.50</td>
 <td class="column-opp-hand group-opponent">23.13</td>
 <td class="group-opponent cell-top-rank">3</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Pittsburgh%20Pirates-k-per-pa-log">Pittsburgh Pirates</a></span><span class="opp-time" title="Scheduled local start time">6:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Pittsburgh%20Pirates-k-per-pa-log" title="Pittsburgh Pirates"><img class="opp-logo" src="https://content.sportslogos.net/logos/54/71/thumbs/7112502014.gif" alt="Pittsburgh Pirates logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">6:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-118</span><span class="odds-pipe">|</span><span class="odds-under">-112</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -957,7 +974,7 @@
 <td class="group-opponent cell-weak">18.50</td>
 <td class="column-opp-hand group-opponent cell-weak">14.72</td>
 <td class="group-opponent">15</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Toronto%20Blue%20Jays-k-per-pa-log">Toronto Blue Jays</a></span><span class="opp-time" title="Scheduled local start time">7:07p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Toronto%20Blue%20Jays-k-per-pa-log" title="Toronto Blue Jays"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/78/thumbs/7889872020.gif" alt="Toronto Blue Jays logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:07p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+124</span><span class="odds-pipe">|</span><span class="odds-under">-166</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -982,7 +999,7 @@
 <td class="group-opponent cell-elite">24.60</td>
 <td class="column-opp-hand group-opponent cell-strong">24.08</td>
 <td class="group-opponent cell-top-rank">2</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Chicago%20White%20Sox-k-per-pa-log">Chicago White Sox</a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Chicago%20White%20Sox-k-per-pa-log" title="Chicago White Sox"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/55/thumbs/oxvkprv7v4inf5dgqdebp0yse.gif" alt="Chicago White Sox logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-108</span><span class="odds-pipe">|</span><span class="odds-under">-122</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
@@ -1007,7 +1024,7 @@
 <td class="group-opponent cell-elite">25.33</td>
 <td class="column-opp-hand group-opponent cell-strong">24.00</td>
 <td class="group-opponent cell-top-rank">1</td>
-<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Angels-k-per-pa-log">Los Angeles Angels</a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Angels-k-per-pa-log" title="Los Angeles Angels"><img class="opp-logo" src="https://content.sportslogos.net/logos/53/6521/thumbs/652143892016.gif" alt="Los Angeles Angels logo" loading="lazy" decoding="async"></a></span><span class="opp-time" title="Scheduled local start time">7:40p</span></span></td>
 <td class="column-status"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-pitcher">N/A</td>
 <td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-158</span><span class="odds-pipe">|</span><span class="odds-under">+118</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
