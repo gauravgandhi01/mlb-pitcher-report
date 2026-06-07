@@ -222,6 +222,34 @@
     table.pitchers-table tbody td.group-matchup:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
       background: color-mix(in srgb, var(--group-matchup) 5%, #ffffff);
     }
+    table.pitchers-table tbody tr.row-live td {
+      background-image: linear-gradient(rgba(128, 92, 62, 0.22), rgba(128, 92, 62, 0.22));
+      background-blend-mode: multiply;
+      color: #5b4637;
+    }
+    table.pitchers-table tbody tr.row-final td {
+      background-image: linear-gradient(rgba(71, 85, 105, 0.22), rgba(71, 85, 105, 0.22));
+      background-blend-mode: multiply;
+      color: #475569;
+    }
+    table.pitchers-table tbody tr.row-live td.group-context {
+      box-shadow: inset 3px 0 0 #fb923c;
+    }
+    table.pitchers-table tbody tr.row-final td.group-context {
+      box-shadow: inset 3px 0 0 #94a3b8;
+    }
+    table.pitchers-table tbody tr.row-live td.cell-elite,
+    table.pitchers-table tbody tr.row-live td.cell-strong,
+    table.pitchers-table tbody tr.row-live td.cell-weak,
+    table.pitchers-table tbody tr.row-final td.cell-elite,
+    table.pitchers-table tbody tr.row-final td.cell-strong,
+    table.pitchers-table tbody tr.row-final td.cell-weak {
+      color: #374151;
+    }
+    table.pitchers-table tbody tr.row-live td .status-pill,
+    table.pitchers-table tbody tr.row-final td .status-pill {
+      filter: saturate(0.8) brightness(0.96);
+    }
     table.pitchers-table th.column-name,
     table.pitchers-table td.column-name {
       min-width: 136px;
@@ -247,6 +275,13 @@
       white-space: nowrap;
       overflow-wrap: normal;
     }
+    table.pitchers-table th.column-total,
+    table.pitchers-table td.column-total {
+      min-width: 54px;
+      max-width: 62px;
+      padding-left: 3px;
+      padding-right: 3px;
+    }
     table.pitchers-table th.column-status,
     table.pitchers-table td.column-status {
       min-width: 78px;
@@ -256,15 +291,6 @@
     }
     table.pitchers-table tbody tr:hover {
       background: #eef7ff;
-    }
-    table.pitchers-table tbody tr.row-upcoming {
-      background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
-    }
-    table.pitchers-table tbody tr.row-live {
-      background: linear-gradient(to right, rgba(249, 115, 22, 0.14), transparent);
-    }
-    table.pitchers-table tbody tr.row-final {
-      background: linear-gradient(to right, rgba(100, 116, 139, 0.10), transparent);
     }
     table.pitchers-table tbody tr.row-target {
       box-shadow: inset 4px 0 0 #16a34a;
@@ -411,7 +437,7 @@
   <div class="layout">
     <section class="hero">
       <h1>MLB Daily Batter Report</h1>
-      <p>06/07/2026 slate. Updated 2026-06-07 14:07:59 EDT.</p>
+      <p>06/07/2026 slate. Updated 2026-06-07 14:20:48 EDT.</p>
       <nav class="report-tabs" aria-label="Report pages"><a class="report-tab" href="./index.html">Pitchers</a><a class="report-tab active" href="./batters.html">Batters</a></nav>
     </section>
 
@@ -420,7 +446,7 @@
         <span class="legend-item legend-context"><span class="legend-swatch"></span>Context</span>
         <span class="legend-item legend-batter"><span class="legend-swatch"></span>Form</span>
         <span class="legend-item legend-matchup"><span class="legend-swatch"></span>Matchup</span>
-        <span class="legend-note">Gray rail = fallback pool. Green/yellow/red = stronger to weaker AVG.</span>
+        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Green/yellow/red = stronger to weaker totals or AVG.</span>
       </div>
     </section>
 
@@ -437,6 +463,7 @@
 <th class="group-context column-team">Team</th>
 <th class="group-context column-opponent">Opponent</th>
 <th class="group-context column-pitcher">Pitcher</th>
+<th class="group-context column-total">Total</th>
 <th class="group-context column-status">Status</th>
 <th class="group-batter">Hit Stk</th>
 <th class="group-batter">Last 7 AVG</th>
@@ -453,6 +480,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Colorado Rockies"><span class="opp-team"><span class="team-badge"><img alt="Colorado Rockies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/115.svg"/></span><span class="team-abbrev">COL</span></span><span class="opp-time">3:10p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Freeland</span></td>
+<td class="column-total group-context cell-elite">11.5</td>
 <td class="column-status group-context"><span class="status-pill status-pre-game">Pre-Game</span></td>
 <td class="group-batter cell-strong">6</td>
 <td class="group-batter cell-elite">0.385</td>
@@ -467,6 +495,7 @@
 <td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">8:30p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Taillon</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-batter">3</td>
 <td class="group-batter">0.250</td>
@@ -481,14 +510,15 @@
 <td class="column-team group-context"><span class="team-cell" title="Baltimore Orioles"><span class="team-badge"><img alt="Baltimore Orioles logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/110.svg"/></span><span class="team-abbrev">BAL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Toronto Blue Jays"><span class="opp-team"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span><span class="opp-time">1:37p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Gausman</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">10</td>
 <td class="group-batter cell-elite">0.357</td>
 <td class="group-batter">10-28</td>
 <td class="group-batter">0.245</td>
 <td class="group-batter">61-249</td>
-<td class="group-matchup cell-strong">0.333</td>
-<td class="group-matchup">2-6</td>
+<td class="group-matchup">0.286</td>
+<td class="group-matchup">2-7</td>
 </tr>
 </tbody>
 </table>
@@ -508,6 +538,7 @@
 <th class="group-context column-team">Team</th>
 <th class="group-context column-opponent">Opponent</th>
 <th class="group-context column-pitcher">Pitcher</th>
+<th class="group-context column-total">Total</th>
 <th class="group-context column-status">Status</th>
 <th class="group-batter">Hit Stk</th>
 <th class="group-batter">Last 7 AVG</th>
@@ -520,24 +551,11 @@
 </thead>
 <tbody>
 <tr class="row-upcoming row-target">
-<td class="column-name group-context"><span class="batter-name">Austin Martin</span></td>
-<td class="column-team group-context"><span class="team-cell" title="Minnesota Twins"><span class="team-badge"><img alt="Minnesota Twins logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/142.svg"/></span><span class="team-abbrev">MIN</span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Kansas City Royals"><span class="opp-team"><span class="team-badge"><img alt="Kansas City Royals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/118.svg"/></span><span class="team-abbrev">KC</span></span><span class="opp-time">2:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Cameron</span></td>
-<td class="column-status group-context"><span class="status-pill status-warmup">Warmup</span></td>
-<td class="group-batter">2</td>
-<td class="group-batter cell-weak">0.154</td>
-<td class="group-batter">4-26</td>
-<td class="group-batter">0.253</td>
-<td class="group-batter">46-182</td>
-<td class="group-matchup cell-elite">0.600</td>
-<td class="group-matchup">3-5</td>
-</tr>
-<tr class="row-upcoming row-target">
 <td class="column-name group-context"><span class="batter-name">Andrew Vaughn</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Colorado Rockies"><span class="opp-team"><span class="team-badge"><img alt="Colorado Rockies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/115.svg"/></span><span class="team-abbrev">COL</span></span><span class="opp-time">3:10p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Freeland</span></td>
+<td class="column-total group-context cell-elite">11.5</td>
 <td class="column-status group-context"><span class="status-pill status-pre-game">Pre-Game</span></td>
 <td class="group-batter">2</td>
 <td class="group-batter cell-elite">0.333</td>
@@ -552,6 +570,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Colorado Rockies"><span class="opp-team"><span class="team-badge"><img alt="Colorado Rockies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/115.svg"/></span><span class="team-abbrev">COL</span></span><span class="opp-time">3:10p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Freeland</span></td>
+<td class="column-total group-context cell-elite">11.5</td>
 <td class="column-status group-context"><span class="status-pill status-pre-game">Pre-Game</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-elite">0.333</td>
@@ -566,6 +585,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Detroit Tigers"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Seattle Mariners"><span class="opp-team"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Castillo</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-weak">0.192</td>
@@ -576,10 +596,26 @@
 <td class="group-matchup">4-6</td>
 </tr>
 <tr class="row-live row-target">
+<td class="column-name group-context"><span class="batter-name">Austin Martin</span></td>
+<td class="column-team group-context"><span class="team-cell" title="Minnesota Twins"><span class="team-badge"><img alt="Minnesota Twins logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/142.svg"/></span><span class="team-abbrev">MIN</span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Kansas City Royals"><span class="opp-team"><span class="team-badge"><img alt="Kansas City Royals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/118.svg"/></span><span class="team-abbrev">KC</span></span><span class="opp-time">2:10p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Cameron</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
+<td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="group-batter">2</td>
+<td class="group-batter cell-weak">0.154</td>
+<td class="group-batter">4-26</td>
+<td class="group-batter">0.253</td>
+<td class="group-batter">46-182</td>
+<td class="group-matchup cell-elite">0.600</td>
+<td class="group-matchup">3-5</td>
+</tr>
+<tr class="row-live row-target">
 <td class="column-name group-context"><span class="batter-name">Riley Greene</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Detroit Tigers"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Seattle Mariners"><span class="opp-team"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Castillo</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-strong">0.321</td>
@@ -594,12 +630,13 @@
 <td class="column-team group-context"><span class="team-cell" title="New York Yankees"><span class="team-badge"><img alt="New York Yankees logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/147.svg"/></span><span class="team-abbrev">NYY</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Boston Red Sox"><span class="opp-team"><span class="team-badge"><img alt="Boston Red Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/111.svg"/></span><span class="team-abbrev">BOS</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Suarez</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter">0.235</td>
 <td class="group-batter">4-17</td>
-<td class="group-batter">0.261</td>
-<td class="group-batter">24-92</td>
+<td class="group-batter">0.258</td>
+<td class="group-batter">24-93</td>
 <td class="group-matchup cell-elite">0.444</td>
 <td class="group-matchup">4-9</td>
 </tr>
@@ -608,12 +645,13 @@
 <td class="column-team group-context"><span class="team-cell" title="Baltimore Orioles"><span class="team-badge"><img alt="Baltimore Orioles logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/110.svg"/></span><span class="team-abbrev">BAL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Toronto Blue Jays"><span class="opp-team"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span><span class="opp-time">1:37p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Gausman</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter">0.250</td>
 <td class="group-batter">7-28</td>
-<td class="group-batter">0.254</td>
-<td class="group-batter">60-236</td>
+<td class="group-batter">0.253</td>
+<td class="group-batter">60-237</td>
 <td class="group-matchup cell-elite">0.400</td>
 <td class="group-matchup">6-15</td>
 </tr>
@@ -622,12 +660,13 @@
 <td class="column-team group-context"><span class="team-cell" title="Baltimore Orioles"><span class="team-badge"><img alt="Baltimore Orioles logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/110.svg"/></span><span class="team-abbrev">BAL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Toronto Blue Jays"><span class="opp-team"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span><span class="opp-time">1:37p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Gausman</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-weak">0.217</td>
 <td class="group-batter">5-23</td>
-<td class="group-batter cell-weak">0.217</td>
-<td class="group-batter">10-46</td>
+<td class="group-batter cell-weak">0.213</td>
+<td class="group-batter">10-47</td>
 <td class="group-matchup cell-elite">0.400</td>
 <td class="group-matchup">2-5</td>
 </tr>
@@ -636,6 +675,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Seattle Mariners"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Detroit Tigers"><span class="opp-team"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Flaherty</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">2</td>
 <td class="group-batter cell-weak">0.185</td>
@@ -650,12 +690,13 @@
 <td class="column-team group-context"><span class="team-cell" title="New York Yankees"><span class="team-badge"><img alt="New York Yankees logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/147.svg"/></span><span class="team-abbrev">NYY</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Boston Red Sox"><span class="opp-team"><span class="team-badge"><img alt="Boston Red Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/111.svg"/></span><span class="team-abbrev">BOS</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Suarez</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">2</td>
 <td class="group-batter">0.250</td>
 <td class="group-batter">7-28</td>
-<td class="group-batter cell-weak">0.212</td>
-<td class="group-batter">43-203</td>
+<td class="group-batter cell-weak">0.211</td>
+<td class="group-batter">43-204</td>
 <td class="group-matchup cell-elite">0.375</td>
 <td class="group-matchup">3-8</td>
 </tr>
@@ -664,6 +705,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Tampa Bay Rays"><span class="team-badge"><img alt="Tampa Bay Rays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/139.svg"/></span><span class="team-abbrev">TB</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Miami Marlins"><span class="opp-team"><span class="team-badge"><img alt="Miami Marlins logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/146.svg"/></span><span class="team-abbrev">MIA</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Alcantara</span></td>
+<td class="column-total group-context cell-weak">7.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-weak">0.143</td>
@@ -678,6 +720,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Toronto Blue Jays"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Baltimore Orioles"><span class="opp-team"><span class="team-badge"><img alt="Baltimore Orioles logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/110.svg"/></span><span class="team-abbrev">BAL</span></span><span class="opp-time">1:37p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Baz</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-strong">0.286</td>
@@ -692,6 +735,7 @@
 <td class="column-team group-context"><span class="team-cell" title="New York Yankees"><span class="team-badge"><img alt="New York Yankees logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/147.svg"/></span><span class="team-abbrev">NYY</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Boston Red Sox"><span class="opp-team"><span class="team-badge"><img alt="Boston Red Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/111.svg"/></span><span class="team-abbrev">BOS</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Suarez</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter">0</td>
 <td class="group-batter cell-weak">0.179</td>
@@ -700,20 +744,6 @@
 <td class="group-batter">51-218</td>
 <td class="group-matchup cell-strong">0.300</td>
 <td class="group-matchup">6-20</td>
-</tr>
-<tr class="row-live">
-<td class="column-name group-context"><span class="batter-name">Josh Naylor</span></td>
-<td class="column-team group-context"><span class="team-cell" title="Seattle Mariners"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Detroit Tigers"><span class="opp-team"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span><span class="opp-time">1:40p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Flaherty</span></td>
-<td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
-<td class="group-batter">2</td>
-<td class="group-batter">0.222</td>
-<td class="group-batter">6-27</td>
-<td class="group-batter">0.253</td>
-<td class="group-batter">60-237</td>
-<td class="group-matchup cell-strong">0.300</td>
-<td class="group-matchup">3-10</td>
 </tr>
 </tbody>
 </table>
@@ -733,6 +763,7 @@
 <th class="group-context column-team">Team</th>
 <th class="group-context column-opponent">Opponent</th>
 <th class="group-context column-pitcher">Pitcher</th>
+<th class="group-context column-total">Total</th>
 <th class="group-context column-status">Status</th>
 <th class="group-batter">Hit Stk</th>
 <th class="group-batter">Last 7 AVG</th>
@@ -749,6 +780,7 @@
 <td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">8:30p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Taillon</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-batter cell-elite">14</td>
 <td class="group-batter cell-elite">0.571</td>
@@ -763,6 +795,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="San Francisco Giants"><span class="opp-team"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span><span class="opp-time">8:30p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">McDonald</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-batter cell-elite">11</td>
 <td class="group-batter cell-elite">0.517</td>
@@ -772,25 +805,12 @@
 <td class="group-matchup"></td>
 <td class="group-matchup"></td>
 </tr>
-<tr class="row-upcoming row-target">
-<td class="column-name group-context"><span class="batter-name">Zack Gelof</span></td>
-<td class="column-team group-context"><span class="team-cell" title="Athletics"><span class="team-badge"><img alt="Athletics logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/133.svg"/></span><span class="team-abbrev">ATH</span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Houston Astros"><span class="opp-team"><span class="team-badge"><img alt="Houston Astros logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/117.svg"/></span><span class="team-abbrev">HOU</span></span><span class="opp-time">2:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Burrows</span></td>
-<td class="column-status group-context"><span class="status-pill status-warmup">Warmup</span></td>
-<td class="group-batter cell-elite">11</td>
-<td class="group-batter cell-strong">0.320</td>
-<td class="group-batter">8-25</td>
-<td class="group-batter">0.265</td>
-<td class="group-batter">41-155</td>
-<td class="group-matchup"></td>
-<td class="group-matchup"></td>
-</tr>
 <tr class="row-upcoming row-fallback row-target">
 <td class="column-name group-context"><span class="batter-name">Bryce Eldridge</span></td>
 <td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">8:30p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Taillon</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-batter cell-elite">9</td>
 <td class="group-batter cell-elite">0.481</td>
@@ -800,39 +820,12 @@
 <td class="group-matchup"></td>
 <td class="group-matchup"></td>
 </tr>
-<tr class="row-upcoming row-target">
-<td class="column-name group-context"><span class="batter-name">Jeremy Peña</span></td>
-<td class="column-team group-context"><span class="team-cell" title="Houston Astros"><span class="team-badge"><img alt="Houston Astros logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/117.svg"/></span><span class="team-abbrev">HOU</span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Athletics"><span class="opp-team"><span class="team-badge"><img alt="Athletics logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/133.svg"/></span><span class="team-abbrev">ATH</span></span><span class="opp-time">2:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Jump</span></td>
-<td class="column-status group-context"><span class="status-pill status-warmup">Warmup</span></td>
-<td class="group-batter cell-strong">7</td>
-<td class="group-batter cell-elite">0.464</td>
-<td class="group-batter">13-28</td>
-<td class="group-batter cell-elite">0.306</td>
-<td class="group-batter">34-111</td>
-<td class="group-matchup"></td>
-<td class="group-matchup"></td>
-</tr>
-<tr class="row-upcoming row-target">
-<td class="column-name group-context"><span class="batter-name">Alec Burleson</span></td>
-<td class="column-team group-context"><span class="team-cell" title="St. Louis Cardinals"><span class="team-badge"><img alt="St. Louis Cardinals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/138.svg"/></span><span class="team-abbrev">STL</span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Cincinnati Reds"><span class="opp-team"><span class="team-badge"><img alt="Cincinnati Reds logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/113.svg"/></span><span class="team-abbrev">CIN</span></span><span class="opp-time">2:15p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Lowder</span></td>
-<td class="column-status group-context"><span class="status-pill status-warmup">Warmup</span></td>
-<td class="group-batter cell-strong">7</td>
-<td class="group-batter cell-elite">0.407</td>
-<td class="group-batter">11-27</td>
-<td class="group-batter cell-strong">0.291</td>
-<td class="group-batter">69-237</td>
-<td class="group-matchup cell-weak">0.000</td>
-<td class="group-matchup">0-2</td>
-</tr>
 <tr class="row-upcoming row-fallback row-target">
 <td class="column-name group-context"><span class="batter-name">Luis Arraez</span></td>
 <td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">8:30p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Taillon</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-scheduled">Scheduled</span></td>
 <td class="group-batter cell-strong">7</td>
 <td class="group-batter cell-elite">0.333</td>
@@ -847,6 +840,7 @@
 <td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Colorado Rockies"><span class="opp-team"><span class="team-badge"><img alt="Colorado Rockies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/115.svg"/></span><span class="team-abbrev">COL</span></span><span class="opp-time">3:10p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Freeland</span></td>
+<td class="column-total group-context cell-elite">11.5</td>
 <td class="column-status group-context"><span class="status-pill status-pre-game">Pre-Game</span></td>
 <td class="group-batter cell-strong">6</td>
 <td class="group-batter cell-elite">0.385</td>
@@ -857,30 +851,47 @@
 <td class="group-matchup">2-7</td>
 </tr>
 <tr class="row-live row-target">
+<td class="column-name group-context"><span class="batter-name">Zack Gelof</span></td>
+<td class="column-team group-context"><span class="team-cell" title="Athletics"><span class="team-badge"><img alt="Athletics logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/133.svg"/></span><span class="team-abbrev">ATH</span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Houston Astros"><span class="opp-team"><span class="team-badge"><img alt="Houston Astros logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/117.svg"/></span><span class="team-abbrev">HOU</span></span><span class="opp-time">2:10p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Burrows</span></td>
+<td class="column-total group-context cell-elite">9.0</td>
+<td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="group-batter cell-elite">11</td>
+<td class="group-batter cell-strong">0.320</td>
+<td class="group-batter">8-25</td>
+<td class="group-batter">0.265</td>
+<td class="group-batter">41-155</td>
+<td class="group-matchup"></td>
+<td class="group-matchup"></td>
+</tr>
+<tr class="row-live row-target">
 <td class="column-name group-context"><span class="batter-name">Pete Alonso</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Baltimore Orioles"><span class="team-badge"><img alt="Baltimore Orioles logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/110.svg"/></span><span class="team-abbrev">BAL</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Toronto Blue Jays"><span class="opp-team"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span><span class="opp-time">1:37p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Gausman</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">10</td>
 <td class="group-batter cell-elite">0.357</td>
 <td class="group-batter">10-28</td>
 <td class="group-batter">0.245</td>
 <td class="group-batter">61-249</td>
-<td class="group-matchup cell-strong">0.333</td>
-<td class="group-matchup">2-6</td>
+<td class="group-matchup">0.286</td>
+<td class="group-matchup">2-7</td>
 </tr>
 <tr class="row-live row-target">
 <td class="column-name group-context"><span class="batter-name">Cole Young</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Seattle Mariners"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Detroit Tigers"><span class="opp-team"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Flaherty</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">9</td>
 <td class="group-batter cell-strong">0.308</td>
 <td class="group-batter">8-26</td>
-<td class="group-batter">0.249</td>
-<td class="group-batter">57-229</td>
+<td class="group-batter">0.252</td>
+<td class="group-batter">58-230</td>
 <td class="group-matchup cell-weak">0.000</td>
 <td class="group-matchup">0-3</td>
 </tr>
@@ -889,20 +900,22 @@
 <td class="column-team group-context"><span class="team-cell" title="Pittsburgh Pirates"><span class="team-badge"><img alt="Pittsburgh Pirates logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/134.svg"/></span><span class="team-abbrev">PIT</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Atlanta Braves"><span class="opp-team"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Elder</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">8</td>
 <td class="group-batter cell-elite">0.448</td>
 <td class="group-batter">13-29</td>
-<td class="group-batter cell-elite">0.314</td>
-<td class="group-batter">69-220</td>
-<td class="group-matchup cell-weak">0.000</td>
-<td class="group-matchup">0-1</td>
+<td class="group-batter cell-elite">0.312</td>
+<td class="group-batter">69-221</td>
+<td class="group-matchup"></td>
+<td class="group-matchup"></td>
 </tr>
 <tr class="row-live row-fallback row-target">
 <td class="column-name group-context"><span class="batter-name">Chase Meidroth</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Chicago White Sox"><span class="team-badge"><img alt="Chicago White Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/145.svg"/></span><span class="team-abbrev">CWS</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Philadelphia Phillies"><span class="opp-team"><span class="team-badge"><img alt="Philadelphia Phillies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/143.svg"/></span><span class="team-abbrev">PHI</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Nola</span></td>
+<td class="column-total group-context cell-elite">9.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">8</td>
 <td class="group-batter cell-strong">0.321</td>
@@ -917,20 +930,52 @@
 <td class="column-team group-context"><span class="team-cell" title="Boston Red Sox"><span class="team-badge"><img alt="Boston Red Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/111.svg"/></span><span class="team-abbrev">BOS</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="New York Yankees"><span class="opp-team"><span class="team-badge"><img alt="New York Yankees logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/147.svg"/></span><span class="team-abbrev">NYY</span></span><span class="opp-time">1:35p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Schlittler</span></td>
+<td class="column-total group-context">8.0</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-elite">8</td>
 <td class="group-batter cell-strong">0.321</td>
 <td class="group-batter">9-28</td>
-<td class="group-batter cell-weak">0.196</td>
-<td class="group-batter">35-179</td>
+<td class="group-batter cell-weak">0.194</td>
+<td class="group-batter">35-180</td>
 <td class="group-matchup cell-weak">0.000</td>
 <td class="group-matchup">0-3</td>
+</tr>
+<tr class="row-live row-target">
+<td class="column-name group-context"><span class="batter-name">Jeremy Peña</span></td>
+<td class="column-team group-context"><span class="team-cell" title="Houston Astros"><span class="team-badge"><img alt="Houston Astros logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/117.svg"/></span><span class="team-abbrev">HOU</span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Athletics"><span class="opp-team"><span class="team-badge"><img alt="Athletics logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/133.svg"/></span><span class="team-abbrev">ATH</span></span><span class="opp-time">2:10p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Jump</span></td>
+<td class="column-total group-context cell-elite">9.0</td>
+<td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="group-batter cell-strong">7</td>
+<td class="group-batter cell-elite">0.464</td>
+<td class="group-batter">13-28</td>
+<td class="group-batter cell-elite">0.304</td>
+<td class="group-batter">34-112</td>
+<td class="group-matchup"></td>
+<td class="group-matchup"></td>
+</tr>
+<tr class="row-live row-target">
+<td class="column-name group-context"><span class="batter-name">Alec Burleson</span></td>
+<td class="column-team group-context"><span class="team-cell" title="St. Louis Cardinals"><span class="team-badge"><img alt="St. Louis Cardinals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/138.svg"/></span><span class="team-abbrev">STL</span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Cincinnati Reds"><span class="opp-team"><span class="team-badge"><img alt="Cincinnati Reds logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/113.svg"/></span><span class="team-abbrev">CIN</span></span><span class="opp-time">2:15p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Lowder</span></td>
+<td class="column-total group-context cell-elite">9.5</td>
+<td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="group-batter cell-strong">7</td>
+<td class="group-batter cell-elite">0.407</td>
+<td class="group-batter">11-27</td>
+<td class="group-batter cell-strong">0.291</td>
+<td class="group-batter">69-237</td>
+<td class="group-matchup cell-weak">0.000</td>
+<td class="group-matchup">0-2</td>
 </tr>
 <tr class="row-live">
 <td class="column-name group-context"><span class="batter-name">Kevin McGonigle</span></td>
 <td class="column-team group-context"><span class="team-cell" title="Detroit Tigers"><span class="team-badge"><img alt="Detroit Tigers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/116.svg"/></span><span class="team-abbrev">DET</span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Seattle Mariners"><span class="opp-team"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA</span></span><span class="opp-time">1:40p</span></span></td>
 <td class="column-pitcher group-context"><span class="pitcher-name">Castillo</span></td>
+<td class="column-total group-context cell-strong">8.5</td>
 <td class="column-status group-context"><span class="status-pill status-in-progress">In Progress</span></td>
 <td class="group-batter cell-strong">6</td>
 <td class="group-batter">0.259</td>
