@@ -35,6 +35,7 @@ REPORT_COLUMNS = [
     "Team",
     "Opponent",
     "Pitcher",
+    "Total",
     "Status",
     "Hit Stk",
     f"Last {RECENT_GAMES} AVG",
@@ -269,6 +270,23 @@ def fetch_espn_summary(event_id: str) -> Optional[Dict[str, Any]]:
         summary = None
     ESPN_SUMMARY_CACHE[event_id] = summary
     return summary
+
+
+def extract_espn_game_total(summary_data: Optional[Dict[str, Any]]) -> Optional[float]:
+    if not summary_data:
+        return None
+
+    for pickcenter in summary_data.get("pickcenter") or []:
+        total = _to_float(pickcenter.get("overUnder"))
+        if total is not None:
+            return total
+
+    for odds_entry in summary_data.get("odds") or []:
+        total = _to_float(odds_entry.get("overUnder"))
+        if total is not None:
+            return total
+
+    return None
 
 
 def extract_confirmed_espn_lineup(summary_data: Dict[str, Any], team_abbrev: str) -> List[Dict[str, Any]]:
@@ -585,6 +603,7 @@ def build_candidate_rows(
     opponent_name: str,
     opponent_abbrev: str,
     pitcher_name: str,
+    game_total: Optional[float],
     pitch_hand: Optional[str],
     start_time: str,
     status: str,
@@ -620,6 +639,7 @@ def build_candidate_rows(
             "Opponent": opponent_name,
             "Opponent Abbrev": opponent_abbrev,
             "Pitcher": pitcher_name,
+            "Total": game_total,
             "Pitch Hand": pitch_hand or "",
             "Source": SOURCE_ACTIVE,
             "Pool Rank": pd.NA,
@@ -973,6 +993,19 @@ def _classify_avg_cell(value: Any, *, elite: float, strong: float, weak: float) 
     return None
 
 
+def _classify_total_cell(value: Any) -> Optional[str]:
+    numeric = _to_float(value)
+    if numeric is None:
+        return None
+    if numeric >= 9.0:
+        return "cell-elite"
+    if numeric >= 8.5:
+        return "cell-strong"
+    if numeric <= 7.5:
+        return "cell-weak"
+    return None
+
+
 def _format_pitcher_last_name(name: Any) -> str:
     parts = [part for part in str(name or "").strip().split() if part]
     if not parts:
@@ -982,6 +1015,13 @@ def _format_pitcher_last_name(name: Any) -> str:
     if len(parts) >= 2 and last_token.lower().rstrip(".") in suffixes:
         return parts[-2]
     return last_token
+
+
+def _format_total(value: Any) -> str:
+    numeric = _to_float(value)
+    if numeric is None:
+        return ""
+    return f"{numeric:.1f}"
 
 
 def format_report_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -1013,6 +1053,7 @@ def format_report_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         )
     ]
     formatted["Status"] = formatted["Status"].apply(_status_badge)
+    formatted["Total"] = formatted["Total"].apply(_format_total)
     formatted["Hit Stk"] = formatted["Hit Stk"].apply(_format_int)
     formatted[f"Last {RECENT_GAMES} AVG"] = formatted["Recent AVG"].apply(_format_rate)
     for column in ["VsP AVG", "Season AVG"]:
@@ -1053,6 +1094,7 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
         "Team": "group-context",
         "Opponent": "group-context",
         "Pitcher": "group-context",
+        "Total": "group-context",
         "Status": "group-context",
         "Hit Stk": "group-batter",
         f"Last {RECENT_GAMES} AVG": "group-batter",
@@ -1067,6 +1109,7 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
         "Team": "column-team",
         "Opponent": "column-opponent",
         "Pitcher": "column-pitcher",
+        "Total": "column-total",
         "Status": "column-status",
     }
 
@@ -1117,6 +1160,10 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
             _add_cell_class(cells, column_map, col_name, semantic_class)
         for col_name, group_class in header_group_map.items():
             _add_cell_class(cells, column_map, col_name, group_class)
+
+        total_class = _classify_total_cell(row_data.get("Total"))
+        if total_class:
+            _add_cell_class(cells, column_map, "Total", total_class)
 
         streak_value = _to_float(row_data.get("Hit Stk"))
         if streak_value is not None:
@@ -1397,6 +1444,34 @@ def write_html(
     table.pitchers-table tbody td.group-matchup:not(.cell-elite):not(.cell-strong):not(.cell-weak) {{
       background: color-mix(in srgb, var(--group-matchup) 5%, #ffffff);
     }}
+    table.pitchers-table tbody tr.row-live td {{
+      background-image: linear-gradient(rgba(128, 92, 62, 0.22), rgba(128, 92, 62, 0.22));
+      background-blend-mode: multiply;
+      color: #5b4637;
+    }}
+    table.pitchers-table tbody tr.row-final td {{
+      background-image: linear-gradient(rgba(71, 85, 105, 0.22), rgba(71, 85, 105, 0.22));
+      background-blend-mode: multiply;
+      color: #475569;
+    }}
+    table.pitchers-table tbody tr.row-live td.group-context {{
+      box-shadow: inset 3px 0 0 #fb923c;
+    }}
+    table.pitchers-table tbody tr.row-final td.group-context {{
+      box-shadow: inset 3px 0 0 #94a3b8;
+    }}
+    table.pitchers-table tbody tr.row-live td.cell-elite,
+    table.pitchers-table tbody tr.row-live td.cell-strong,
+    table.pitchers-table tbody tr.row-live td.cell-weak,
+    table.pitchers-table tbody tr.row-final td.cell-elite,
+    table.pitchers-table tbody tr.row-final td.cell-strong,
+    table.pitchers-table tbody tr.row-final td.cell-weak {{
+      color: #374151;
+    }}
+    table.pitchers-table tbody tr.row-live td .status-pill,
+    table.pitchers-table tbody tr.row-final td .status-pill {{
+      filter: saturate(0.8) brightness(0.96);
+    }}
     table.pitchers-table th.column-name,
     table.pitchers-table td.column-name {{
       min-width: 136px;
@@ -1422,6 +1497,13 @@ def write_html(
       white-space: nowrap;
       overflow-wrap: normal;
     }}
+    table.pitchers-table th.column-total,
+    table.pitchers-table td.column-total {{
+      min-width: 54px;
+      max-width: 62px;
+      padding-left: 3px;
+      padding-right: 3px;
+    }}
     table.pitchers-table th.column-status,
     table.pitchers-table td.column-status {{
       min-width: 78px;
@@ -1431,15 +1513,6 @@ def write_html(
     }}
     table.pitchers-table tbody tr:hover {{
       background: #eef7ff;
-    }}
-    table.pitchers-table tbody tr.row-upcoming {{
-      background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
-    }}
-    table.pitchers-table tbody tr.row-live {{
-      background: linear-gradient(to right, rgba(249, 115, 22, 0.14), transparent);
-    }}
-    table.pitchers-table tbody tr.row-final {{
-      background: linear-gradient(to right, rgba(100, 116, 139, 0.10), transparent);
     }}
     table.pitchers-table tbody tr.row-target {{
       box-shadow: inset 4px 0 0 #16a34a;
@@ -1595,7 +1668,7 @@ def write_html(
         <span class="legend-item legend-context"><span class="legend-swatch"></span>Context</span>
         <span class="legend-item legend-batter"><span class="legend-swatch"></span>Form</span>
         <span class="legend-item legend-matchup"><span class="legend-swatch"></span>Matchup</span>
-        <span class="legend-note">Gray rail = fallback pool. Green/yellow/red = stronger to weaker AVG.</span>
+        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Green/yellow/red = stronger to weaker totals or AVG.</span>
       </div>
     </section>
 
@@ -1667,6 +1740,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
         status = str(game.get("status") or "").strip()
         event_id = espn_event_lookup.get((_normalize_team_name(away_team), _normalize_team_name(home_team)), "")
         espn_summary = fetch_espn_summary(event_id) if event_id else None
+        game_total = extract_espn_game_total(espn_summary)
         offense_configs = [
             {
                 "team_id": away_team_id,
@@ -1725,6 +1799,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 opponent_name=opponent_name,
                 opponent_abbrev=str(offense["opponent_abbrev"] or ""),
                 pitcher_name=str(pitcher_context.get("name") or pitcher_name),
+                game_total=game_total,
                 pitch_hand=str(pitcher_context.get("hand") or ""),
                 start_time=start_time,
                 status=status,

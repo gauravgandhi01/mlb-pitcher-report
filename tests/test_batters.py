@@ -12,6 +12,7 @@ from Batters import (
     build_hot_streak_matchup_section,
     compute_hit_streak,
     compute_recent_metrics,
+    extract_espn_game_total,
     parse_vs_pitcher_stats,
     rank_active_roster_candidates,
     sort_batters_for_report,
@@ -86,6 +87,18 @@ class BattersLogicTests(unittest.TestCase):
         ]
 
         self.assertEqual(compute_hit_streak(logs, report_date), 2)
+
+    def test_extract_espn_game_total_prefers_pickcenter_over_under(self) -> None:
+        summary = {
+            "pickcenter": [
+                {"overUnder": 8.5},
+            ]
+        }
+
+        self.assertEqual(extract_espn_game_total(summary), 8.5)
+
+    def test_extract_espn_game_total_returns_none_when_missing(self) -> None:
+        self.assertIsNone(extract_espn_game_total({"pickcenter": []}))
 
     def test_parse_vs_pitcher_stats_prefers_total_split(self) -> None:
         indexed_blocks = {
