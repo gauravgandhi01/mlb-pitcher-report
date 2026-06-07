@@ -22,16 +22,17 @@ git fetch origin "$BRANCH"
 git pull --rebase --autostash origin "$BRANCH"
 
 python3 Pitchers.py "$REPORT_DATE" "$INCLUDE_ODDS"
+python3 Batters.py "$REPORT_DATE"
 
-# Only publish the GH Pages entrypoint.
-git add index.html
+# Publish both GH Pages entrypoints.
+git add index.html batters.html
 if git diff --cached --quiet; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] No index.html change to commit."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] No GH Pages root HTML change to commit."
   exit 0
 fi
 
 COMMIT_TS="$(date '+%Y-%m-%d %H:%M:%S %Z')"
-git commit -m "auto: update index.html (${COMMIT_TS})"
+git commit -m "auto: update GH Pages reports (${COMMIT_TS})"
 git push origin "$BRANCH"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] index.html updated and pushed."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] index.html and batters.html updated and pushed."

@@ -1827,6 +1827,24 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     return report_df.fillna("-")
 
 
+def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str) -> str:
+    tabs = [
+        ("pitchers", "Pitchers", pitcher_href),
+        ("batters", "Batters", batter_href),
+    ]
+    links: List[str] = []
+    for tab_key, label, href in tabs:
+        classes = ["report-tab"]
+        if tab_key == active_tab:
+            classes.append("active")
+        links.append(
+            '<a class="' + " ".join(classes) + '" href="' + escape(href, quote=True) + '">'
+            + escape(label)
+            + "</a>"
+        )
+    return '<nav class="report-tabs" aria-label="Report pages">' + "".join(links) + "</nav>"
+
+
 def write_to_html(
     final_df: pd.DataFrame,
     report_key: str,
@@ -1845,6 +1863,7 @@ def write_to_html(
     arsenal_payload = _build_pitcher_arsenal_payload(final_df, pitcher_arsenal_lookup or {})
     arsenal_payload_json = json.dumps(arsenal_payload).replace("</", "<\\/")
     updated_at = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    tabs_html = _build_report_tabs("pitchers", "__PITCHER_HREF__", "__BATTER_HREF__")
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1896,6 +1915,36 @@ def write_to_html(
       margin: 0;
       opacity: 0.95;
       font-size: 13px;
+    }}
+    .report-tabs {{
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }}
+    .report-tab {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }}
+    .report-tab:hover {{
+      background: rgba(255, 255, 255, 0.20);
+    }}
+    .report-tab.active {{
+      background: #ffffff;
+      border-color: #ffffff;
+      color: #0f4c81;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
     }}
     .panel {{
       background: var(--panel);
@@ -2442,6 +2491,7 @@ def write_to_html(
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - {display_date}</h1>
       <p class="updated-at">Last updated: {updated_at}</p>
+      {tabs_html}
     </header>
     <section class="panel">
       <div class="table-legend">
@@ -2650,8 +2700,10 @@ def write_to_html(
 """
 
     output_path = REPORTS_DIR / f"report-{report_key}.html"
-    output_path.write_text(html_content, encoding="utf-8")
-    ROOT_INDEX_FILE.write_text(html_content, encoding="utf-8")
+    archive_html_content = html_content.replace("__PITCHER_HREF__", "../index.html").replace("__BATTER_HREF__", "../batters.html")
+    root_html_content = html_content.replace("__PITCHER_HREF__", "./index.html").replace("__BATTER_HREF__", "./batters.html")
+    output_path.write_text(archive_html_content, encoding="utf-8")
+    ROOT_INDEX_FILE.write_text(root_html_content, encoding="utf-8")
     print(output_path.resolve().as_uri())
     print(ROOT_INDEX_FILE.resolve().as_uri())
     return output_path
