@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLB Matchups 06/13/2026</title>
+  <style>
+
+    :root {
+      --bg: #dfe8ef;
+      --panel: #fbfdff;
+      --text: #0f172a;
+      --muted: #334155;
+      --line: #c9d5e2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      background: linear-gradient(180deg, #ecf3f8 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .layout {
+      max-width: 1640px;
+      margin: 0 auto;
+      display: grid;
+      gap: 10px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0f5f5a 0%, #0f4f86 100%);
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(15, 79, 134, 0.2);
+    }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0.2px;
+    }
+    .hero p {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 12px;
+      max-width: 1020px;
+    }
+    .report-tabs,
+    .matchup-view-tabs {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .report-tab,
+    .matchup-view-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .report-tab:hover,
+    .matchup-view-tab:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .report-tab.active,
+    .matchup-view-tab.active {
+      background: #ffffff;
+      border-color: #ffffff;
+      color: #0f4c81;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+    }
+    .legend-panel {
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .best-spots-panel {
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+      padding: 8px 10px 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .best-spots-head {
+      color: #0b2540;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .best-spots-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .best-spot-link {
+      display: grid;
+      gap: 4px;
+      padding: 8px 9px;
+      border-radius: 11px;
+      border: 1px solid #d6e0ea;
+      background: #f7fbfe;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .best-spot-link:hover {
+      transform: translateY(-1px);
+      border-color: #b9cada;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+    .best-spot-label {
+      color: #0b2540;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .best-spot-score {
+      color: #166534;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .best-spot-chips {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .summary-cards {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+    .summary-card-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .summary-card {
+      background: var(--panel);
+      border-radius: 13px;
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+    .summary-card-link:hover .summary-card {
+      transform: translateY(-1px);
+      border-color: #b7c7d7;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09);
+    }
+    .summary-card.game-state-in {
+      background: #e1eaf1;
+      border-color: #afc0d0;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+    }
+    .summary-card.game-state-post {
+      background: #d7e2ec;
+      border-color: #a5b8ca;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+    }
+    .summary-card.game-state-in .game-header {
+      background: linear-gradient(180deg, #d4dee8 0%, #cad6e1 100%);
+    }
+    .summary-card.game-state-post .game-header {
+      background: linear-gradient(180deg, #cad7e3 0%, #c1cfdb 100%);
+    }
+    .summary-card.game-state-in .summary-signals,
+    .summary-card.game-state-post .summary-signals {
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.22) 0%, rgba(223, 232, 240, 0.14) 100%);
+    }
+    .game-header {
+      display: grid;
+      gap: 4px;
+      padding: 8px 9px 6px;
+      background: linear-gradient(180deg, #f1f6fa 0%, #e8eff5 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .matchup-title {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: flex-start;
+    }
+    .teams-line {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #0b2540;
+    }
+    .team-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid #d8e3ec;
+      min-height: 34px;
+    }
+    .team-chip-copy {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+    .team-chip-main {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .team-chip-starter {
+      color: #4b5d72;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+    .team-chip-ml,
+    .team-chip-score {
+      color: #0b2540;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      line-height: 1;
+    }
+    .team-chip-score {
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .team-logo.small {
+      width: 17px;
+      height: 17px;
+      object-fit: contain;
+      display: block;
+    }
+    .at-symbol {
+      color: #64748b;
+      font-weight: 700;
+    }
+    .total-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid #c9d8e7;
+      background: #edf5fc;
+      color: #154a75;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .park-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid #cfd9e3;
+      background: #eef4f8;
+      color: #35506a;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .game-meta {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 9.5px;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 10px;
+      border: 1px solid transparent;
+    }
+    .status-pill.status-pre-game,
+    .status-pill.status-scheduled,
+    .status-pill.status-warmup {
+      background: #ecfeff;
+      color: #155e75;
+      border-color: #a5f3fc;
+    }
+    .status-pill.status-in-progress {
+      background: #fff7ed;
+      color: #9a3412;
+      border-color: #fdba74;
+    }
+    .status-pill.status-final {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .summary-signals {
+      display: grid;
+      gap: 5px;
+      padding: 6px 8px 7px;
+    }
+    .summary-offense-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 0;
+    }
+    .summary-offense-team {
+      color: #0b2540;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      min-height: 20px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e3ecf4;
+      border: 1px solid #cedbe7;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+    .summary-offense-tags {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-width: 0;
+    }
+    .summary-lean {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 20px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px dashed #c5d2df;
+      background: #edf2f7;
+      color: #52667c;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 0;
+    }
+    .summary-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 20px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      border: 1px solid #dbe7f0;
+      background: #eef3f7;
+      color: #2f3e4d;
+      line-height: 1.05;
+      position: relative;
+      overflow: visible;
+      cursor: help;
+      z-index: 0;
+      white-space: nowrap;
+    }
+    .summary-chip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%) translateY(4px);
+      min-width: 140px;
+      max-width: 220px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.96);
+      color: #f8fafc;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.25;
+      text-align: center;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+      white-space: normal;
+      z-index: 30;
+    }
+    .summary-chip::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 2px);
+      transform: translateX(-50%) translateY(4px) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.96);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+      z-index: 29;
+    }
+    .summary-chip:hover::after,
+    .summary-chip:hover::before {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+    .summary-chip:hover::before {
+      transform: translateX(-50%) translateY(0) rotate(45deg);
+    }
+    .signal-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      border: 1px solid #dbe7f0;
+      background: #eef3f7;
+      color: #2f3e4d;
+      line-height: 1.1;
+    }
+    .signal-badge.signal-positive {
+      background: #d6f2df;
+      border-color: #6abf83;
+      color: #14532d;
+    }
+    .signal-badge.signal-negative {
+      background: #f6d6d7;
+      border-color: #cf676a;
+      color: #7f1d1d;
+    }
+    .signal-badge.signal-neutral {
+      background: #e7edf3;
+      border-color: #b5c4d2;
+      color: #425466;
+    }
+    .signal-badge.signal-warning {
+      background: #f4e5a8;
+      border-color: #d2b24d;
+      color: #71551a;
+    }
+    .summary-chip.signal-positive {
+      background: #d6f2df;
+      border-color: #6abf83;
+      color: #14532d;
+    }
+    .summary-chip.signal-negative {
+      background: #f6d6d7;
+      border-color: #cf676a;
+      color: #7f1d1d;
+    }
+    .summary-chip.signal-neutral {
+      background: #e7edf3;
+      border-color: #b5c4d2;
+      color: #425466;
+    }
+    .summary-chip.signal-warning {
+      background: #f4e5a8;
+      border-color: #d2b24d;
+      color: #71551a;
+    }
+    .empty-state {
+      margin: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 800px) {
+      body {
+        padding: 10px;
+      }
+      .hero {
+        padding: 13px 14px;
+      }
+      .hero h1 {
+        font-size: 20px;
+      }
+      .summary-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <section class="hero">
+      <h1>MLB Daily Matchups</h1>
+      <p>06/13/2026 slate. Updated 2026-06-13 22:01:38 EDT. ESPN moneylines/totals and compact offense-vs-starter signals.</p>
+      <nav class="report-tabs" aria-label="Report pages"><a class="report-tab" href="../index.html">Pitchers</a><a class="report-tab" href="../batters.html">Batters</a><a class="report-tab active" href="../matchups.html">Matchups</a></nav>
+      <nav class="matchup-view-tabs" aria-label="Matchup views"><a class="matchup-view-tab active" href="./matchups-report-06132026.html">Summary</a><a class="matchup-view-tab" href="./matchups-detail-report-06132026.html">Detail</a></nav>
+    </section>
+    <section class="legend-panel">
+      Signals-first summary with compact leans, park context, and top pregame spots. Click any matchup card to open the full breakdown.
+    </section>
+    <section class="best-spots-panel"><div class="best-spots-head">Best Spots</div><div class="best-spots-grid"><a class="best-spot-link" href="./matchups-detail-report-06132026.html#game-401815747"><span class="best-spot-label">ATH vs Freeland</span><span class="best-spot-score">+3</span><span class="best-spot-chips"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span></span></a><a class="best-spot-link" href="./matchups-detail-report-06132026.html#game-401815748"><span class="best-spot-label">TB vs Soriano</span><span class="best-spot-score">+3</span><span class="best-spot-chips"><span class="summary-chip signal-positive" data-tooltip="Strong lineup batter-vs-pitcher history." title="Strong lineup batter-vs-pitcher history." aria-label="Strong lineup batter-vs-pitcher history.">Strong BvP</span><span class="summary-chip signal-negative" data-tooltip="Lineup has been cold recently." title="Lineup has been cold recently." aria-label="Lineup has been cold recently.">Lineup Cold</span></span></a><a class="best-spot-link" href="./matchups-detail-report-06132026.html#game-401815747"><span class="best-spot-label">COL vs Estes</span><span class="best-spot-score">+1</span><span class="best-spot-chips"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></span></a></div></section>
+    <section class="summary-cards">
+      <a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815746" aria-label="View detailed matchup for Chicago Cubs at San Francisco Giants"><article class="summary-card game-state-pre"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/112.svg" alt="Chicago Cubs logo"><span class="team-chip-copy"><span class="team-chip-main"><span>CHC</span><span class="team-chip-ml">-122</span></span><span class="team-chip-starter">Brown (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/137.svg" alt="San Francisco Giants logo"><span class="team-chip-copy"><span class="team-chip-main"><span>SF</span><span class="team-chip-ml">+101</span></span><span class="team-chip-starter">McDonald (R)</span></span></span><span class="total-pill">8.0</span></div><div class="game-meta"><span>10:05p</span><span class="status-pill status-warmup">Warmup</span><span class="park-pill" title="Open | 61°F | W 15 mph | 1% precip | Open-Meteo">61° W15</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">CHC</span><div class="summary-offense-tags"><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">SF</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-negative" data-tooltip="Opposing pitcher is in strong recent form." title="Opposing pitcher is in strong recent form." aria-label="Opposing pitcher is in strong recent form.">Pitcher Hot</span><span class="summary-lean signal-negative">Fade</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815747" aria-label="View detailed matchup for Colorado Rockies at Athletics"><article class="summary-card game-state-pre"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/115.svg" alt="Colorado Rockies logo"><span class="team-chip-copy"><span class="team-chip-main"><span>COL</span><span class="team-chip-ml">+134</span></span><span class="team-chip-starter">Freeland (L)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/133.svg" alt="Athletics logo"><span class="team-chip-copy"><span class="team-chip-main"><span>ATH</span><span class="team-chip-ml">-162</span></span><span class="team-chip-starter">Estes (R)</span></span></span><span class="total-pill">14.5</span></div><div class="game-meta"><span>10:05p</span><span class="status-pill status-warmup">Warmup</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">COL</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">ATH</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span><span class="summary-lean signal-positive">Attack: power</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815748" aria-label="View detailed matchup for Tampa Bay Rays at Los Angeles Angels"><article class="summary-card game-state-pre"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/139.svg" alt="Tampa Bay Rays logo"><span class="team-chip-copy"><span class="team-chip-main"><span>TB</span><span class="team-chip-ml">-118</span></span><span class="team-chip-starter">Jax (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/108.svg" alt="Los Angeles Angels logo"><span class="team-chip-copy"><span class="team-chip-main"><span>LAA</span><span class="team-chip-ml">-105</span></span><span class="team-chip-starter">Soriano (R)</span></span></span><span class="total-pill">8.5</span></div><div class="game-meta"><span>10:07p</span><span class="status-pill status-warmup">Warmup</span><span class="park-pill" title="Open | 77°F | W 6 mph | 0% precip | Open-Meteo">77° W6</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">TB</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Strong lineup batter-vs-pitcher history." title="Strong lineup batter-vs-pitcher history." aria-label="Strong lineup batter-vs-pitcher history.">Strong BvP</span><span class="summary-chip signal-negative" data-tooltip="Lineup has been cold recently." title="Lineup has been cold recently." aria-label="Lineup has been cold recently.">Lineup Cold</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-positive">Attack: contact</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">LAA</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Lineup has been cold recently." title="Lineup has been cold recently." aria-label="Lineup has been cold recently.">Lineup Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815744" aria-label="View detailed matchup for Philadelphia Phillies at Milwaukee Brewers"><article class="summary-card game-state-in"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/143.svg" alt="Philadelphia Phillies logo"><span class="team-chip-copy"><span class="team-chip-main"><span>PHI</span><span class="team-chip-score">9</span></span><span class="team-chip-starter">Nola (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/158.svg" alt="Milwaukee Brewers logo"><span class="team-chip-copy"><span class="team-chip-main"><span>MIL</span><span class="team-chip-score">5</span></span><span class="team-chip-starter">Drohan (L)</span></span></span><span class="total-pill">8.5</span></div><div class="game-meta"><span>Bot 8th</span><span class="status-pill status-in-progress">In Progress</span><span class="park-pill" title="Retractable | Static">Retractable</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">PHI</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">MIL</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-positive">Attack: power</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815745" aria-label="View detailed matchup for St. Louis Cardinals at Minnesota Twins"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/138.svg" alt="St. Louis Cardinals logo"><span class="team-chip-copy"><span class="team-chip-main"><span>STL</span><span class="team-chip-score">9</span></span><span class="team-chip-starter">Liberatore (L)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/142.svg" alt="Minnesota Twins logo"><span class="team-chip-copy"><span class="team-chip-main"><span>MIN</span><span class="team-chip-score">6</span></span><span class="team-chip-starter">Prielipp (L)</span></span></span><span class="total-pill">9.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 73°F | W 13 mph | 0% precip | Open-Meteo">73° W13</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">STL</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Strong lineup batter-vs-pitcher history." title="Strong lineup batter-vs-pitcher history." aria-label="Strong lineup batter-vs-pitcher history.">Strong BvP</span><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-positive">Attack: power</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">MIN</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span><span class="summary-lean signal-positive">Attack: power</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815738" aria-label="View detailed matchup for New York Yankees at Toronto Blue Jays"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/147.svg" alt="New York Yankees logo"><span class="team-chip-copy"><span class="team-chip-main"><span>NYY</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Schlittler (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/141.svg" alt="Toronto Blue Jays logo"><span class="team-chip-copy"><span class="team-chip-main"><span>TOR</span><span class="team-chip-score">1</span></span><span class="team-chip-starter">Gausman (R)</span></span></span><span class="total-pill">7.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Retractable | Static">Retractable</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">NYY</span><div class="summary-offense-tags"></div></div><div class="summary-offense-row"><span class="summary-offense-team">TOR</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-negative" data-tooltip="Opposing pitcher is in strong recent form." title="Opposing pitcher is in strong recent form." aria-label="Opposing pitcher is in strong recent form.">Pitcher Hot</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815737" aria-label="View detailed matchup for Miami Marlins at Pittsburgh Pirates"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/146.svg" alt="Miami Marlins logo"><span class="team-chip-copy"><span class="team-chip-main"><span>MIA</span><span class="team-chip-score">2</span></span><span class="team-chip-starter">Bachar (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/134.svg" alt="Pittsburgh Pirates logo"><span class="team-chip-copy"><span class="team-chip-main"><span>PIT</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Chandler (R)</span></span></span><span class="total-pill">9.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 85°F | SW 9 mph | 0% precip | Open-Meteo">85° W9</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">MIA</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">PIT</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Team has strong season results versus this starter hand." title="Team has strong season results versus this starter hand." aria-label="Team has strong season results versus this starter hand.">Strong vs Hand</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815739" aria-label="View detailed matchup for San Diego Padres at Baltimore Orioles"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/135.svg" alt="San Diego Padres logo"><span class="team-chip-copy"><span class="team-chip-main"><span>SD</span><span class="team-chip-score">9</span></span><span class="team-chip-starter">Vásquez (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/110.svg" alt="Baltimore Orioles logo"><span class="team-chip-copy"><span class="team-chip-main"><span>BAL</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Gibson (R)</span></span></span><span class="total-pill">10.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 90°F | W 2 mph | 0% precip | Open-Meteo">90° W2</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">SD</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Team has weak season results versus this starter hand." title="Team has weak season results versus this starter hand." aria-label="Team has weak season results versus this starter hand.">Weak vs Hand</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">BAL</span><div class="summary-offense-tags"><span class="summary-chip signal-positive" data-tooltip="Strong lineup batter-vs-pitcher history." title="Strong lineup batter-vs-pitcher history." aria-label="Strong lineup batter-vs-pitcher history.">Strong BvP</span><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-positive">Attack: power</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815740" aria-label="View detailed matchup for Seattle Mariners at Washington Nationals"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/136.svg" alt="Seattle Mariners logo"><span class="team-chip-copy"><span class="team-chip-main"><span>SEA</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Castillo (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/120.svg" alt="Washington Nationals logo"><span class="team-chip-copy"><span class="team-chip-main"><span>WSH</span><span class="team-chip-score">8</span></span><span class="team-chip-starter">Cavalli (R)</span></span></span><span class="total-pill">9.0</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 89°F | NW 8 mph | 0% precip | Open-Meteo">89° W8</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">SEA</span><div class="summary-offense-tags"><span class="summary-chip signal-warning" data-tooltip="Very small direct matchup sample." title="Very small direct matchup sample." aria-label="Very small direct matchup sample.">Low Sample</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">WSH</span><div class="summary-offense-tags"></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815734" aria-label="View detailed matchup for Arizona Diamondbacks at Cincinnati Reds"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/109.svg" alt="Arizona Diamondbacks logo"><span class="team-chip-copy"><span class="team-chip-main"><span>AZ</span><span class="team-chip-score">1</span></span><span class="team-chip-starter">Soroka (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/113.svg" alt="Cincinnati Reds logo"><span class="team-chip-copy"><span class="team-chip-main"><span>CIN</span><span class="team-chip-score">2</span></span><span class="team-chip-starter">Lowder (R)</span></span></span><span class="total-pill">9.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 85°F | SW 7 mph | 0% precip | Open-Meteo">85° W7</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">AZ</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Team has weak season results versus this starter hand." title="Team has weak season results versus this starter hand." aria-label="Team has weak season results versus this starter hand.">Weak vs Hand</span><span class="summary-chip signal-negative" data-tooltip="Lineup has been cold recently." title="Lineup has been cold recently." aria-label="Lineup has been cold recently.">Lineup Cold</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-negative">Fade</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">CIN</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-negative" data-tooltip="Opposing pitcher is in strong recent form." title="Opposing pitcher is in strong recent form." aria-label="Opposing pitcher is in strong recent form.">Pitcher Hot</span><span class="summary-lean signal-negative">Fade</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815735" aria-label="View detailed matchup for Atlanta Braves at New York Mets"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/144.svg" alt="Atlanta Braves logo"><span class="team-chip-copy"><span class="team-chip-main"><span>ATL</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Pérez (L)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/121.svg" alt="New York Mets logo"><span class="team-chip-copy"><span class="team-chip-main"><span>NYM</span><span class="team-chip-score">1</span></span><span class="team-chip-starter">Manaea (L)</span></span></span><span class="total-pill">8.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 88°F | W 9 mph | 0% precip | Open-Meteo">88° W9</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">ATL</span><div class="summary-offense-tags"></div></div><div class="summary-offense-row"><span class="summary-offense-team">NYM</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Team has weak season results versus this starter hand." title="Team has weak season results versus this starter hand." aria-label="Team has weak season results versus this starter hand.">Weak vs Hand</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815736" aria-label="View detailed matchup for Detroit Tigers at Cleveland Guardians"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/116.svg" alt="Detroit Tigers logo"><span class="team-chip-copy"><span class="team-chip-main"><span>DET</span><span class="team-chip-score">1</span></span><span class="team-chip-starter">Skubal (L)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/114.svg" alt="Cleveland Guardians logo"><span class="team-chip-copy"><span class="team-chip-main"><span>CLE</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">Cantillo (L)</span></span></span><span class="total-pill">7.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 84°F | SW 6 mph | 0% precip | Open-Meteo">84° W6</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">DET</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">CLE</span><div class="summary-offense-tags"></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815743" aria-label="View detailed matchup for Los Angeles Dodgers at Chicago White Sox"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/119.svg" alt="Los Angeles Dodgers logo"><span class="team-chip-copy"><span class="team-chip-main"><span>LAD</span><span class="team-chip-score">7</span></span><span class="team-chip-starter">Yamamoto (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/145.svg" alt="Chicago White Sox logo"><span class="team-chip-copy"><span class="team-chip-main"><span>CWS</span><span class="team-chip-score">1</span></span><span class="team-chip-starter">Burke (R)</span></span></span><span class="total-pill">8.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 82°F | SW 16 mph | 0% precip | Open-Meteo">82° W16</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">LAD</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Team has strong season results versus this starter hand." title="Team has strong season results versus this starter hand." aria-label="Team has strong season results versus this starter hand.">Strong vs Hand</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span><span class="summary-lean signal-positive">Attack: power</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">CWS</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Lineup has been hitting well recently." title="Lineup has been hitting well recently." aria-label="Lineup has been hitting well recently.">Lineup Hot</span><span class="summary-chip signal-negative" data-tooltip="Opposing pitcher is in strong recent form." title="Opposing pitcher is in strong recent form." aria-label="Opposing pitcher is in strong recent form.">Pitcher Hot</span><span class="summary-lean signal-negative">Fade</span></div></div></div></article></a><a class="summary-card-link" href="./matchups-detail-report-06132026.html#game-401815741" aria-label="View detailed matchup for Texas Rangers at Boston Red Sox"><article class="summary-card game-state-post"><div class="game-header"><div class="matchup-title"><div class="teams-line"><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/140.svg" alt="Texas Rangers logo"><span class="team-chip-copy"><span class="team-chip-main"><span>TEX</span><span class="team-chip-score">3</span></span><span class="team-chip-starter">deGrom (R)</span></span></span><span class="at-symbol">@</span><span class="team-chip"><img class="team-logo small" src="https://www.mlbstatic.com/team-logos/111.svg" alt="Boston Red Sox logo"><span class="team-chip-copy"><span class="team-chip-main"><span>BOS</span><span class="team-chip-score">6</span></span><span class="team-chip-starter">Suarez (L)</span></span></span><span class="total-pill">7.5</span></div><div class="game-meta"><span class="status-pill status-final">Final</span><span class="park-pill" title="Open | 89°F | W 9 mph | 0% precip | Open-Meteo">89° W9</span></div></div><div class="summary-signals"><div class="summary-offense-row"><span class="summary-offense-team">TEX</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-positive" data-tooltip="Opposing pitcher is in poor recent form." title="Opposing pitcher is in poor recent form." aria-label="Opposing pitcher is in poor recent form.">Pitcher Cold</span></div></div><div class="summary-offense-row"><span class="summary-offense-team">BOS</span><div class="summary-offense-tags"><span class="summary-chip signal-negative" data-tooltip="Weak lineup batter-vs-pitcher history." title="Weak lineup batter-vs-pitcher history." aria-label="Weak lineup batter-vs-pitcher history.">Weak BvP</span><span class="summary-chip signal-negative" data-tooltip="Lineup has been cold recently." title="Lineup has been cold recently." aria-label="Lineup has been cold recently.">Lineup Cold</span><span class="summary-lean signal-negative">Fade</span></div></div></div></article></a>
+    </section>
+  </div>
+</body>
+</html>

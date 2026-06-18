@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLB Pitcher Report 04/06/2026</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #0f766e;
+      --line: #dbe3ee;
+      --header: #e5eef9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #ffffff 0%, var(--bg) 45%);
+      color: var(--text);
+      padding: 24px;
+    }
+    .layout {
+      max-width: 1800px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .hero {
+      background: linear-gradient(120deg, #0f766e 0%, #0369a1 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 35px rgba(3, 105, 161, 0.2);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+    .hero .updated-at {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 13px;
+    }
+    .panel {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .table-wrap {
+      overflow-y: auto;
+      overflow-x: auto;
+      max-height: 78vh;
+    }
+    table.pitchers-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 10.5px;
+      table-layout: auto;
+      min-width: 980px;
+    }
+    table.pitchers-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--header);
+      border-bottom: 1px solid var(--line);
+      color: #0b2540;
+      padding: 6px 4px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.15;
+    }
+    table.pitchers-table thead th.sportsbook-column {
+      border-top: 4px solid var(--sportsbook-color);
+      color: var(--sportsbook-color);
+      font-weight: 700;
+    }
+    table.pitchers-table tbody td {
+      border-bottom: 1px solid var(--line);
+      padding: 5px 4px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.12;
+      vertical-align: middle;
+    }
+    table.pitchers-table th.column-name,
+    table.pitchers-table td.column-name {
+      min-width: 140px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table th.column-opponent,
+    table.pitchers-table td.column-opponent {
+      min-width: 130px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table th.column-status,
+    table.pitchers-table td.column-status {
+      min-width: 74px;
+    }
+    table.pitchers-table th.column-opp-hand,
+    table.pitchers-table td.column-opp-hand {
+      min-width: 82px;
+    }
+    table.pitchers-table th.column-opp-hand {
+      white-space: normal;
+      line-height: 1.05;
+    }
+    table.pitchers-table th.sportsbook-column,
+    table.pitchers-table td.sportsbook-column {
+      min-width: 112px;
+    }
+    table.pitchers-table tbody td.sportsbook-column {
+      box-shadow: inset 3px 0 0 var(--sportsbook-color);
+      background: color-mix(in srgb, var(--sportsbook-color) 10%, #ffffff);
+    }
+    table.pitchers-table tbody tr:nth-child(even) {
+      background: #f8fbff;
+    }
+    table.pitchers-table tbody tr:hover {
+      background: #eef7ff;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable {
+      cursor: pointer;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable.row-selected {
+      outline: 2px solid #0f766e;
+      outline-offset: -2px;
+    }
+    table.pitchers-table tbody tr.row-upcoming {
+      background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-live {
+      background: linear-gradient(to right, rgba(249, 115, 22, 0.14), transparent);
+    }
+    table.pitchers-table tbody tr.row-final {
+      background: linear-gradient(to right, rgba(100, 116, 139, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-target {
+      box-shadow: inset 4px 0 0 #16a34a;
+    }
+    table.pitchers-table tbody tr.row-caution {
+      box-shadow: inset 4px 0 0 #dc2626;
+    }
+    table.pitchers-table tbody tr.row-ks-hot {
+      box-shadow: inset 4px 0 0 #7c3aed;
+    }
+    table.pitchers-table tbody tr.row-ks-cold {
+      box-shadow: inset 4px 0 0 #64748b;
+    }
+    table.pitchers-table td.cell-elite {
+      background: #dcfce7;
+      color: #14532d;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-strong {
+      background: #fef9c3;
+      color: #713f12;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-weak {
+      background: #fee2e2;
+      color: #7f1d1d;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-top-rank {
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-low-rank {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    table.pitchers-table td.odds-plus {
+      font-weight: 700;
+    }
+    table.pitchers-table td.odds-even {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-juice {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-missing {
+      color: #64748b;
+      background: #f8fafc;
+    }
+    table.pitchers-table td.sportsbook-column.odds-missing {
+      background: color-mix(in srgb, var(--sportsbook-color) 6%, #f8fafc);
+    }
+    .odds-cell {
+      display: inline-grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 3px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+    .odds-line {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr) 6px minmax(0, 1fr);
+      align-items: center;
+      justify-content: center;
+      column-gap: 1px;
+      white-space: nowrap;
+      font-size: 9.5px;
+    }
+    .odds-point {
+      text-align: right;
+      opacity: 0.9;
+    }
+    .odds-over, .odds-under {
+      text-align: right;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .odds-main {
+      font-weight: 700;
+    }
+    .odds-details {
+      font-size: 10px;
+      color: #334155;
+      display: inline-block;
+      position: relative;
+      margin: 0;
+    }
+    .odds-details summary {
+      cursor: pointer;
+      color: #334155;
+      list-style: none;
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.18);
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      padding: 0;
+    }
+    .odds-details summary::-webkit-details-marker { display: none; }
+    .odds-arrow {
+      font-size: 8px;
+      line-height: 1;
+      transform: translateY(-1px);
+      transition: transform 120ms ease;
+    }
+    .odds-details[open] .odds-arrow {
+      transform: rotate(180deg) translateY(1px);
+    }
+    .odds-details ul {
+      margin: 0;
+      padding: 6px 8px;
+      list-style: none;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 30;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.15);
+      min-width: max-content;
+    }
+    .odds-details li {
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+    .odds-arrow-placeholder {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      opacity: 0;
+    }
+    .odds-over.best-over {
+      color: #15803d;
+      font-weight: 800;
+    }
+    .odds-under.best-under {
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+      border: 1px solid transparent;
+    }
+    .status-pill.status-pre-game,
+    .status-pill.status-scheduled,
+    .status-pill.status-warmup {
+      background: #ecfeff;
+      color: #155e75;
+      border-color: #a5f3fc;
+    }
+    .status-pill.status-in-progress {
+      background: #fff7ed;
+      color: #9a3412;
+      border-color: #fdba74;
+    }
+    .status-pill.status-final {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    table.pitchers-table a {
+      color: #0f4c81;
+      text-decoration: none;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table a:hover {
+      text-decoration: underline;
+    }
+    .arsenal-card {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .arsenal-card h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #0b2540;
+    }
+    .arsenal-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .arsenal-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .arsenal-metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fbff;
+      display: grid;
+      gap: 4px;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .arsenal-metric.metric-above {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    .arsenal-metric.metric-below {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .arsenal-metric.metric-neutral {
+      background: #f8fbff;
+      border-color: var(--line);
+    }
+    .arsenal-metric-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .arsenal-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .arsenal-metric-meta {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.1;
+      min-height: 12px;
+    }
+    .arsenal-pitches {
+      display: grid;
+      gap: 8px;
+      min-height: 42px;
+    }
+    .arsenal-pitch-row {
+      display: grid;
+      grid-template-columns: 90px 56px minmax(120px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .arsenal-pitch-label {
+      font-weight: 600;
+    }
+    .arsenal-pitch-value {
+      text-align: right;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .arsenal-pitch-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+    .arsenal-pitch-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f766e, #0284c7);
+      border-radius: inherit;
+    }
+    .arsenal-empty {
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }
+    .arsenal-future-slot {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #64748b;
+      font-size: 12px;
+      background: #fafcff;
+    }
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .hero h1 { font-size: 23px; }
+      .arsenal-metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .arsenal-pitch-row {
+        grid-template-columns: 78px 56px minmax(100px, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header class="hero">
+      <h1>MLB Pitcher Strikeout Report - 04/06/2026</h1>
+      <p class="updated-at">Last updated: 2026-04-06 21:40:24 EDT</p>
+    </header>
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="dataframe pitchers-table">
+<thead>
+<tr style="text-align: right;">
+<th class="column-name">Name</th>
+<th>Hand</th>
+<th>GP</th>
+<th>AB</th>
+<th>K</th>
+<th>BB</th>
+<th>AVG</th>
+<th>AB/GP</th>
+<th>K/9</th>
+<th>Whiff%</th>
+<th>K/AB</th>
+<th>K%</th>
+<th>PA</th>
+<th>SO/PA</th>
+<th class="column-opp-hand">Opp K% (Hand)</th>
+<th>r</th>
+<th class="column-opponent">Opponent</th>
+<th class="column-status">Status</th>
+<th>Ks</th>
+<th class="sportsbook-column" style="--sportsbook-color: #1E5EFF;">FanDuel</th>
+<th class="sportsbook-column" style="--sportsbook-color: #002A5E;">BetRivers</th>
+<th class="sportsbook-column" style="--sportsbook-color: #0EA5A4;">Novig</th>
+<th class="sportsbook-column" style="--sportsbook-color: #53C200;">DraftKings</th>
+</tr>
+</thead>
+<tbody>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-pitcher-key="andrew painter">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Andrew%20Painter-k-log">Andrew Painter</a></td>
+<td>R</td>
+<td>1</td>
+<td>20</td>
+<td>8</td>
+<td>1</td>
+<td>.200</td>
+<td>20.0</td>
+<td class="cell-strong">13.5</td>
+<td>-</td>
+<td class="cell-elite">38.10</td>
+<td class="cell-weak">0</td>
+<td>0</td>
+<td class="cell-strong">23.51</td>
+<td class="column-opp-hand cell-elite">25.41</td>
+<td>12</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Francisco%20Giants-k-per-pa-log">San Francisco Giants</a></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
+<td>N/A</td>
+<td class="sportsbook-column odds-even" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-130</span><span class="odds-pipe">|</span><span class="odds-under best-under">-102</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-even" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-129</span><span class="odds-pipe">|</span><span class="odds-under">-104</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+165</span><span class="odds-pipe">|</span><span class="odds-under">-230</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-278</span><span class="odds-pipe">|</span><span class="odds-under">+200</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">6.5</span><span class="odds-sep">:</span><span class="odds-over">+350</span><span class="odds-pipe">|</span><span class="odds-under">-560</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-juice" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-367</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">-121</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+156</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-even" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-124</span><span class="odds-pipe">|</span><span class="odds-under best-under">-102</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-pitcher-key="adrian houser">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Adrian%20Houser-k-log">Adrian Houser</a></td>
+<td>R</td>
+<td>1</td>
+<td>24</td>
+<td>4</td>
+<td>1</td>
+<td>.250</td>
+<td>24.0</td>
+<td class="cell-weak">6.8</td>
+<td>-</td>
+<td class="cell-weak">16.00</td>
+<td class="cell-strong">24.7</td>
+<td>73</td>
+<td>21.74</td>
+<td class="column-opp-hand">21.25</td>
+<td>19</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Philadelphia%20Phillies-k-per-pa-log">Philadelphia Phillies</a></td>
+<td class="column-status"><span class="status-pill status-warmup">Warmup</span></td>
+<td>N/A</td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #1E5EFF;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-154</span><span class="odds-pipe">|</span><span class="odds-under">+116</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #002A5E;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-162</span><span class="odds-pipe">|</span><span class="odds-under best-under">+120</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+138</span><span class="odds-pipe">|</span><span class="odds-under">-190</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-435</span><span class="odds-pipe">|</span><span class="odds-under">+290</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+310</span><span class="odds-pipe">|</span><span class="odds-under">-480</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #0EA5A4;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over best-over">-140</span><span class="odds-pipe">|</span><span class="odds-under">+118</span></span><details class="odds-details"><summary aria-label="Show alternate odds" title="Show alternate odds"><span class="odds-arrow">▾</span></summary><ul><li><span class="odds-alt-line odds-line"><span class="odds-point">4.5</span><span class="odds-sep">:</span><span class="odds-over">+126</span><span class="odds-pipe">|</span><span class="odds-under">-300</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">2.5</span><span class="odds-sep">:</span><span class="odds-over">-492</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li><li><span class="odds-alt-line odds-line"><span class="odds-point">5.5</span><span class="odds-sep">:</span><span class="odds-over">+288</span><span class="odds-pipe">|</span><span class="odds-under">N/A</span></span></li></ul></details></div></td>
+<td class="sportsbook-column odds-plus" style="--sportsbook-color: #53C200;"><div class="odds-cell"><span class="odds-main odds-line"><span class="odds-point">3.5</span><span class="odds-sep">:</span><span class="odds-over">-145</span><span class="odds-pipe">|</span><span class="odds-under">+114</span></span><span aria-hidden="true" class="odds-arrow-placeholder"></span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="cody bolton">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Cody%20Bolton-k-log">Cody Bolton</a></td>
+<td>R</td>
+<td>2</td>
+<td>25</td>
+<td>10</td>
+<td>2</td>
+<td>.200</td>
+<td>12.5</td>
+<td class="cell-strong">12.9</td>
+<td>-</td>
+<td class="cell-elite">37.04</td>
+<td>20.0</td>
+<td>5</td>
+<td class="cell-elite">30.37</td>
+<td class="column-opp-hand cell-elite">27.00</td>
+<td class="cell-top-rank">1</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Colorado%20Rockies-k-per-pa-log">Colorado Rockies</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>5</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="jacob degrom">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Jacob%20deGrom-k-log">Jacob deGrom</a></td>
+<td>R</td>
+<td>2</td>
+<td>36</td>
+<td>13</td>
+<td>1</td>
+<td>.194</td>
+<td>18.0</td>
+<td class="cell-strong">12.1</td>
+<td>-</td>
+<td class="cell-elite">35.14</td>
+<td class="cell-elite">27.0</td>
+<td>89</td>
+<td class="cell-elite">27.08</td>
+<td class="column-opp-hand cell-elite">28.92</td>
+<td>6</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Seattle%20Mariners-k-per-pa-log">Seattle Mariners</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>6</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="grant taylor">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Grant%20Taylor-k-log">Grant Taylor</a></td>
+<td>R</td>
+<td>5</td>
+<td>19</td>
+<td>7</td>
+<td>2</td>
+<td>.211</td>
+<td>3.8</td>
+<td class="cell-strong">12.6</td>
+<td>-</td>
+<td class="cell-elite">33.33</td>
+<td class="cell-weak">0.0</td>
+<td>1</td>
+<td class="cell-elite">26.65</td>
+<td class="column-opp-hand cell-elite">26.28</td>
+<td>8</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Baltimore%20Orioles-k-per-pa-log">Baltimore Orioles</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">1</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="casey mize">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Casey%20Mize-k-log">Casey Mize</a></td>
+<td>R</td>
+<td>2</td>
+<td>40</td>
+<td>13</td>
+<td>5</td>
+<td>.275</td>
+<td>20.0</td>
+<td class="cell-strong">11.3</td>
+<td>-</td>
+<td class="cell-strong">28.89</td>
+<td>22.2</td>
+<td>99</td>
+<td class="cell-elite">27.08</td>
+<td class="column-opp-hand cell-elite">27.32</td>
+<td>6</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Minnesota%20Twins-k-per-pa-log">Minnesota Twins</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="joe ryan">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Joe%20Ryan-k-log">Joe Ryan</a></td>
+<td>R</td>
+<td>3</td>
+<td>54</td>
+<td>17</td>
+<td>5</td>
+<td>.241</td>
+<td>18.0</td>
+<td>10.7</td>
+<td>-</td>
+<td class="cell-strong">28.81</td>
+<td class="cell-elite">31.9</td>
+<td>94</td>
+<td class="cell-strong">23.96</td>
+<td class="column-opp-hand cell-strong">24.67</td>
+<td>11</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Detroit%20Tigers-k-per-pa-log">Detroit Tigers</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>7</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="logan gilbert">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Logan%20Gilbert-k-log">Logan Gilbert</a></td>
+<td>R</td>
+<td>3</td>
+<td>62</td>
+<td>17</td>
+<td>3</td>
+<td>.274</td>
+<td>20.7</td>
+<td>9.4</td>
+<td class="cell-elite">32.9</td>
+<td class="cell-strong">26.15</td>
+<td class="cell-strong">26.8</td>
+<td>138</td>
+<td class="cell-elite">26.44</td>
+<td class="column-opp-hand cell-strong">24.14</td>
+<td>9</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Texas%20Rangers-k-per-pa-log">Texas Rangers</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="bubba chandler">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Bubba%20Chandler-k-log">Bubba Chandler</a></td>
+<td>R</td>
+<td>2</td>
+<td>30</td>
+<td>10</td>
+<td>10</td>
+<td>.167</td>
+<td>15.0</td>
+<td>10.4</td>
+<td>-</td>
+<td class="cell-strong">25.00</td>
+<td class="cell-weak">0</td>
+<td>0</td>
+<td>22.53</td>
+<td class="column-opp-hand cell-strong">23.20</td>
+<td>15</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/San%20Diego%20Padres-k-per-pa-log">San Diego Padres</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="shane mcclanahan">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Shane%20McClanahan-k-log">Shane McClanahan</a></td>
+<td>L</td>
+<td>2</td>
+<td>29</td>
+<td>9</td>
+<td>7</td>
+<td>.103</td>
+<td>14.5</td>
+<td>9.3</td>
+<td>-</td>
+<td class="cell-strong">25.00</td>
+<td class="cell-elite">29.2</td>
+<td>24</td>
+<td class="cell-strong">24.25</td>
+<td class="column-opp-hand cell-elite">28.37</td>
+<td>10</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Chicago%20Cubs-k-per-pa-log">Chicago Cubs</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td>5</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="jose soriano">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Jos%C3%A9%20Soriano-k-log">José Soriano</a></td>
+<td>R</td>
+<td>3</td>
+<td>39</td>
+<td>11</td>
+<td>6</td>
+<td>.103</td>
+<td>13.0</td>
+<td>8.0</td>
+<td class="cell-elite">35.4</td>
+<td class="cell-strong">24.44</td>
+<td>20.9</td>
+<td>43</td>
+<td class="cell-weak">17.68</td>
+<td class="column-opp-hand cell-weak">18.64</td>
+<td class="cell-low-rank">26</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Atlanta%20Braves-k-per-pa-log">Atlanta Braves</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">0</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="tanner bibee">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Tanner%20Bibee-k-log">Tanner Bibee</a></td>
+<td>R</td>
+<td>3</td>
+<td>53</td>
+<td>14</td>
+<td>5</td>
+<td>.245</td>
+<td>17.7</td>
+<td>9.2</td>
+<td>-</td>
+<td class="cell-strong">24.14</td>
+<td>19.8</td>
+<td>121</td>
+<td>21.49</td>
+<td class="column-opp-hand cell-weak">19.47</td>
+<td>20</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Kansas%20City%20Royals-k-per-pa-log">Kansas City Royals</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td class="cell-weak">3</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="brandon woodruff">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Brandon%20Woodruff-k-log">Brandon Woodruff</a></td>
+<td>R</td>
+<td>2</td>
+<td>42</td>
+<td>10</td>
+<td>2</td>
+<td>.262</td>
+<td>21.0</td>
+<td>8.4</td>
+<td>-</td>
+<td>22.73</td>
+<td class="cell-strong">25.6</td>
+<td>39</td>
+<td class="cell-elite">27.76</td>
+<td class="column-opp-hand cell-elite">30.26</td>
+<td class="cell-top-rank">4</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log">Boston Red Sox</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="michael wacha">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Michael%20Wacha-k-log">Michael Wacha</a></td>
+<td>R</td>
+<td>2</td>
+<td>41</td>
+<td>10</td>
+<td>4</td>
+<td>.146</td>
+<td>20.5</td>
+<td class="cell-weak">6.9</td>
+<td>-</td>
+<td>22.22</td>
+<td>20.4</td>
+<td>103</td>
+<td class="cell-strong">23.46</td>
+<td class="column-opp-hand cell-strong">24.28</td>
+<td>13</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Cleveland%20Guardians-k-per-pa-log">Cleveland Guardians</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td class="cell-weak">3</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="chris sale">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Chris%20Sale-k-log">Chris Sale</a></td>
+<td>L</td>
+<td>2</td>
+<td>38</td>
+<td>9</td>
+<td>3</td>
+<td>.105</td>
+<td>19.0</td>
+<td class="cell-weak">6.8</td>
+<td class="cell-elite">22.8</td>
+<td>21.95</td>
+<td class="cell-elite">32.4</td>
+<td>74</td>
+<td class="cell-elite">28.50</td>
+<td class="column-opp-hand cell-elite">37.93</td>
+<td class="cell-top-rank">3</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Angels-k-per-pa-log">Los Angeles Angels</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">0</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="max scherzer">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Max%20Scherzer-k-log">Max Scherzer</a></td>
+<td>R</td>
+<td>2</td>
+<td>29</td>
+<td>6</td>
+<td>2</td>
+<td>.207</td>
+<td>14.5</td>
+<td class="cell-weak">6.8</td>
+<td>-</td>
+<td>19.35</td>
+<td class="cell-strong">23.5</td>
+<td>204</td>
+<td>20.53</td>
+<td class="column-opp-hand cell-weak">17.43</td>
+<td>22</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Dodgers-k-per-pa-log">Los Angeles Dodgers</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="ryan feltner">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Ryan%20Feltner-k-log">Ryan Feltner</a></td>
+<td>R</td>
+<td>2</td>
+<td>27</td>
+<td>5</td>
+<td>1</td>
+<td>.222</td>
+<td>13.5</td>
+<td class="cell-weak">6.4</td>
+<td>-</td>
+<td>17.86</td>
+<td class="cell-weak">5.6</td>
+<td>36</td>
+<td>20.10</td>
+<td class="column-opp-hand cell-weak">17.57</td>
+<td>23</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Houston%20Astros-k-per-pa-log">Houston Astros</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">1</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final row-ks-cold" data-pitcher-key="janson junk">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Janson%20Junk-k-log">Janson Junk</a></td>
+<td>R</td>
+<td>2</td>
+<td>45</td>
+<td>8</td>
+<td>2</td>
+<td>.267</td>
+<td>22.5</td>
+<td class="cell-weak">6.2</td>
+<td>-</td>
+<td>17.02</td>
+<td>21.4</td>
+<td>28</td>
+<td class="cell-elite">26.92</td>
+<td class="column-opp-hand cell-strong">23.65</td>
+<td>7</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Cincinnati%20Reds-k-per-pa-log">Cincinnati Reds</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td class="cell-weak">3</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="brayan bello">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Brayan%20Bello-k-log">Brayan Bello</a></td>
+<td>R</td>
+<td>2</td>
+<td>37</td>
+<td>7</td>
+<td>7</td>
+<td>.351</td>
+<td>18.5</td>
+<td>7.9</td>
+<td>-</td>
+<td class="cell-weak">15.91</td>
+<td class="cell-weak">15.8</td>
+<td>38</td>
+<td class="cell-strong">23.03</td>
+<td class="column-opp-hand">21.61</td>
+<td>14</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Milwaukee%20Brewers-k-per-pa-log">Milwaukee Brewers</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>5</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="brandon williamson">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Brandon%20Williamson-k-log">Brandon Williamson</a></td>
+<td>L</td>
+<td>2</td>
+<td>42</td>
+<td>7</td>
+<td>3</td>
+<td>.214</td>
+<td>21.0</td>
+<td class="cell-weak">5.6</td>
+<td>-</td>
+<td class="cell-weak">15.56</td>
+<td class="cell-elite">33.3</td>
+<td>6</td>
+<td>20.88</td>
+<td class="column-opp-hand cell-weak">18.90</td>
+<td>21</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Miami%20Marlins-k-per-pa-log">Miami Marlins</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="jameson taillon">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Jameson%20Taillon-k-log">Jameson Taillon</a></td>
+<td>R</td>
+<td>2</td>
+<td>41</td>
+<td>7</td>
+<td>4</td>
+<td>.220</td>
+<td>20.5</td>
+<td class="cell-weak">5.9</td>
+<td>-</td>
+<td class="cell-weak">15.56</td>
+<td class="cell-weak">14.1</td>
+<td>64</td>
+<td class="cell-weak">18.80</td>
+<td class="column-opp-hand cell-weak">17.65</td>
+<td class="cell-low-rank">25</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Tampa%20Bay%20Rays-k-per-pa-log">Tampa Bay Rays</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-pitcher-key="zack littell">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Zack%20Littell-k-log">Zack Littell</a></td>
+<td>R</td>
+<td>2</td>
+<td>40</td>
+<td>7</td>
+<td>5</td>
+<td>.250</td>
+<td>20.0</td>
+<td class="cell-weak">6.3</td>
+<td>-</td>
+<td class="cell-weak">15.56</td>
+<td>21.2</td>
+<td>52</td>
+<td>21.96</td>
+<td class="column-opp-hand cell-strong">24.07</td>
+<td>17</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/St.%20Louis%20Cardinals-k-per-pa-log">St. Louis Cardinals</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td>6</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-final" data-pitcher-key="german marquez">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Germ%C3%A1n%20M%C3%A1rquez-k-log">Germán Márquez</a></td>
+<td>R</td>
+<td>2</td>
+<td>37</td>
+<td>5</td>
+<td>2</td>
+<td>.378</td>
+<td>18.5</td>
+<td class="cell-weak">5.6</td>
+<td>-</td>
+<td class="cell-weak">12.82</td>
+<td class="cell-weak">17.2</td>
+<td>29</td>
+<td>21.94</td>
+<td class="column-opp-hand">22.69</td>
+<td>18</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Pittsburgh%20Pirates-k-per-pa-log">Pittsburgh Pirates</a></td>
+<td class="column-status"><span class="status-pill status-final">Final</span></td>
+<td>4</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="andre pallante">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Andre%20Pallante-k-log">Andre Pallante</a></td>
+<td>R</td>
+<td>2</td>
+<td>36</td>
+<td>5</td>
+<td>7</td>
+<td>.167</td>
+<td>18.0</td>
+<td class="cell-weak">4.5</td>
+<td>-</td>
+<td class="cell-weak">11.63</td>
+<td>19.6</td>
+<td>46</td>
+<td>22.28</td>
+<td class="column-opp-hand">20.33</td>
+<td>16</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Washington%20Nationals-k-per-pa-log">Washington Nationals</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="brandon young">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Brandon%20Young-k-log">Brandon Young</a></td>
+<td>R</td>
+<td>1</td>
+<td>16</td>
+<td>2</td>
+<td>2</td>
+<td>.125</td>
+<td>16.0</td>
+<td class="cell-weak">3.6</td>
+<td>-</td>
+<td class="cell-weak">11.11</td>
+<td class="cell-elite">50.0</td>
+<td>2</td>
+<td class="cell-elite">29.57</td>
+<td class="column-opp-hand cell-elite">28.95</td>
+<td class="cell-top-rank">2</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Chicago%20White%20Sox-k-per-pa-log">Chicago White Sox</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+<tr class="pitcher-row-selectable row-live row-ks-cold" data-pitcher-key="justin wrobleski">
+<td class="column-name"><a href="https://statmuse.com/mlb/ask/Justin%20Wrobleski-k-log">Justin Wrobleski</a></td>
+<td>L</td>
+<td>2</td>
+<td>33</td>
+<td>4</td>
+<td>5</td>
+<td>.182</td>
+<td>16.5</td>
+<td class="cell-weak">4.0</td>
+<td>-</td>
+<td class="cell-weak">10.53</td>
+<td class="cell-elite">33.3</td>
+<td>21</td>
+<td class="cell-weak">19.25</td>
+<td class="column-opp-hand cell-weak">11.22</td>
+<td class="cell-low-rank">24</td>
+<td class="column-opponent"><a href="https://statmuse.com/mlb/ask/Toronto%20Blue%20Jays-k-per-pa-log">Toronto Blue Jays</a></td>
+<td class="column-status"><span class="status-pill status-in-progress">In Progress</span></td>
+<td class="cell-weak">2</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #1E5EFF;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #002A5E;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #0EA5A4;">-</td>
+<td class="sportsbook-column odds-missing" style="--sportsbook-color: #53C200;">-</td>
+</tr>
+</tbody>
+</table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="arsenal-card">
+        <div>
+          <h2 id="arsenal-name">Pitcher Arsenal Snapshot</h2>
+          <p class="arsenal-subtitle">Select a pitcher row above to inspect swing-and-miss profile and pitch mix.</p>
+        </div>
+        <div class="arsenal-metrics">
+          <div class="arsenal-metric metric-neutral" id="arsenal-whiff-box">
+            <span class="arsenal-metric-label">Whiff%</span>
+            <span class="arsenal-metric-value" id="arsenal-whiff">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-whiff-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-z-miss-box">
+            <span class="arsenal-metric-label">Z-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-z-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-z-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-oz-miss-box">
+            <span class="arsenal-metric-label">OZ-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-oz-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-oz-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-fastball-box">
+            <span class="arsenal-metric-label">Fastball%</span>
+            <span class="arsenal-metric-value" id="arsenal-fastball">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-fastball-avg"></span>
+          </div>
+        </div>
+        <div class="arsenal-pitches" id="arsenal-pitches"></div>
+        <div class="arsenal-empty" id="arsenal-empty">
+          Arsenal details are only available for pitchers returned by the Savant qualified leaderboard feed.
+        </div>
+        <div class="arsenal-future-slot">
+          Reserved for additional pitcher detail modules.
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const arsenalData = {"__league_averages__": {"whiff_percent": 26.40892857142857, "z_swing_miss_percent": 16.273214285714285, "oz_swing_miss_percent": 45.496428571428574}, "logan gilbert": {"name": "Logan Gilbert", "whiff_percent": 32.9, "z_swing_miss_percent": 17.6, "oz_swing_miss_percent": 60.7, "fastball_percent": 52.5, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 34.3}, {"code": "FC", "label": "Cutter", "usage_percent": 18.2}, {"code": "FS", "label": "Splitter", "usage_percent": 16.6}, {"code": "SL", "label": "Slider", "usage_percent": 15.5}, {"code": "CU", "label": "Curveball", "usage_percent": 8.3}, {"code": "CH", "label": "Changeup", "usage_percent": 7.2}]}, "jose soriano": {"name": "Jos\u00e9 Soriano", "whiff_percent": 35.4, "z_swing_miss_percent": 10.2, "oz_swing_miss_percent": 72.7, "fastball_percent": 52.5, "arsenal": [{"code": "CU", "label": "Curveball", "usage_percent": 30.4}, {"code": "SI", "label": "Sinker", "usage_percent": 28.2}, {"code": "FF", "label": "Four-Seam", "usage_percent": 24.3}, {"code": "FS", "label": "Splitter", "usage_percent": 9.9}, {"code": "SL", "label": "Slider", "usage_percent": 7.2}]}, "chris sale": {"name": "Chris Sale", "whiff_percent": 22.8, "z_swing_miss_percent": 20.8, "oz_swing_miss_percent": 26.9, "fastball_percent": 47.3, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 43.7}, {"code": "SL", "label": "Slider", "usage_percent": 39.5}, {"code": "CH", "label": "Changeup", "usage_percent": 13.2}, {"code": "SI", "label": "Sinker", "usage_percent": 3.6}]}};
+    const leagueAverages = arsenalData["__league_averages__"] || {};
+    const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const nameEl = document.getElementById("arsenal-name");
+    const whiffBoxEl = document.getElementById("arsenal-whiff-box");
+    const whiffEl = document.getElementById("arsenal-whiff");
+    const whiffAvgEl = document.getElementById("arsenal-whiff-avg");
+    const zMissBoxEl = document.getElementById("arsenal-z-miss-box");
+    const zMissEl = document.getElementById("arsenal-z-miss");
+    const zMissAvgEl = document.getElementById("arsenal-z-miss-avg");
+    const ozMissBoxEl = document.getElementById("arsenal-oz-miss-box");
+    const ozMissEl = document.getElementById("arsenal-oz-miss");
+    const ozMissAvgEl = document.getElementById("arsenal-oz-miss-avg");
+    const fastballBoxEl = document.getElementById("arsenal-fastball-box");
+    const fastballEl = document.getElementById("arsenal-fastball");
+    const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
+    const pitchesEl = document.getElementById("arsenal-pitches");
+    const emptyEl = document.getElementById("arsenal-empty");
+
+    function toNumberOrNull(value) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function formatPercent(value) {
+      const numeric = toNumberOrNull(value);
+      if (numeric === null) {
+        return "-";
+      }
+      return `${numeric.toFixed(1)}%`;
+    }
+
+    function setMetricTile(boxEl, valueEl, avgEl, value, leagueAvg, useComparison = true) {
+      const numericValue = toNumberOrNull(value);
+      const numericLeagueAvg = toNumberOrNull(leagueAvg);
+
+      valueEl.textContent = formatPercent(numericValue);
+
+      if (avgEl) {
+        avgEl.textContent = useComparison ? `Lg Avg: ${formatPercent(numericLeagueAvg)}` : "";
+      }
+
+      boxEl.classList.remove("metric-above", "metric-below", "metric-neutral");
+      if (!useComparison || numericValue === null || numericLeagueAvg === null) {
+        boxEl.classList.add("metric-neutral");
+        return;
+      }
+
+      const delta = numericValue - numericLeagueAvg;
+      if (delta >= 1.0) {
+        boxEl.classList.add("metric-above");
+      } else if (delta <= -1.0) {
+        boxEl.classList.add("metric-below");
+      } else {
+        boxEl.classList.add("metric-neutral");
+      }
+    }
+
+    function clearPitches() {
+      while (pitchesEl.firstChild) {
+        pitchesEl.removeChild(pitchesEl.firstChild);
+      }
+    }
+
+    function renderPitchMix(arsenalList) {
+      clearPitches();
+      if (!Array.isArray(arsenalList) || arsenalList.length === 0) {
+        return false;
+      }
+
+      arsenalList.forEach((pitch) => {
+        const usage = Number(pitch.usage_percent);
+        if (Number.isNaN(usage)) {
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "arsenal-pitch-row";
+
+        const label = document.createElement("span");
+        label.className = "arsenal-pitch-label";
+        label.textContent = pitch.label || pitch.code || "Pitch";
+
+        const value = document.createElement("span");
+        value.className = "arsenal-pitch-value";
+        value.textContent = formatPercent(usage);
+
+        const track = document.createElement("div");
+        track.className = "arsenal-pitch-track";
+        const fill = document.createElement("div");
+        fill.className = "arsenal-pitch-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, usage))}%`;
+        track.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(value);
+        row.appendChild(track);
+        pitchesEl.appendChild(row);
+      });
+
+      return pitchesEl.children.length > 0;
+    }
+
+    function selectPitcher(pitcherKey) {
+      pitcherRows.forEach((row) => {
+        row.classList.toggle("row-selected", row.dataset.pitcherKey === pitcherKey);
+      });
+
+      const details = arsenalData[pitcherKey];
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === pitcherKey);
+      const fallbackName = selectedRow ? selectedRow.querySelector("td")?.innerText?.trim() : "Pitcher Arsenal Snapshot";
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+
+      if (!details) {
+        nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
+        setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+        setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+        setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+        setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+        clearPitches();
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      nameEl.textContent = details.name || fallbackName || "Pitcher Arsenal Snapshot";
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, details.whiff_percent, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, details.z_swing_miss_percent, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, details.oz_swing_miss_percent, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, details.fastball_percent, null, false);
+
+      const hasPitches = renderPitchMix(details.arsenal);
+      emptyEl.style.display = hasPitches ? "none" : "block";
+    }
+
+    pitcherRows.forEach((row) => {
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("a")) {
+          return;
+        }
+        selectPitcher(row.dataset.pitcherKey);
+      });
+    });
+
+    const defaultKey = pitcherRows.map((row) => row.dataset.pitcherKey).find((key) => Object.prototype.hasOwnProperty.call(arsenalData, key))
+      || (pitcherRows[0] ? pitcherRows[0].dataset.pitcherKey : null);
+
+    if (defaultKey) {
+      selectPitcher(defaultKey);
+    }
+  </script>
+</body>
+</html>
