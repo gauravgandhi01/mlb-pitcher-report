@@ -1,21 +1,34 @@
 import datetime as dt
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
+import Batters as batters_module
 from Batters import (
+    HOME_RUN_REPORT_COLUMNS,
     ACTIVE_STREAK_SECTION_MIN,
+    RECENT_GAMES,
+    RECENT_WINDOW_DAYS,
     STREAK_SECTION_MIN,
+    _final_team_result,
+    _final_total_result,
     apply_hot_scores,
     build_active_hit_streak_section,
     build_good_matchups_section,
+    build_home_run_matchup_section,
     build_hot_streak_matchup_section,
     compute_hit_streak,
     compute_recent_metrics,
     extract_espn_game_total,
+    format_home_run_focus_dataframe,
+    format_report_dataframe,
     parse_vs_pitcher_stats,
     rank_active_roster_candidates,
     sort_batters_for_report,
+    write_html,
 )
 
 
@@ -87,6 +100,14 @@ class BattersLogicTests(unittest.TestCase):
         ]
 
         self.assertEqual(compute_hit_streak(logs, report_date), 2)
+
+    def test_final_indicators_resolve_win_and_over_under(self) -> None:
+        self.assertEqual(_final_team_result("Final", 6, 4), "win")
+        self.assertEqual(_final_team_result("Final", 2, 5), "loss")
+        self.assertEqual(_final_team_result("Scheduled", 6, 4), "")
+        self.assertEqual(_final_total_result("Final", 8.5, 6, 4), "over")
+        self.assertEqual(_final_total_result("Final", 9.5, 3, 4), "under")
+        self.assertEqual(_final_total_result("Final", 8.0, 5, 3), "push")
 
     def test_extract_espn_game_total_prefers_pickcenter_over_under(self) -> None:
         summary = {
@@ -381,6 +402,345 @@ class BattersLogicTests(unittest.TestCase):
 
         matchups = build_good_matchups_section(df, hot)
         self.assertEqual(list(matchups["Batter"]), ["C", "B"])
+
+    def test_build_home_run_matchup_section_filters_and_sorts_by_hr_rate(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Two Homer Bat",
+                    "Team": "T1",
+                    "Opponent": "O1",
+                    "Pitcher": "P1",
+                    "VsP HR": 2,
+                    "VsP PA": 10,
+                    "VsP H": 4,
+                    "VsP AB": 7,
+                    "Recent HR": 1,
+                    "Status": "Scheduled",
+                },
+                {
+                    "Batter": "Rate Bat",
+                    "Team": "T2",
+                    "Opponent": "O2",
+                    "Pitcher": "P2",
+                    "VsP HR": 1,
+                    "VsP PA": 4,
+                    "VsP H": 2,
+                    "VsP AB": 4,
+                    "Recent HR": 0,
+                    "Status": "Scheduled",
+                },
+                {
+                    "Batter": "Volume Bat",
+                    "Team": "T3",
+                    "Opponent": "O3",
+                    "Pitcher": "P3",
+                    "VsP HR": 1,
+                    "VsP PA": 9,
+                    "VsP H": 3,
+                    "VsP AB": 8,
+                    "Recent HR": 2,
+                    "Status": "Scheduled",
+                },
+                {
+                    "Batter": "Live Homer",
+                    "Team": "T4",
+                    "Opponent": "O4",
+                    "Pitcher": "P4",
+                    "VsP HR": 3,
+                    "VsP PA": 10,
+                    "VsP H": 5,
+                    "VsP AB": 9,
+                    "Recent HR": 1,
+                    "Status": "In Progress",
+                },
+                {
+                    "Batter": "Too Small",
+                    "Team": "T5",
+                    "Opponent": "O5",
+                    "Pitcher": "P5",
+                    "VsP HR": 1,
+                    "VsP PA": 3,
+                    "VsP H": 1,
+                    "VsP AB": 3,
+                    "Recent HR": 1,
+                    "Status": "Scheduled",
+                },
+                {
+                    "Batter": "No Homers",
+                    "Team": "T6",
+                    "Opponent": "O6",
+                    "Pitcher": "P6",
+                    "VsP HR": 0,
+                    "VsP PA": 7,
+                    "VsP H": 2,
+                    "VsP AB": 6,
+                    "Recent HR": 0,
+                    "Status": "Scheduled",
+                },
+            ]
+        )
+
+        home_run_df = build_home_run_matchup_section(df)
+        self.assertEqual(list(home_run_df["Batter"]), ["Rate Bat", "Two Homer Bat", "Volume Bat", "Live Homer"])
+
+    def test_format_report_dataframe_supports_home_run_focus_columns(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Slugger",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Scheduled",
+                    "VsP HR": 2,
+                    "VsP PA": 8,
+                    "VsP H": 4,
+                    "VsP AB": 7,
+                    "Start": "6:40p",
+                }
+            ]
+        )
+
+        formatted = format_report_dataframe(df, columns=HOME_RUN_REPORT_COLUMNS)
+
+        self.assertEqual(list(formatted.columns), HOME_RUN_REPORT_COLUMNS)
+        self.assertEqual(formatted.iloc[0]["VsP HR"], "2")
+        self.assertEqual(formatted.iloc[0]["VsP PA"], "8")
+        self.assertEqual(formatted.iloc[0]["VsP HR/PA"], "25.0%")
+        self.assertEqual(formatted.iloc[0]["VsP H-AB"], "4-7")
+
+    def test_format_report_dataframe_adds_final_game_hit_markers_to_batter_name(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Hit Guy",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Final",
+                    "Game Hit Result": "hit",
+                    "Hit Stk": 4,
+                    "Team Result": "win",
+                    "Final Total Runs": 11,
+                    "Total Result": "over",
+                    "Recent AVG": 0.286,
+                    f"Last {RECENT_WINDOW_DAYS} AVG": 0.301,
+                    "Season AVG": 0.274,
+                    "VsP AVG": 0.333,
+                    "VsP H": 3,
+                    "VsP AB": 9,
+                    "Start": "6:40p",
+                },
+                {
+                    "Batter": "No Hit Guy",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Final",
+                    "Game Hit Result": "no-hit",
+                    "Hit Stk": 1,
+                    "Team Result": "loss",
+                    "Final Total Runs": 7,
+                    "Total Result": "under",
+                    "Recent AVG": 0.143,
+                    f"Last {RECENT_WINDOW_DAYS} AVG": 0.211,
+                    "Season AVG": 0.240,
+                    "VsP AVG": 0.125,
+                    "VsP H": 1,
+                    "VsP AB": 8,
+                    "Start": "6:40p",
+                },
+            ]
+        )
+
+        formatted = format_report_dataframe(df)
+
+        self.assertIn("batter-game-mark-hit", formatted.iloc[0]["Batter"])
+        self.assertIn("&#10003;", formatted.iloc[0]["Batter"])
+        self.assertIn("batter-game-mark-no-hit", formatted.iloc[1]["Batter"])
+        self.assertIn(">X</span>", formatted.iloc[1]["Batter"])
+
+    def test_format_home_run_focus_dataframe_uses_home_run_markers_for_final_rows(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Single Only",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Final",
+                    "Game Hit Result": "hit",
+                    "Game Home Run Result": "no-home-run",
+                    "VsP HR": 2,
+                    "VsP PA": 8,
+                    "VsP H": 4,
+                    "VsP AB": 7,
+                    "Start": "6:40p",
+                },
+                {
+                    "Batter": "Went Deep",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Final",
+                    "Game Hit Result": "hit",
+                    "Game Home Run Result": "home-run",
+                    "VsP HR": 1,
+                    "VsP PA": 4,
+                    "VsP H": 1,
+                    "VsP AB": 4,
+                    "Start": "6:40p",
+                },
+            ]
+        )
+
+        formatted = format_home_run_focus_dataframe(df)
+
+        self.assertIn("batter-game-mark-no-hit", formatted.iloc[0]["Batter"])
+        self.assertIn("No home run in this final game", formatted.iloc[0]["Batter"])
+        self.assertNotIn("Had a hit in this final game", formatted.iloc[0]["Batter"])
+        self.assertIn("batter-game-mark-hit", formatted.iloc[1]["Batter"])
+        self.assertIn("Had a home run in this final game", formatted.iloc[1]["Batter"])
+
+    def test_format_report_dataframe_replaces_season_hit_ab_with_last_14_avg(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Sample Batter",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Pitcher": "Braxton Ashcraft",
+                    "Total": 8.5,
+                    "Status": "Final",
+                    "Hit Stk": 4,
+                    "Team Result": "win",
+                    "Final Total Runs": 11,
+                    "Total Result": "over",
+                    "Recent AVG": 0.286,
+                    f"Last {RECENT_WINDOW_DAYS} AVG": 0.301,
+                    "Recent H": 2,
+                    "Recent AB": 7,
+                    "Season AVG": 0.274,
+                    "Season H": 30,
+                    "Season AB": 110,
+                    "VsP AVG": 0.333,
+                    "VsP H": 3,
+                    "VsP AB": 9,
+                    "Start": "6:40p",
+                }
+            ]
+        )
+
+        formatted = format_report_dataframe(df)
+
+        self.assertEqual(
+            list(formatted.columns),
+            [
+                "Batter",
+                "Team",
+                "Opponent",
+                "Pitcher",
+                "Total",
+                "Status",
+                "Hit Stk",
+                f"Last {RECENT_GAMES} AVG",
+                f"Last {RECENT_WINDOW_DAYS} AVG",
+                "Season AVG",
+                "VsP AVG",
+                "VsP H-AB",
+            ],
+        )
+        self.assertEqual(formatted.iloc[0][f"Last {RECENT_WINDOW_DAYS} AVG"], "0.301")
+        self.assertNotIn(f"Last {RECENT_GAMES} H-AB", formatted.columns)
+        self.assertNotIn("Season H-AB", formatted.columns)
+        self.assertIn('team-result team-result-win', formatted.iloc[0]["Team"])
+        self.assertIn('total-result total-result-over', formatted.iloc[0]["Total"])
+
+
+class BattersRenderTests(unittest.TestCase):
+    def _sample_row(self) -> dict:
+        return {
+            "Batter": "Sample Batter",
+            "Team": "Miami Marlins",
+            "Team Abbrev": "MIA",
+            "Team Id": 146,
+            "Opponent": "Pittsburgh Pirates",
+            "Opponent Abbrev": "PIT",
+            "Opponent Id": 134,
+            "Pitcher": "Braxton Ashcraft",
+            "Total": 8.5,
+            "Status": "Scheduled",
+            "Hit Stk": 6,
+            "Team Result": "",
+            "Total Result": "",
+            "Final Total Runs": pd.NA,
+            "Recent AVG": 0.321,
+            f"Last {RECENT_WINDOW_DAYS} AVG": 0.305,
+            "Season AVG": 0.284,
+            "VsP AVG": 0.333,
+            "VsP H": 3,
+            "VsP AB": 9,
+            "VsP HR": 2,
+            "VsP PA": 8,
+            "Recent HR": 1,
+            "Start": "6:40p",
+            "Source": "ESPN Confirmed",
+        }
+
+    def test_write_html_renders_same_date_archive_tabs_and_date_nav(self) -> None:
+        display_date = dt.date.today().strftime("%m/%d/%Y")
+        report_key = display_date.replace("/", "")
+        df = pd.DataFrame([self._sample_row()])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            reports_dir = tmp_path / "reports"
+            root_file = tmp_path / "batters.html"
+            with patch.object(batters_module, "REPORTS_DIR", reports_dir), patch.object(
+                batters_module,
+                "ROOT_BATTERS_FILE",
+                root_file,
+            ):
+                archive_path = write_html(df, df, df, df, report_key, display_date)
+
+            archive_html = archive_path.read_text(encoding="utf-8")
+            root_html = root_file.read_text(encoding="utf-8")
+
+            self.assertIn('class="date-nav"', archive_html)
+            self.assertIn(f'href="./report-{report_key}.html"', archive_html)
+            self.assertIn(f'href="./matchups-report-{report_key}.html"', archive_html)
+            self.assertIn('href="./index.html"', root_html)
+            self.assertIn('href="./matchups.html"', root_html)
 
 
 if __name__ == "__main__":

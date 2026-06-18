@@ -4,17 +4,39 @@ import datetime as dt
 import sys
 from html import escape
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
-import requests
-import statsapi
 from bs4 import BeautifulSoup
-from unidecode import unidecode
+
+from report_data import (
+    build_espn_event_snapshot_lookup,
+    compute_hit_streak,
+    compute_recent_metrics,
+    extract_confirmed_espn_lineup,
+    extract_espn_game_total,
+    extract_game_logs,
+    extract_season_hitting_stats as _extract_season_stat,
+    fetch_espn_summary,
+    fetch_people_stats_map,
+    fetch_pitcher_context,
+    fetch_team_meta,
+    fetch_team_roster,
+    filter_active_hitters,
+    format_local_start_time as _format_local_start_time,
+    index_stat_blocks,
+    normalize_team_name as _normalize_team_name,
+    parse_vs_pitcher_stats,
+    resolve_date_input,
+    resolve_effective_report_date_and_schedule,
+    resolve_lineup_player_ids,
+    to_float as _to_float,
+    to_int as _to_int,
+)
+from site_nav import build_date_nav_html, build_report_tabs
 
 REPORTS_DIR = Path("reports")
 ROOT_BATTERS_FILE = Path(__file__).resolve().parent / "batters.html"
-SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 SOURCE_ESPN = "ESPN Confirmed"
 SOURCE_ACTIVE = "Active Roster"
@@ -29,7 +51,8 @@ GOOD_MATCHUP_AVG_FLOOR = 0.300
 ACTIVE_STREAK_SECTION_LIMIT = 20
 HOT_SECTION_LIMIT = 20
 MATCHUP_SECTION_LIMIT = 30
-REQUEST_TIMEOUT_SECONDS = 20
+HOME_RUN_MIN_HR = 1
+HOME_RUN_SECTION_LIMIT = 20
 REPORT_COLUMNS = [
     "Batter",
     "Team",
@@ -39,560 +62,23 @@ REPORT_COLUMNS = [
     "Status",
     "Hit Stk",
     f"Last {RECENT_GAMES} AVG",
-    f"Last {RECENT_GAMES} H-AB",
+    f"Last {RECENT_WINDOW_DAYS} AVG",
     "Season AVG",
-    "Season H-AB",
     "VsP AVG",
     "VsP H-AB",
 ]
-
-TEAM_META_CACHE: Dict[int, Dict[str, Any]] = {}
-TEAM_ROSTER_CACHE: Dict[int, List[Dict[str, Any]]] = {}
-PITCHER_LOOKUP_CACHE: Dict[str, Optional[Dict[str, Any]]] = {}
-ESPN_SUMMARY_CACHE: Dict[str, Optional[Dict[str, Any]]] = {}
-LINEUP_NAME_LOOKUP_CACHE: Dict[Tuple[int, str], Optional[int]] = {}
-
-
-def _normalize_person_name(name: Any) -> str:
-    text = unidecode(str(name or "")).lower().strip()
-    text = text.replace(".", "").replace("'", "")
-    return " ".join(text.split())
-
-
-def _normalize_team_name(name: Any) -> str:
-    text = unidecode(str(name or "")).lower().strip()
-    text = text.replace(".", "").replace("'", "")
-    return " ".join(text.split())
-
-
-def _choose_best_player_match(players: List[Dict[str, Any]], player_name: str) -> Optional[Dict[str, Any]]:
-    if not players:
-        return None
-
-    target = _normalize_person_name(player_name)
-    if not target:
-        return players[0]
-
-    exact_full = [p for p in players if _normalize_person_name(p.get("fullName")) == target]
-    if exact_full:
-        return exact_full[0]
-
-    exact_first_last = [
-        p
-        for p in players
-        if _normalize_person_name(p.get("firstLastName")) == target
-        or _normalize_person_name(p.get("nameFirstLast")) == target
-    ]
-    if exact_first_last:
-        return exact_first_last[0]
-
-    return players[0]
-
-
-def _to_float(value: Any) -> Optional[float]:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
-        return None
-    return float(numeric)
-
-
-def _to_int(value: Any) -> Optional[int]:
-    numeric = _to_float(value)
-    if numeric is None:
-        return None
-    return int(numeric)
-
-
-def _parse_date(value: Any) -> Optional[dt.date]:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        return dt.datetime.strptime(text, "%Y-%m-%d").date()
-    except ValueError:
-        return None
-
-
-def _safe_ratio(numerator: float, denominator: float) -> Optional[float]:
-    if denominator <= 0:
-        return None
-    return numerator / denominator
-
-
-def _format_local_start_time(game_datetime: Any) -> str:
-    text = str(game_datetime or "").strip()
-    if not text:
-        return ""
-    try:
-        game_dt = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError:
-        return ""
-    local_time = game_dt.astimezone().strftime("%I:%M %p").lstrip("0")
-    return local_time.replace(" AM", "a").replace(" PM", "p")
-
-
-def resolve_date_input(raw_input: str) -> str:
-    today = dt.datetime.now()
-    input_lower = raw_input.lower()
-    if input_lower == "today":
-        return today.strftime("%m/%d/%Y")
-    if input_lower == "tmrw":
-        return (today + dt.timedelta(days=1)).strftime("%m/%d/%Y")
-
-    if raw_input.count("/") == 2:
-        dt.datetime.strptime(raw_input, "%m/%d/%Y")
-        return raw_input
-    if raw_input.count("/") == 1:
-        return f"{raw_input}/{today.year}"
-    raise ValueError("Date must be 'today', 'tmrw', 'MM/DD', or 'MM/DD/YYYY'.")
-
-
-def _next_report_date(report_date: str) -> str:
-    date_obj = dt.datetime.strptime(report_date, "%m/%d/%Y")
-    return (date_obj + dt.timedelta(days=1)).strftime("%m/%d/%Y")
-
-
-def fetch_schedule(date: str) -> List[Dict[str, Any]]:
-    schedule = statsapi.schedule(start_date=date, end_date=date)
-    return [game for game in schedule if game.get("status") in SCHEDULE_STATUSES]
-
-
-def _has_not_started_games(schedule: Sequence[Dict[str, Any]]) -> bool:
-    return any(game.get("status") in NOT_STARTED_STATUSES for game in schedule)
-
-
-def resolve_effective_report_date_and_schedule(report_date: str) -> Tuple[str, List[Dict[str, Any]]]:
-    schedule = fetch_schedule(report_date)
-    if _has_not_started_games(schedule):
-        return report_date, schedule
-
-    next_report_date = _next_report_date(report_date)
-    next_schedule = fetch_schedule(next_report_date)
-    print(
-        "\033[93mNo games remain in a not-started state on "
-        f"{report_date}. Rolling report forward to {next_report_date}.\033[0m"
-    )
-    return next_report_date, next_schedule
-
-
-def fetch_team_meta(team_id: int) -> Dict[str, Any]:
-    if team_id in TEAM_META_CACHE:
-        return TEAM_META_CACHE[team_id]
-
-    data = statsapi.get("team", {"teamId": team_id})
-    team = (data.get("teams") or [{}])[0]
-    TEAM_META_CACHE[team_id] = team
-    return team
-
-
-def fetch_team_roster(team_id: int) -> List[Dict[str, Any]]:
-    if team_id in TEAM_ROSTER_CACHE:
-        return TEAM_ROSTER_CACHE[team_id]
-
-    roster_data = statsapi.get("team_roster", {"teamId": team_id})
-    roster = roster_data.get("roster") or []
-    TEAM_ROSTER_CACHE[team_id] = roster
-    return roster
-
-
-def fetch_pitcher_context(pitcher_name: str) -> Optional[Dict[str, Any]]:
-    key = _normalize_person_name(pitcher_name)
-    if key in PITCHER_LOOKUP_CACHE:
-        return PITCHER_LOOKUP_CACHE[key]
-
-    players = statsapi.lookup_player(pitcher_name)
-    player = _choose_best_player_match(players or [], pitcher_name)
-    if not player:
-        PITCHER_LOOKUP_CACHE[key] = None
-        return None
-
-    data = statsapi.get("people", {"personIds": player["id"]}, force=True)
-    people = data.get("people") or []
-    if not people:
-        PITCHER_LOOKUP_CACHE[key] = None
-        return None
-
-    person = people[0]
-    result = {
-        "id": int(person["id"]),
-        "name": str(person.get("fullName") or pitcher_name),
-        "hand": str(((person.get("pitchHand") or {}).get("code") or "")).upper() or None,
-    }
-    PITCHER_LOOKUP_CACHE[key] = result
-    return result
-
-
-def _fetch_espn_scoreboard_events(date: str) -> List[Dict[str, Any]]:
-    date_obj = dt.datetime.strptime(date, "%m/%d/%Y")
-    url = (
-        "https://site.web.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
-        f"?dates={date_obj.strftime('%Y%m%d')}"
-    )
-    response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    payload = response.json()
-    return payload.get("events") or []
-
-
-def build_espn_event_lookup(date: str) -> Dict[Tuple[str, str], str]:
-    lookup: Dict[Tuple[str, str], str] = {}
-    for event in _fetch_espn_scoreboard_events(date):
-        event_id = str(event.get("id", "")).strip()
-        competition = (event.get("competitions") or [{}])[0]
-        competitors = competition.get("competitors") or []
-        away_name = ""
-        home_name = ""
-        for competitor in competitors:
-            team = competitor.get("team") or {}
-            display_name = str(team.get("displayName", "")).strip()
-            home_away = str(competitor.get("homeAway", "")).strip().lower()
-            if home_away == "away":
-                away_name = display_name
-            elif home_away == "home":
-                home_name = display_name
-        if event_id and away_name and home_name:
-            lookup[(_normalize_team_name(away_name), _normalize_team_name(home_name))] = event_id
-    return lookup
-
-
-def fetch_espn_summary(event_id: str) -> Optional[Dict[str, Any]]:
-    if not event_id:
-        return None
-    if event_id in ESPN_SUMMARY_CACHE:
-        return ESPN_SUMMARY_CACHE[event_id]
-
-    url = f"https://site.web.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event={event_id}"
-    try:
-        response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-        response.raise_for_status()
-        summary = response.json()
-    except requests.RequestException:
-        summary = None
-    ESPN_SUMMARY_CACHE[event_id] = summary
-    return summary
-
-
-def extract_espn_game_total(summary_data: Optional[Dict[str, Any]]) -> Optional[float]:
-    if not summary_data:
-        return None
-
-    for pickcenter in summary_data.get("pickcenter") or []:
-        total = _to_float(pickcenter.get("overUnder"))
-        if total is not None:
-            return total
-
-    for odds_entry in summary_data.get("odds") or []:
-        total = _to_float(odds_entry.get("overUnder"))
-        if total is not None:
-            return total
-
-    return None
-
-
-def extract_confirmed_espn_lineup(summary_data: Dict[str, Any], team_abbrev: str) -> List[Dict[str, Any]]:
-    target = str(team_abbrev or "").strip().upper()
-    for roster_block in summary_data.get("rosters") or []:
-        roster_team = roster_block.get("team") or {}
-        if str(roster_team.get("abbreviation") or "").strip().upper() != target:
-            continue
-
-        roster = roster_block.get("roster") or []
-        ordered = [player for player in roster if _to_int(player.get("batOrder")) is not None]
-        ordered = sorted(ordered, key=lambda player: _to_int(player.get("batOrder")) or 999)
-        starters = [player for player in ordered if player.get("starter")]
-        lineup = starters if len(starters) >= 9 else ordered
-        if len(lineup) < 9:
-            return []
-        return [
-            {
-                "name": str((entry.get("athlete") or {}).get("fullName", "")).strip(),
-                "order": int(_to_int(entry.get("batOrder")) or 0),
-            }
-            for entry in lineup[:9]
-            if str((entry.get("athlete") or {}).get("fullName", "")).strip()
-        ]
-    return []
-
-
-def filter_active_hitters(roster_entries: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    hitters: List[Dict[str, Any]] = []
-    for entry in roster_entries:
-        person = entry.get("person") or {}
-        position = entry.get("position") or {}
-        status = entry.get("status") or {}
-        position_type = str(position.get("type") or "").strip().lower()
-        if not person.get("id"):
-            continue
-        if str(status.get("code") or "").strip().upper() not in {"A", ""}:
-            continue
-        if position_type == "pitcher":
-            continue
-        hitters.append(entry)
-    return hitters
-
-
-def _chunked(values: Sequence[int], size: int) -> Iterable[Sequence[int]]:
-    for start in range(0, len(values), size):
-        yield values[start : start + size]
-
-
-def fetch_people_stats_map(
-    person_ids: Sequence[int],
-    season: int,
-    pitch_hand: Optional[str],
-    pitcher_id: int,
-) -> Dict[int, Dict[str, Any]]:
-    if not person_ids:
-        return {}
-
-    sit_code = "vl" if str(pitch_hand or "").upper() == "L" else "vr"
-    hydrate = (
-        "stats(group=[hitting],type=[season,gameLog,statSplits,vsPlayer],"
-        f"sitCodes=[{sit_code}],opposingPlayerId={pitcher_id},season={season})"
-    )
-    people_by_id: Dict[int, Dict[str, Any]] = {}
-    for chunk in _chunked(list(dict.fromkeys(person_ids)), 8):
-        payload = statsapi.get(
-            "people",
-            {"personIds": ",".join(str(person_id) for person_id in chunk), "hydrate": hydrate},
-            force=True,
-        )
-        for person in payload.get("people") or []:
-            people_by_id[int(person["id"])] = person
-    return people_by_id
-
-
-def index_stat_blocks(person: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
-    indexed: Dict[str, List[Dict[str, Any]]] = {}
-    for block in person.get("stats") or []:
-        display_name = str((block.get("type") or {}).get("displayName") or "").strip()
-        if display_name:
-            indexed.setdefault(display_name, []).append(block)
-    return indexed
-
-
-def first_stat_split(blocks: Sequence[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not blocks:
-        return None
-    splits = blocks[0].get("splits") or []
-    if not splits:
-        return None
-    return splits[0]
-
-
-def extract_game_logs(person: Dict[str, Any]) -> List[Dict[str, Any]]:
-    indexed = index_stat_blocks(person)
-    logs: List[Dict[str, Any]] = []
-    for block in indexed.get("gameLog", []):
-        for split in block.get("splits") or []:
-            game_date = _parse_date(split.get("date"))
-            if game_date is None:
-                continue
-            stat = split.get("stat") or {}
-            game_info = split.get("game") or {}
-            logs.append(
-                {
-                    "date": game_date,
-                    "gamePk": _to_int(game_info.get("gamePk")) or 0,
-                    "atBats": _to_int(stat.get("atBats")) or 0,
-                    "hits": _to_int(stat.get("hits")) or 0,
-                    "walks": _to_int(stat.get("baseOnBalls")) or 0,
-                    "hitByPitch": _to_int(stat.get("hitByPitch")) or 0,
-                    "sacFlies": _to_int(stat.get("sacFlies")) or 0,
-                    "plateAppearances": _to_int(stat.get("plateAppearances")) or 0,
-                    "totalBases": _to_int(stat.get("totalBases")) or 0,
-                    "strikeOuts": _to_int(stat.get("strikeOuts")) or 0,
-                    "homeRuns": _to_int(stat.get("homeRuns")) or 0,
-                    "rbi": _to_int(stat.get("rbi")) or 0,
-                }
-            )
-    logs.sort(key=lambda row: (row["date"], row["gamePk"]), reverse=True)
-    return logs
-
-
-def compute_recent_metrics(
-    game_logs: Sequence[Dict[str, Any]],
-    report_date: dt.date,
-    *,
-    max_games: Optional[int] = None,
-    window_days: Optional[int] = None,
-) -> Dict[str, Any]:
-    start_date = report_date - dt.timedelta(days=window_days or 0) if window_days is not None else None
-    filtered = []
-    for row in game_logs:
-        row_date = row.get("date")
-        if not isinstance(row_date, dt.date) or row_date >= report_date:
-            continue
-        if start_date is not None and row_date < start_date:
-            continue
-        filtered.append(row)
-
-    filtered.sort(key=lambda row: (row["date"], row.get("gamePk", 0)), reverse=True)
-    if max_games is not None:
-        filtered = filtered[:max_games]
-
-    totals = {
-        "games": len(filtered),
-        "PA": 0,
-        "AB": 0,
-        "H": 0,
-        "BB": 0,
-        "HBP": 0,
-        "SF": 0,
-        "TB": 0,
-        "K": 0,
-        "HR": 0,
-        "RBI": 0,
-    }
-    for row in filtered:
-        totals["PA"] += int(row.get("plateAppearances") or 0)
-        totals["AB"] += int(row.get("atBats") or 0)
-        totals["H"] += int(row.get("hits") or 0)
-        totals["BB"] += int(row.get("walks") or 0)
-        totals["HBP"] += int(row.get("hitByPitch") or 0)
-        totals["SF"] += int(row.get("sacFlies") or 0)
-        totals["TB"] += int(row.get("totalBases") or 0)
-        totals["K"] += int(row.get("strikeOuts") or 0)
-        totals["HR"] += int(row.get("homeRuns") or 0)
-        totals["RBI"] += int(row.get("rbi") or 0)
-
-    obp_denom = totals["AB"] + totals["BB"] + totals["HBP"] + totals["SF"]
-    avg = _safe_ratio(totals["H"], totals["AB"])
-    obp = _safe_ratio(totals["H"] + totals["BB"] + totals["HBP"], obp_denom)
-    slg = _safe_ratio(totals["TB"], totals["AB"])
-    k_pct = _safe_ratio(totals["K"] * 100.0, totals["PA"])
-    ops = None if obp is None or slg is None else obp + slg
-    totals.update(
-        {
-            "AVG": avg,
-            "OBP": obp,
-            "SLG": slg,
-            "OPS": ops,
-            "K%": k_pct,
-        }
-    )
-    return totals
-
-
-def compute_hit_streak(game_logs: Sequence[Dict[str, Any]], report_date: dt.date) -> int:
-    filtered = [
-        row
-        for row in game_logs
-        if isinstance(row.get("date"), dt.date) and row["date"] < report_date
-    ]
-    filtered.sort(key=lambda row: (row["date"], row.get("gamePk", 0)), reverse=True)
-
-    streak = 0
-    for row in filtered:
-        at_bats = int(row.get("atBats") or 0)
-        hits = int(row.get("hits") or 0)
-        if at_bats <= 0:
-            continue
-        if hits >= 1:
-            streak += 1
-            continue
-        break
-    return streak
-
-
-def parse_vs_pitcher_stats(indexed_blocks: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
-    total_split = first_stat_split(indexed_blocks.get("vsPlayerTotal", []))
-    if total_split is not None:
-        stat = total_split.get("stat") or {}
-        return {
-            "PA": _to_int(stat.get("plateAppearances")) or 0,
-            "AB": _to_int(stat.get("atBats")) or 0,
-            "H": _to_int(stat.get("hits")) or 0,
-            "HR": _to_int(stat.get("homeRuns")) or 0,
-            "RBI": _to_int(stat.get("rbi")) or 0,
-            "AVG": _to_float(stat.get("avg")),
-            "OPS": _to_float(stat.get("ops")),
-            "K%": _safe_ratio((_to_int(stat.get("strikeOuts")) or 0) * 100.0, _to_int(stat.get("plateAppearances")) or 0),
-        }
-
-    splits = []
-    for block in indexed_blocks.get("vsPlayer", []):
-        splits.extend(block.get("splits") or [])
-    if not splits:
-        return {"PA": 0, "AB": 0, "H": 0, "HR": 0, "RBI": 0, "AVG": None, "OPS": None, "K%": None}
-
-    at_bats = 0
-    hits = 0
-    walks = 0
-    hit_by_pitch = 0
-    sac_flies = 0
-    total_bases = 0
-    strikeouts = 0
-    plate_appearances = 0
-    home_runs = 0
-    rbi = 0
-    for split in splits:
-        stat = split.get("stat") or {}
-        at_bats += _to_int(stat.get("atBats")) or 0
-        hits += _to_int(stat.get("hits")) or 0
-        walks += _to_int(stat.get("baseOnBalls")) or 0
-        hit_by_pitch += _to_int(stat.get("hitByPitch")) or 0
-        sac_flies += _to_int(stat.get("sacFlies")) or 0
-        total_bases += _to_int(stat.get("totalBases")) or 0
-        strikeouts += _to_int(stat.get("strikeOuts")) or 0
-        plate_appearances += _to_int(stat.get("plateAppearances")) or 0
-        home_runs += _to_int(stat.get("homeRuns")) or 0
-        rbi += _to_int(stat.get("rbi")) or 0
-
-    obp_denom = at_bats + walks + hit_by_pitch + sac_flies
-    avg = _safe_ratio(hits, at_bats)
-    obp = _safe_ratio(hits + walks + hit_by_pitch, obp_denom)
-    slg = _safe_ratio(total_bases, at_bats)
-    ops = None if obp is None or slg is None else obp + slg
-    k_pct = _safe_ratio(strikeouts * 100.0, plate_appearances)
-    return {"PA": plate_appearances, "AB": at_bats, "H": hits, "HR": home_runs, "RBI": rbi, "AVG": avg, "OPS": ops, "K%": k_pct}
-
-
-def _extract_season_stat(person: Dict[str, Any]) -> Dict[str, Any]:
-    indexed = index_stat_blocks(person)
-    split = first_stat_split(indexed.get("season", []))
-    stat = (split or {}).get("stat") or {}
-    return {
-        "PA": _to_int(stat.get("plateAppearances")) or 0,
-        "AB": _to_int(stat.get("atBats")) or 0,
-        "H": _to_int(stat.get("hits")) or 0,
-        "AVG": _to_float(stat.get("avg")),
-        "OBP": _to_float(stat.get("obp")),
-        "SLG": _to_float(stat.get("slg")),
-        "OPS": _to_float(stat.get("ops")),
-    }
-
-
-def resolve_lineup_player_ids(
-    lineup_entries: Sequence[Dict[str, Any]],
-    roster_entries: Sequence[Dict[str, Any]],
-    team_id: int,
-) -> List[int]:
-    roster_name_lookup = {
-        _normalize_person_name((entry.get("person") or {}).get("fullName")): int((entry.get("person") or {}).get("id"))
-        for entry in roster_entries
-        if (entry.get("person") or {}).get("fullName") and (entry.get("person") or {}).get("id")
-    }
-    resolved_ids: List[int] = []
-    for lineup_entry in lineup_entries:
-        player_name = str(lineup_entry.get("name") or "").strip()
-        cache_key = (team_id, _normalize_person_name(player_name))
-        if cache_key in LINEUP_NAME_LOOKUP_CACHE:
-            player_id = LINEUP_NAME_LOOKUP_CACHE[cache_key]
-        else:
-            player_id = roster_name_lookup.get(cache_key[1])
-            if player_id is None and player_name:
-                candidates = statsapi.lookup_player(player_name)
-                for candidate in candidates or []:
-                    current_team = (candidate.get("currentTeam") or {}).get("id")
-                    if int(current_team or 0) == int(team_id):
-                        player_id = int(candidate["id"])
-                        break
-            LINEUP_NAME_LOOKUP_CACHE[cache_key] = player_id
-        if player_id is None:
-            return []
-        resolved_ids.append(int(player_id))
-    return resolved_ids
+HOME_RUN_REPORT_COLUMNS = [
+    "Batter",
+    "Team",
+    "Opponent",
+    "Pitcher",
+    "Total",
+    "Status",
+    "VsP HR",
+    "VsP PA",
+    "VsP HR/PA",
+    "VsP H-AB",
+]
 
 
 def build_candidate_rows(
@@ -607,6 +93,12 @@ def build_candidate_rows(
     pitch_hand: Optional[str],
     start_time: str,
     status: str,
+    game_id: Optional[int],
+    team_score: Optional[int],
+    opponent_score: Optional[int],
+    team_result: str,
+    total_result: str,
+    final_total_runs: Optional[int],
     roster_entries: Sequence[Dict[str, Any]],
     people_by_id: Dict[int, Dict[str, Any]],
     report_date: dt.date,
@@ -629,6 +121,8 @@ def build_candidate_rows(
         recent14 = compute_recent_metrics(game_logs, report_date, window_days=RECENT_WINDOW_DAYS)
         vsp = parse_vs_pitcher_stats(indexed)
         hit_streak = compute_hit_streak(game_logs, report_date)
+        game_hit_result = _resolve_game_hit_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
+        game_home_run_result = _resolve_game_home_run_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
 
         row = {
             "Batter": str(person_info.get("fullName") or person.get("fullName") or "").strip(),
@@ -640,11 +134,16 @@ def build_candidate_rows(
             "Opponent Abbrev": opponent_abbrev,
             "Pitcher": pitcher_name,
             "Total": game_total,
+            "Total Result": total_result,
+            "Final Total Runs": final_total_runs,
             "Pitch Hand": pitch_hand or "",
             "Source": SOURCE_ACTIVE,
             "Pool Rank": pd.NA,
             "Hot Score": None,
             "Hit Stk": hit_streak,
+            "Team Result": team_result,
+            "Team Score": team_score,
+            "Opponent Score": opponent_score,
             "Recent PA": recent7["PA"],
             "Recent AB": recent7["AB"],
             "Recent H": recent7["H"],
@@ -655,6 +154,7 @@ def build_candidate_rows(
             "Recent HR": recent7["HR"],
             "Recent RBI": recent7["RBI"],
             "Recent K%": recent7["K%"],
+            f"Last {RECENT_WINDOW_DAYS} AVG": recent14["AVG"],
             "VsP PA": vsp["PA"],
             "VsP AB": vsp["AB"],
             "VsP H": vsp["H"],
@@ -672,6 +172,8 @@ def build_candidate_rows(
             "Season OPS": season["OPS"],
             "Start": start_time,
             "Status": status,
+            "Game Hit Result": game_hit_result,
+            "Game Home Run Result": game_home_run_result,
             "__player_id": person_id,
             "__recent14d_pa": recent14["PA"],
             "__recent14d_ops": recent14["OPS"],
@@ -864,6 +366,32 @@ def build_good_matchups_section(df: pd.DataFrame, hot_df: pd.DataFrame) -> pd.Da
     return good.head(MATCHUP_SECTION_LIMIT)
 
 
+def build_home_run_matchup_section(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame(columns=HOME_RUN_REPORT_COLUMNS)
+
+    filtered = df.copy()
+    filtered["__status_sort"] = filtered["Status"].astype(str).map(_status_sort_value)
+    filtered["__vsp_hr"] = pd.to_numeric(filtered["VsP HR"], errors="coerce").fillna(0)
+    filtered["__vsp_pa"] = pd.to_numeric(filtered["VsP PA"], errors="coerce").fillna(0)
+    filtered["__vsp_hr_rate"] = filtered["__vsp_hr"].div(filtered["__vsp_pa"].where(filtered["__vsp_pa"] > 0))
+    filtered["__recent_hr"] = pd.to_numeric(filtered["Recent HR"], errors="coerce").fillna(0)
+
+    home_run_rows = filtered[
+        (filtered["__vsp_hr"] >= HOME_RUN_MIN_HR)
+        & (filtered["__vsp_pa"] >= MATCHUP_MIN_PA)
+    ].copy()
+    if home_run_rows.empty:
+        return pd.DataFrame(columns=HOME_RUN_REPORT_COLUMNS)
+
+    home_run_rows = home_run_rows.sort_values(
+        by=["__status_sort", "__vsp_hr_rate", "__vsp_hr", "__vsp_pa", "__recent_hr", "Batter"],
+        ascending=[True, False, False, False, False, True],
+        kind="mergesort",
+    )
+    return home_run_rows.head(HOME_RUN_SECTION_LIMIT)
+
+
 def _format_rate(value: Any) -> str:
     numeric = _to_float(value)
     if numeric is None:
@@ -900,11 +428,82 @@ def _format_hit_ab(hits: Any, at_bats: Any) -> str:
     return f"{hits_value}-{at_bats_value}"
 
 
+def _format_percentage_ratio(numerator: Any, denominator: Any) -> str:
+    numerator_value = _to_float(numerator)
+    denominator_value = _to_float(denominator)
+    if numerator_value is None or denominator_value is None or denominator_value <= 0:
+        return ""
+    return f"{(100.0 * numerator_value / denominator_value):.1f}%"
+
+
+def _final_team_result(status: Any, team_score: Any, opponent_score: Any) -> str:
+    status_text = str(status or "").strip()
+    if status_text != "Final":
+        return ""
+    team_score_value = _to_int(team_score)
+    opponent_score_value = _to_int(opponent_score)
+    if team_score_value is None or opponent_score_value is None:
+        return ""
+    if team_score_value > opponent_score_value:
+        return "win"
+    if team_score_value < opponent_score_value:
+        return "loss"
+    return ""
+
+
+def _final_total_result(status: Any, total: Any, away_score: Any, home_score: Any) -> str:
+    status_text = str(status or "").strip()
+    if status_text != "Final":
+        return ""
+    total_value = _to_float(total)
+    away_score_value = _to_int(away_score)
+    home_score_value = _to_int(home_score)
+    if total_value is None or away_score_value is None or home_score_value is None:
+        return ""
+    final_runs = away_score_value + home_score_value
+    if final_runs > total_value:
+        return "over"
+    if final_runs < total_value:
+        return "under"
+    return "push"
+
+
 def _team_logo_url(team_id: Any) -> str:
     team_id_value = _to_int(team_id)
     if team_id_value is None:
         return ""
     return f"https://www.mlbstatic.com/team-logos/{team_id_value}.svg"
+
+
+def _render_team_result_badge(result: Any) -> str:
+    result_text = str(result or "").strip().lower()
+    if result_text == "win":
+        return '<span class="team-result team-result-win" title="Won">W</span>'
+    if result_text == "loss":
+        return '<span class="team-result team-result-loss" title="Lost">L</span>'
+    return ""
+
+
+def _render_total_cell(total: Any, result: Any = "", final_runs: Any = None) -> str:
+    total_text = _format_total(total)
+    result_text = str(result or "").strip().lower()
+    if not total_text:
+        return ""
+    if result_text not in {"over", "under", "push"}:
+        return total_text
+
+    label_map = {"over": "O", "under": "U", "push": "P"}
+    title_map = {
+        "over": f"Final total {final_runs} went over {total_text}",
+        "under": f"Final total {final_runs} stayed under {total_text}",
+        "push": f"Final total {final_runs} pushed {total_text}",
+    }
+    return (
+        f'<span class="total-cell" title="{escape(title_map[result_text], quote=True)}">'
+        f'<span class="total-value">{escape(total_text)}</span>'
+        f'<span class="total-result total-result-{escape(result_text, quote=True)}">{label_map[result_text]}</span>'
+        "</span>"
+    )
 
 
 def _status_badge(status: Any) -> str:
@@ -917,11 +516,12 @@ def _status_badge(status: Any) -> str:
     return f'<span class="status-pill status-{escape(status_slug, quote=True)}">{escape(status_text)}</span>'
 
 
-def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any) -> str:
+def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any, result: Any = "") -> str:
     name_text = str(team_name or "").strip()
     abbrev_text = str(team_abbrev or "").strip() or name_text[:3].upper()
     logo_url = escape(_team_logo_url(team_id), quote=True)
     title = escape(name_text or abbrev_text, quote=True)
+    result_html = _render_team_result_badge(result)
     return (
         '<span class="team-cell" title="'
         + title
@@ -931,6 +531,7 @@ def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any) -> str:
         + title
         + ' logo"></span><span class="team-abbrev">'
         + escape(abbrev_text)
+        + result_html
         + "</span></span>"
     )
 
@@ -1024,23 +625,88 @@ def _format_total(value: Any) -> str:
     return f"{numeric:.1f}"
 
 
-def format_report_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def _resolve_game_hit_result(game_logs: Sequence[Dict[str, Any]], game_id: Optional[int]) -> str:
+    target_game_id = _to_int(game_id)
+    if target_game_id is None:
+        return ""
+    for row in game_logs:
+        if _to_int(row.get("gamePk")) != target_game_id:
+            continue
+        return "hit" if (_to_int(row.get("hits")) or 0) >= 1 else "no-hit"
+    return "no-hit"
+
+
+def _resolve_game_home_run_result(game_logs: Sequence[Dict[str, Any]], game_id: Optional[int]) -> str:
+    target_game_id = _to_int(game_id)
+    if target_game_id is None:
+        return ""
+    for row in game_logs:
+        if _to_int(row.get("gamePk")) != target_game_id:
+            continue
+        return "home-run" if (_to_int(row.get("homeRuns")) or 0) >= 1 else "no-home-run"
+    return "no-home-run"
+
+
+def _render_batter_name(name: Any, game_result: Any = "", *, marker_context: str = "hit") -> str:
+    name_text = str(name or "").strip()
+    result_text = str(game_result or "").strip().lower()
+    badge = ""
+    if marker_context == "home_run":
+        if result_text == "home-run":
+            badge = '<span class="batter-game-mark batter-game-mark-hit" title="Had a home run in this final game">&#10003;</span>'
+        elif result_text == "no-home-run":
+            badge = '<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span>'
+    else:
+        if result_text == "hit":
+            badge = '<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">&#10003;</span>'
+        elif result_text == "no-hit":
+            badge = '<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span>'
+    return (
+        '<span class="batter-name">'
+        + escape(name_text)
+        + badge
+        + "</span>"
+    )
+
+
+def format_report_dataframe(
+    df: pd.DataFrame,
+    columns: Optional[Sequence[str]] = None,
+    *,
+    game_result_column: str = "Game Hit Result",
+    marker_context: str = "hit",
+) -> pd.DataFrame:
+    report_columns = list(columns or REPORT_COLUMNS)
     if df.empty:
-        return pd.DataFrame(columns=REPORT_COLUMNS)
+        return pd.DataFrame(columns=report_columns)
 
     formatted = df.copy()
-    formatted["Batter"] = formatted["Batter"].apply(
-        lambda value: '<span class="batter-name">' + escape(str(value or "")) + "</span>"
-    )
+    for column_name, default_value in (
+        ("Team Result", ""),
+        ("Team Score", pd.NA),
+        ("Opponent Score", pd.NA),
+        ("Total Result", ""),
+        ("Final Total Runs", pd.NA),
+    ):
+        if column_name not in formatted.columns:
+            formatted[column_name] = default_value
+    formatted["Batter"] = [
+        _render_batter_name(batter_name, game_result, marker_context=marker_context)
+        for batter_name, game_result in zip(
+            formatted["Batter"],
+            formatted.get(game_result_column, pd.Series("", index=formatted.index)),
+        )
+    ]
     formatted["Pitcher"] = formatted["Pitcher"].apply(
         lambda value: '<span class="pitcher-name">' + escape(_format_pitcher_last_name(value)) + "</span>"
     )
     formatted["Team"] = [
-        _render_team_cell(team_name, team_abbrev, team_id)
-        for team_name, team_abbrev, team_id in zip(
+        _render_team_cell(team_name, team_abbrev, team_id, team_result)
+        for team_name, team_abbrev, team_id, team_result in zip(
             formatted["Team"],
             formatted["Team Abbrev"],
             formatted["Team Id"],
+            formatted["Team Result"],
         )
     ]
     formatted["Opponent"] = [
@@ -1053,31 +719,53 @@ def format_report_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         )
     ]
     formatted["Status"] = formatted["Status"].apply(_status_badge)
-    formatted["Total"] = formatted["Total"].apply(_format_total)
-    formatted["Hit Stk"] = formatted["Hit Stk"].apply(_format_int)
-    formatted[f"Last {RECENT_GAMES} AVG"] = formatted["Recent AVG"].apply(_format_rate)
+    formatted["Total"] = [
+        _render_total_cell(total, total_result, final_total_runs)
+        for total, total_result, final_total_runs in zip(
+            formatted["Total"],
+            formatted["Total Result"],
+            formatted["Final Total Runs"],
+        )
+    ]
+    if "Hit Stk" in formatted.columns:
+        formatted["Hit Stk"] = formatted["Hit Stk"].apply(_format_int)
+    if "Recent AVG" in formatted.columns:
+        formatted[f"Last {RECENT_GAMES} AVG"] = formatted["Recent AVG"].apply(_format_rate)
+    if f"Last {RECENT_WINDOW_DAYS} AVG" in formatted.columns:
+        formatted[f"Last {RECENT_WINDOW_DAYS} AVG"] = formatted[f"Last {RECENT_WINDOW_DAYS} AVG"].apply(_format_rate)
     for column in ["VsP AVG", "Season AVG"]:
-        formatted[column] = formatted[column].apply(_format_rate)
-    formatted[f"Last {RECENT_GAMES} H-AB"] = [
-        _format_hit_ab(hits, at_bats)
-        for hits, at_bats in zip(formatted["Recent H"], formatted["Recent AB"])
+        if column in formatted.columns:
+            formatted[column] = formatted[column].apply(_format_rate)
+    if "VsP H" in formatted.columns and "VsP AB" in formatted.columns:
+        formatted["VsP H-AB"] = [
+            _format_hit_ab(hits, at_bats)
+            for hits, at_bats in zip(formatted["VsP H"], formatted["VsP AB"])
+        ]
+    if "VsP HR" in formatted.columns:
+        formatted["VsP HR"] = formatted["VsP HR"].apply(_format_int)
+    if "VsP PA" in formatted.columns:
+        formatted["VsP PA"] = formatted["VsP PA"].apply(_format_int)
+    formatted["VsP HR/PA"] = [
+        _format_percentage_ratio(hr, pa)
+        for hr, pa in zip(df.get("VsP HR", pd.Series(index=df.index)), df.get("VsP PA", pd.Series(index=df.index)))
     ]
-    formatted["VsP H-AB"] = [
-        _format_hit_ab(hits, at_bats)
-        for hits, at_bats in zip(formatted["VsP H"], formatted["VsP AB"])
-    ]
-    formatted["Season H-AB"] = [
-        _format_hit_ab(hits, at_bats)
-        for hits, at_bats in zip(formatted["Season H"], formatted["Season AB"])
-    ]
-    return formatted[REPORT_COLUMNS]
+    return formatted[report_columns]
 
 
 def format_focus_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return format_report_dataframe(df)
 
 
-def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> str:
+def format_home_run_focus_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    return format_report_dataframe(
+        df,
+        columns=HOME_RUN_REPORT_COLUMNS,
+        game_result_column="Game Home Run Result",
+        marker_context="home_run",
+    )
+
+
+def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame, *, focus_mode: str = "default") -> str:
     if report_df.empty:
         return '<p class="empty-state">No rows available.</p>'
 
@@ -1098,9 +786,11 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
         "Status": "group-context",
         "Hit Stk": "group-batter",
         f"Last {RECENT_GAMES} AVG": "group-batter",
-        f"Last {RECENT_GAMES} H-AB": "group-batter",
+        f"Last {RECENT_WINDOW_DAYS} AVG": "group-batter",
         "Season AVG": "group-batter",
-        "Season H-AB": "group-batter",
+        "VsP HR": "group-matchup",
+        "VsP PA": "group-matchup",
+        "VsP HR/PA": "group-matchup",
         "VsP AVG": "group-matchup",
         "VsP H-AB": "group-matchup",
     }
@@ -1145,13 +835,20 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
             row_classes.append("row-final")
         if str(row_data.get("Source") or "").strip() == SOURCE_ACTIVE:
             row_classes.append("row-fallback")
-        vsp_avg = _to_float(row_data.get("VsP AVG")) or 0.0
-        recent_avg = _to_float(row_data.get("Recent AVG")) or 0.0
-        hit_streak = _to_float(row_data.get("Hit Stk")) or 0.0
-        if vsp_avg >= 0.350 or (hit_streak >= 5 and recent_avg >= 0.300):
-            row_classes.append("row-target")
-        elif recent_avg <= 0.220 and vsp_avg < 0.250:
-            row_classes.append("row-caution")
+        if focus_mode == "home_run":
+            vsp_hr = _to_float(row_data.get("VsP HR")) or 0.0
+            vsp_pa = _to_float(row_data.get("VsP PA")) or 0.0
+            hr_rate_pct = (100.0 * vsp_hr / vsp_pa) if vsp_pa > 0 else 0.0
+            if vsp_hr >= 2 or hr_rate_pct >= 20.0:
+                row_classes.append("row-target")
+        else:
+            vsp_avg = _to_float(row_data.get("VsP AVG")) or 0.0
+            recent_avg = _to_float(row_data.get("Recent AVG")) or 0.0
+            hit_streak = _to_float(row_data.get("Hit Stk")) or 0.0
+            if vsp_avg >= 0.350 or (hit_streak >= 5 and recent_avg >= 0.300):
+                row_classes.append("row-target")
+            elif recent_avg <= 0.220 and vsp_avg < 0.250:
+                row_classes.append("row-caution")
         if row_classes:
             row_tag["class"] = row_classes
 
@@ -1172,8 +869,25 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
             elif streak_value >= 5:
                 _add_cell_class(cells, column_map, "Hit Stk", "cell-strong")
 
+        vsp_hr_value = _to_float(row_data.get("VsP HR"))
+        if vsp_hr_value is not None:
+            if vsp_hr_value >= 3:
+                _add_cell_class(cells, column_map, "VsP HR", "cell-elite")
+            elif vsp_hr_value >= 2:
+                _add_cell_class(cells, column_map, "VsP HR", "cell-strong")
+
+        vsp_hr_rate = _to_float(row_data.get("VsP HR"))
+        vsp_pa = _to_float(row_data.get("VsP PA"))
+        if vsp_hr_rate is not None and vsp_pa is not None and vsp_pa > 0:
+            hr_rate_pct = 100.0 * vsp_hr_rate / vsp_pa
+            if hr_rate_pct >= 20.0:
+                _add_cell_class(cells, column_map, "VsP HR/PA", "cell-elite")
+            elif hr_rate_pct >= 10.0:
+                _add_cell_class(cells, column_map, "VsP HR/PA", "cell-strong")
+
         for column_name, thresholds, raw_key in (
             (f"Last {RECENT_GAMES} AVG", (0.330, 0.280, 0.220), "Recent AVG"),
+            (f"Last {RECENT_WINDOW_DAYS} AVG", (0.320, 0.275, 0.220), f"Last {RECENT_WINDOW_DAYS} AVG"),
             ("Season AVG", (0.300, 0.270, 0.230), "Season AVG"),
             ("VsP AVG", (0.360, 0.300, 0.220), "VsP AVG"),
         ):
@@ -1189,10 +903,11 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> st
     return str(table)
 
 
-def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str) -> str:
+def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str, matchup_href: str) -> str:
     tabs = [
         ("pitchers", "Pitchers", pitcher_href),
         ("batters", "Batters", batter_href),
+        ("matchups", "Matchups", matchup_href),
     ]
     links: List[str] = []
     for tab_key, label, href in tabs:
@@ -1210,16 +925,27 @@ def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str) -> 
 def write_html(
     streak_df: pd.DataFrame,
     hot_df: pd.DataFrame,
+    home_run_df: pd.DataFrame,
     matchup_df: pd.DataFrame,
     report_key: str,
     display_date: str,
+    *,
+    write_root: bool = True,
 ) -> Path:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     updated_at = dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     streak_table = _build_focus_table_html(format_focus_dataframe(streak_df), streak_df)
     hot_table = _build_focus_table_html(format_focus_dataframe(hot_df), hot_df)
+    home_run_table = _build_focus_table_html(
+        format_home_run_focus_dataframe(home_run_df),
+        home_run_df,
+        focus_mode="home_run",
+    )
     matchup_table = _build_focus_table_html(format_focus_dataframe(matchup_df), matchup_df)
-    tabs_html = _build_report_tabs("batters", "__PITCHER_HREF__", "__BATTER_HREF__")
+    root_tabs_html = build_report_tabs("batters", display_date, root_page=True, reports_dir=REPORTS_DIR)
+    archive_tabs_html = build_report_tabs("batters", display_date, root_page=False, reports_dir=REPORTS_DIR)
+    root_date_nav_html = build_date_nav_html("batters", display_date, root_page=True, reports_dir=REPORTS_DIR)
+    archive_date_nav_html = build_date_nav_html("batters", display_date, root_page=False, reports_dir=REPORTS_DIR)
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1300,6 +1026,53 @@ def write_html(
       color: #0f4c81;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
     }}
+    .report-tab.disabled {{
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }}
+    .date-nav {{
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }}
+    .date-pill {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }}
+    .date-pill:hover {{
+      background: rgba(255, 255, 255, 0.20);
+    }}
+    .date-pill.active {{
+      background: rgba(15, 23, 42, 0.18);
+      border-color: rgba(255, 255, 255, 0.38);
+    }}
+    .date-pill.disabled {{
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }}
+    .date-pill-label {{
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 10px;
+    }}
+    .date-pill-date {{
+      opacity: 0.9;
+      font-size: 11px;
+    }}
     .panel {{
       background: var(--panel);
       border-radius: 14px;
@@ -1326,6 +1099,10 @@ def write_html(
     .panel-header.section-matchup {{
       background: #fff7ea;
       border-bottom-color: #efd9b6;
+    }}
+    .panel-header.section-homer {{
+      background: #fff1f2;
+      border-bottom-color: #fecdd3;
     }}
     .panel-header.section-streak {{
       background: #eef6ff;
@@ -1499,8 +1276,8 @@ def write_html(
     }}
     table.pitchers-table th.column-total,
     table.pitchers-table td.column-total {{
-      min-width: 54px;
-      max-width: 62px;
+      min-width: 64px;
+      max-width: 74px;
       padding-left: 3px;
       padding-right: 3px;
     }}
@@ -1544,8 +1321,34 @@ def write_html(
       color: #0f172a;
     }}
     .batter-name {{
-      display: block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       text-align: center;
+      width: 100%;
+    }}
+    .batter-game-mark {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      border: 1px solid transparent;
+    }}
+    .batter-game-mark-hit {{
+      background: rgba(22, 163, 74, 0.12);
+      border-color: rgba(22, 163, 74, 0.22);
+      color: #166534;
+    }}
+    .batter-game-mark-no-hit {{
+      background: rgba(220, 38, 38, 0.10);
+      border-color: rgba(220, 38, 38, 0.18);
+      color: #991b1b;
     }}
     .pitcher-name {{
       font-size: 12px;
@@ -1581,9 +1384,36 @@ def write_html(
       object-fit: contain;
     }}
     .team-abbrev {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
       font-weight: 700;
       letter-spacing: 0.03em;
       color: #0f172a;
+    }}
+    .team-result {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      line-height: 1;
+    }}
+    .team-result.team-result-win {{
+      background: rgba(22, 163, 74, 0.12);
+      border-color: rgba(22, 163, 74, 0.22);
+      color: #166534;
+    }}
+    .team-result.team-result-loss {{
+      background: rgba(220, 38, 38, 0.10);
+      border-color: rgba(220, 38, 38, 0.18);
+      color: #991b1b;
     }}
     .opp-team {{
       display: inline-flex;
@@ -1600,6 +1430,43 @@ def write_html(
       font-size: 9px;
       font-weight: 700;
       letter-spacing: 0.01em;
+    }}
+    .total-cell {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }}
+    .total-value {{
+      display: inline-block;
+    }}
+    .total-result {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      line-height: 1;
+    }}
+    .total-result.total-result-over {{
+      background: rgba(190, 24, 93, 0.10);
+      border-color: rgba(190, 24, 93, 0.18);
+      color: #9d174d;
+    }}
+    .total-result.total-result-under {{
+      background: rgba(14, 116, 144, 0.10);
+      border-color: rgba(14, 116, 144, 0.18);
+      color: #155e75;
+    }}
+    .total-result.total-result-push {{
+      background: rgba(71, 85, 105, 0.10);
+      border-color: rgba(71, 85, 105, 0.18);
+      color: #475569;
     }}
     .status-pill {{
       display: inline-block;
@@ -1660,7 +1527,8 @@ def write_html(
     <section class="hero">
       <h1>MLB Daily Batter Report</h1>
       <p>{escape(display_date)} slate. Updated {escape(updated_at)}.</p>
-      {tabs_html}
+      __TABS_HTML__
+      __DATE_NAV_HTML__
     </section>
 
     <section class="panel panel-legend">
@@ -1668,7 +1536,7 @@ def write_html(
         <span class="legend-item legend-context"><span class="legend-swatch"></span>Context</span>
         <span class="legend-item legend-batter"><span class="legend-swatch"></span>Form</span>
         <span class="legend-item legend-matchup"><span class="legend-swatch"></span>Matchup</span>
-        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Green/yellow/red = stronger to weaker totals or AVG.</span>
+        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Green/yellow/red = stronger to weaker totals or AVG. Final rows add subtle W/L and O/U markers.</span>
       </div>
     </section>
 
@@ -1701,16 +1569,35 @@ def write_html(
         {streak_table}
       </div>
     </section>
+
+    <section class="panel">
+      <div class="panel-header section-homer">
+        <h2>Home Run History vs Scheduled Pitcher</h2>
+        <div class="note">{HOME_RUN_MIN_HR}+ HR and {MATCHUP_MIN_PA}+ PA vs pitcher, sorted by VsP HR/PA.</div>
+      </div>
+      <div class="table-wrap">
+        {home_run_table}
+      </div>
+    </section>
   </div>
 </body>
 </html>
 """
 
     output_path = REPORTS_DIR / f"batters-report-{report_key}.html"
-    archive_html_content = html_content.replace("__PITCHER_HREF__", "../index.html").replace("__BATTER_HREF__", "../batters.html")
-    root_html_content = html_content.replace("__PITCHER_HREF__", "./index.html").replace("__BATTER_HREF__", "./batters.html")
+    archive_html_content = (
+        html_content
+        .replace("__TABS_HTML__", archive_tabs_html)
+        .replace("__DATE_NAV_HTML__", archive_date_nav_html)
+    )
+    root_html_content = (
+        html_content
+        .replace("__TABS_HTML__", root_tabs_html)
+        .replace("__DATE_NAV_HTML__", root_date_nav_html)
+    )
     output_path.write_text(archive_html_content, encoding="utf-8")
-    ROOT_BATTERS_FILE.write_text(root_html_content, encoding="utf-8")
+    if write_root:
+        ROOT_BATTERS_FILE.write_text(root_html_content, encoding="utf-8")
     print(output_path.resolve().as_uri())
     return output_path
 
@@ -1718,7 +1605,7 @@ def write_html(
 def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> List[Dict[str, Any]]:
     report_date_obj = dt.datetime.strptime(report_date, "%m/%d/%Y").date()
     report_year = report_date_obj.year
-    espn_event_lookup = build_espn_event_lookup(report_date)
+    espn_event_snapshots = build_espn_event_snapshot_lookup(report_date)
     team_ids = {
         int(game[side])
         for game in schedule
@@ -1738,9 +1625,14 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
 
         start_time = _format_local_start_time(game.get("game_datetime"))
         status = str(game.get("status") or "").strip()
-        event_id = espn_event_lookup.get((_normalize_team_name(away_team), _normalize_team_name(home_team)), "")
+        event_snapshot = espn_event_snapshots.get((_normalize_team_name(away_team), _normalize_team_name(home_team))) or {}
+        event_id = str(event_snapshot.get("event_id") or "").strip()
         espn_summary = fetch_espn_summary(event_id) if event_id else None
         game_total = extract_espn_game_total(espn_summary)
+        away_score = _to_int(event_snapshot.get("away_score"))
+        home_score = _to_int(event_snapshot.get("home_score"))
+        total_result = _final_total_result(status, game_total, away_score, home_score)
+        final_total_runs = (away_score + home_score) if away_score is not None and home_score is not None else None
         offense_configs = [
             {
                 "team_id": away_team_id,
@@ -1750,6 +1642,8 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 "opponent_name": home_team,
                 "opponent_abbrev": str((team_meta_map.get(home_team_id) or {}).get("abbreviation") or "").strip().upper(),
                 "pitcher_name": str(game.get("home_probable_pitcher") or "").strip(),
+                "team_score": away_score,
+                "opponent_score": home_score,
             },
             {
                 "team_id": home_team_id,
@@ -1759,6 +1653,8 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 "opponent_name": away_team,
                 "opponent_abbrev": str((team_meta_map.get(away_team_id) or {}).get("abbreviation") or "").strip().upper(),
                 "pitcher_name": str(game.get("away_probable_pitcher") or "").strip(),
+                "team_score": home_score,
+                "opponent_score": away_score,
             },
         ]
 
@@ -1803,6 +1699,12 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 pitch_hand=str(pitcher_context.get("hand") or ""),
                 start_time=start_time,
                 status=status,
+                game_id=_to_int(game.get("game_id")),
+                team_score=_to_int(offense.get("team_score")),
+                opponent_score=_to_int(offense.get("opponent_score")),
+                team_result=_final_team_result(status, offense.get("team_score"), offense.get("opponent_score")),
+                total_result=total_result,
+                final_total_runs=final_total_runs,
                 roster_entries=roster_entries,
                 people_by_id=people_by_id,
                 report_date=report_date_obj,
@@ -1818,21 +1720,45 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
     return rows
 
 
-def main(raw_date_input: str) -> None:
+def main(raw_date_input: str, *, allow_roll_forward: bool = True, write_root: bool = True) -> None:
     report_date = resolve_date_input(raw_date_input)
-    report_date, schedule = resolve_effective_report_date_and_schedule(report_date)
+    report_date, schedule = resolve_effective_report_date_and_schedule(
+        report_date,
+        allow_roll_forward=allow_roll_forward,
+    )
     report_key = report_date.replace("/", "")
     rows = build_report_rows(schedule, report_date)
     final_df = sort_batters_for_report(apply_hot_scores(rows))
     streak_df = build_active_hit_streak_section(final_df)
     hot_df = build_hot_streak_matchup_section(final_df)
+    home_run_df = build_home_run_matchup_section(final_df)
     matchup_df = build_good_matchups_section(final_df, hot_df)
-    write_html(streak_df, hot_df, matchup_df, report_key, report_date)
+    write_html(
+        streak_df,
+        hot_df,
+        home_run_df,
+        matchup_df,
+        report_key,
+        report_date,
+        write_root=write_root,
+    )
+
+
+def _parse_cli_args(argv: Sequence[str]) -> tuple[str, bool, bool]:
+    if len(argv) < 2:
+        print("Usage: python3 Batters.py <today|tmrw|MM/DD|MM/DD/YYYY> [--exact] [--no-root]")
+        sys.exit(1)
+
+    supported_flags = {"--exact", "--no-root"}
+    raw_flags = [str(flag) for flag in argv[2:]]
+    unexpected_flags = [flag for flag in raw_flags if flag not in supported_flags]
+    if unexpected_flags:
+        print(f"Unsupported flags: {', '.join(unexpected_flags)}")
+        sys.exit(1)
+
+    return str(argv[1]), "--exact" in raw_flags, "--no-root" in raw_flags
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 Batters.py <today|tmrw|MM/DD|MM/DD/YYYY>")
-        sys.exit(1)
-
-    main(str(sys.argv[1]))
+    raw_date_input, exact_mode, no_root = _parse_cli_args(sys.argv)
+    main(raw_date_input, allow_roll_forward=not exact_mode, write_root=not no_root)

@@ -23,6 +23,7 @@ from pybaseball import team_batting
 from unidecode import unidecode
 
 from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
+from site_nav import build_date_nav_html, build_report_tabs
 
 REPORTS_DIR = Path("reports")
 ROOT_INDEX_FILE = Path(__file__).resolve().parent / "index.html"
@@ -105,6 +106,23 @@ OPPONENT_STAT_COLUMNS = {
     "r",
 }
 SAVANT_STAT_COLUMNS = {"Whiff%"}
+PITCHERS_SORTABLE_COLUMNS = {
+    "GP",
+    "AB",
+    "K",
+    "BB",
+    "AVG",
+    "AB/GP",
+    "K/9",
+    "Whiff%",
+    "K/AB",
+    "K%",
+    "PA",
+    "SO/PA",
+    OPP_HAND_K_COLUMN,
+    "r",
+    "Ks",
+}
 STAT_HEADER_TOOLTIPS = {
     "Name": "Probable starting pitcher.",
     "Hand": "Pitching handedness (R/L).",
@@ -1599,6 +1617,14 @@ def _build_conditional_table_html(
             _add_tag_class(header_cell, "stat-tooltip")
             header_cell["title"] = tooltip_text
             header_cell["aria-label"] = f"{col_name}: {tooltip_text}"
+        if col_name in PITCHERS_SORTABLE_COLUMNS:
+            _add_tag_class(header_cell, "is-sortable")
+            header_cell["data-sort-key"] = col_name
+            header_cell["data-sort-index"] = str(col_index)
+            header_cell["data-sort-direction"] = "default"
+            header_cell["tabindex"] = "0"
+            header_cell["role"] = "button"
+            header_cell["aria-sort"] = "none"
 
     for odds_col in odds_columns:
         col_index = column_map.get(odds_col)
@@ -1613,6 +1639,7 @@ def _build_conditional_table_html(
             break
         row_data = raw_df.iloc[row_index]
         row_classes = row_tag.get("class", [])
+        row_tag["data-initial-index"] = str(row_index)
         pitcher_name = str(row_data.get("Name", "")).strip()
         pitcher_key = _normalize_person_name(pitcher_name)
         if pitcher_key:
@@ -1722,6 +1749,11 @@ def _build_conditional_table_html(
             group_class = _column_group_class(col_name)
             if group_class:
                 _add_tag_class(cells[col_index], group_class)
+            if col_name in PITCHERS_SORTABLE_COLUMNS:
+                cells[col_index]["data-sort-key"] = col_name
+                sort_value = _to_float(row_data.get(col_name))
+                if sort_value is not None:
+                    cells[col_index]["data-sort-value"] = f"{sort_value:.12g}"
 
         for odds_col in odds_columns:
             col_index = column_map.get(odds_col)
@@ -1827,10 +1859,11 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     return report_df.fillna("-")
 
 
-def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str) -> str:
+def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str, matchup_href: str) -> str:
     tabs = [
         ("pitchers", "Pitchers", pitcher_href),
         ("batters", "Batters", batter_href),
+        ("matchups", "Matchups", matchup_href),
     ]
     links: List[str] = []
     for tab_key, label, href in tabs:
@@ -1850,6 +1883,8 @@ def write_to_html(
     report_key: str,
     display_date: str,
     pitcher_arsenal_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+    *,
+    write_root: bool = True,
 ) -> Path:
     print("\033[92mWriting to HTML....\033[0m")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1863,7 +1898,10 @@ def write_to_html(
     arsenal_payload = _build_pitcher_arsenal_payload(final_df, pitcher_arsenal_lookup or {})
     arsenal_payload_json = json.dumps(arsenal_payload).replace("</", "<\\/")
     updated_at = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-    tabs_html = _build_report_tabs("pitchers", "__PITCHER_HREF__", "__BATTER_HREF__")
+    root_tabs_html = build_report_tabs("pitchers", display_date, root_page=True, reports_dir=REPORTS_DIR)
+    archive_tabs_html = build_report_tabs("pitchers", display_date, root_page=False, reports_dir=REPORTS_DIR)
+    root_date_nav_html = build_date_nav_html("pitchers", display_date, root_page=True, reports_dir=REPORTS_DIR)
+    archive_date_nav_html = build_date_nav_html("pitchers", display_date, root_page=False, reports_dir=REPORTS_DIR)
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1946,6 +1984,53 @@ def write_to_html(
       color: #0f4c81;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
     }}
+    .report-tab.disabled {{
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }}
+    .date-nav {{
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }}
+    .date-pill {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }}
+    .date-pill:hover {{
+      background: rgba(255, 255, 255, 0.20);
+    }}
+    .date-pill.active {{
+      background: rgba(15, 23, 42, 0.18);
+      border-color: rgba(255, 255, 255, 0.38);
+    }}
+    .date-pill.disabled {{
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }}
+    .date-pill-label {{
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 10px;
+    }}
+    .date-pill-date {{
+      opacity: 0.9;
+      font-size: 11px;
+    }}
     .panel {{
       background: var(--panel);
       border-radius: 14px;
@@ -1996,6 +2081,36 @@ def write_to_html(
       color: #475569;
       font-size: 11px;
     }}
+    .table-controls {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px 0;
+    }}
+    .table-controls-label {{
+      color: #334155;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }}
+    .toggle-chip {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid #d1dbe7;
+      background: #f8fbff;
+      color: #0f172a;
+      font-size: 11px;
+      font-weight: 700;
+    }}
+    .toggle-chip input {{
+      margin: 0;
+      accent-color: #0f766e;
+    }}
     table.pitchers-table {{
       width: 100%;
       border-collapse: separate;
@@ -2020,6 +2135,30 @@ def write_to_html(
       cursor: help;
       text-decoration: underline dotted rgba(15, 23, 42, 0.35);
       text-underline-offset: 2px;
+    }}
+    table.pitchers-table thead th.is-sortable {{
+      cursor: pointer;
+      user-select: none;
+    }}
+    table.pitchers-table thead th.is-sortable::after {{
+      content: "\\2195";
+      display: inline-block;
+      margin-left: 5px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }}
+    table.pitchers-table thead th.is-sortable[data-sort-direction="desc"]::after {{
+      content: "\\2193";
+      color: #0f4c81;
+    }}
+    table.pitchers-table thead th.is-sortable[data-sort-direction="asc"]::after {{
+      content: "\\2191";
+      color: #0f4c81;
+    }}
+    table.pitchers-table thead th.is-sortable:focus-visible {{
+      outline: 2px solid #0f4c81;
+      outline-offset: -2px;
     }}
     table.pitchers-table thead th.group-pitcher {{
       border-top: 4px solid var(--group-pitcher);
@@ -2491,7 +2630,8 @@ def write_to_html(
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - {display_date}</h1>
       <p class="updated-at">Last updated: {updated_at}</p>
-      {tabs_html}
+      __TABS_HTML__
+      __DATE_NAV_HTML__
     </header>
     <section class="panel">
       <div class="table-legend">
@@ -2499,6 +2639,17 @@ def write_to_html(
         <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
         <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
         <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+      </div>
+      <div class="table-controls" aria-label="Pitcher table controls">
+        <span class="table-controls-label">Filters</span>
+        <label class="toggle-chip" for="hide-live-toggle">
+          <input type="checkbox" id="hide-live-toggle">
+          Hide In Progress
+        </label>
+        <label class="toggle-chip" for="hide-final-toggle">
+          <input type="checkbox" id="hide-final-toggle">
+          Hide Final
+        </label>
       </div>
       <div class="table-wrap">
         {table_html}
@@ -2545,7 +2696,11 @@ def write_to_html(
   <script>
     const arsenalData = {arsenal_payload_json};
     const leagueAverages = arsenalData["__league_averages__"] || {{}};
+    const tableBody = document.querySelector("table.pitchers-table tbody");
     const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const sortableHeaders = Array.from(document.querySelectorAll("table.pitchers-table thead th.is-sortable"));
+    const hideLiveToggle = document.getElementById("hide-live-toggle");
+    const hideFinalToggle = document.getElementById("hide-final-toggle");
     const nameEl = document.getElementById("arsenal-name");
     const whiffBoxEl = document.getElementById("arsenal-whiff-box");
     const whiffEl = document.getElementById("arsenal-whiff");
@@ -2561,6 +2716,8 @@ def write_to_html(
     const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
     const pitchesEl = document.getElementById("arsenal-pitches");
     const emptyEl = document.getElementById("arsenal-empty");
+    let selectedPitcherKey = null;
+    let sortState = {{ key: null, index: null, direction: null }};
 
     function toNumberOrNull(value) {{
       const numeric = Number(value);
@@ -2599,6 +2756,19 @@ def write_to_html(
       }} else {{
         boxEl.classList.add("metric-neutral");
       }}
+    }}
+
+    function resetArsenalPanel(label = "Pitcher Arsenal Snapshot") {{
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      nameEl.textContent = label;
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+      clearPitches();
+      emptyEl.style.display = "block";
     }}
 
     function clearPitches() {{
@@ -2646,17 +2816,24 @@ def write_to_html(
       return pitchesEl.children.length > 0;
     }}
 
-    function selectPitcher(pitcherKey) {{
+    function applyRowSelection() {{
       pitcherRows.forEach((row) => {{
-        row.classList.toggle("row-selected", row.dataset.pitcherKey === pitcherKey);
+        row.classList.toggle("row-selected", selectedPitcherKey !== null && row.dataset.pitcherKey === selectedPitcherKey);
       }});
+    }}
 
-      const details = arsenalData[pitcherKey];
-      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === pitcherKey);
-      const fallbackName = selectedRow ? selectedRow.querySelector("td")?.innerText?.trim() : "Pitcher Arsenal Snapshot";
+    function renderSelectedPitcher() {{
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
       const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
       const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
       const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      if (!selectedPitcherKey || !selectedRow) {{
+        resetArsenalPanel();
+        return;
+      }}
+
+      const details = arsenalData[selectedPitcherKey];
+      const fallbackName = selectedRow.querySelector("td")?.innerText?.trim() || "Pitcher Arsenal Snapshot";
 
       if (!details) {{
         nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
@@ -2679,6 +2856,126 @@ def write_to_html(
       emptyEl.style.display = hasPitches ? "none" : "block";
     }}
 
+    function selectPitcher(pitcherKey) {{
+      selectedPitcherKey = pitcherKey || null;
+      applyRowSelection();
+      renderSelectedPitcher();
+    }}
+
+    function visiblePitcherRows() {{
+      return pitcherRows.filter((row) => !row.hidden);
+    }}
+
+    function syncSelectedPitcher() {{
+      const visibleRows = visiblePitcherRows();
+      if (selectedPitcherKey) {{
+        const activeRow = visibleRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
+        if (activeRow) {{
+          applyRowSelection();
+          renderSelectedPitcher();
+          return;
+        }}
+      }}
+
+      const preferredRow =
+        visibleRows.find((row) => Object.prototype.hasOwnProperty.call(arsenalData, row.dataset.pitcherKey))
+        || visibleRows[0];
+      if (preferredRow) {{
+        selectPitcher(preferredRow.dataset.pitcherKey);
+        return;
+      }}
+      selectPitcher(null);
+    }}
+
+    function readCellSortValue(row, columnIndex) {{
+      const cell = row.children[columnIndex];
+      if (!cell) {{
+        return null;
+      }}
+      const rawValue = cell.dataset.sortValue;
+      if (rawValue === undefined || rawValue === "") {{
+        return null;
+      }}
+      const numeric = Number(rawValue);
+      return Number.isFinite(numeric) ? numeric : null;
+    }}
+
+    function compareRows(a, b) {{
+      const columnIndex = sortState.index;
+      const aValue = readCellSortValue(a, columnIndex);
+      const bValue = readCellSortValue(b, columnIndex);
+      const aHasValue = aValue !== null;
+      const bHasValue = bValue !== null;
+      if (aHasValue !== bHasValue) {{
+        return aHasValue ? -1 : 1;
+      }}
+      if (aHasValue && bHasValue && aValue !== bValue) {{
+        return sortState.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }}
+      return Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex);
+    }}
+
+    function syncSortHeaders() {{
+      sortableHeaders.forEach((header) => {{
+        let direction = "default";
+        if (sortState.key === header.dataset.sortKey && sortState.direction) {{
+          direction = sortState.direction;
+        }}
+        header.dataset.sortDirection = direction;
+        header.setAttribute(
+          "aria-sort",
+          direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none",
+        );
+      }});
+    }}
+
+    function applySort() {{
+      const rowsToRender = pitcherRows.slice();
+      if (sortState.key && sortState.direction && Number.isInteger(sortState.index)) {{
+        rowsToRender.sort(compareRows);
+      }} else {{
+        rowsToRender.sort((a, b) => Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex));
+      }}
+      rowsToRender.forEach((row) => tableBody.appendChild(row));
+      syncSortHeaders();
+    }}
+
+    function applyVisibility() {{
+      const hideLive = Boolean(hideLiveToggle?.checked);
+      const hideFinal = Boolean(hideFinalToggle?.checked);
+      pitcherRows.forEach((row) => {{
+        const isLive = row.classList.contains("row-live");
+        const isFinal = row.classList.contains("row-final");
+        row.hidden = (hideLive && isLive) || (hideFinal && isFinal);
+      }});
+    }}
+
+    function applyTableState() {{
+      applySort();
+      applyVisibility();
+      syncSelectedPitcher();
+    }}
+
+    function cycleSort(header) {{
+      const sortKey = header.dataset.sortKey || null;
+      const sortIndex = Number(header.dataset.sortIndex);
+      if (!sortKey || !Number.isInteger(sortIndex)) {{
+        return;
+      }}
+
+      if (sortState.key !== sortKey) {{
+        sortState = {{ key: sortKey, index: sortIndex, direction: "desc" }};
+      }} else if (sortState.direction === "desc") {{
+        sortState = {{ key: sortKey, index: sortIndex, direction: "asc" }};
+      }} else if (sortState.direction === "asc") {{
+        sortState = {{ key: null, index: null, direction: null }};
+      }} else {{
+        sortState = {{ key: sortKey, index: sortIndex, direction: "desc" }};
+      }}
+
+      applyTableState();
+    }}
+
     pitcherRows.forEach((row) => {{
       row.addEventListener("click", (event) => {{
         if (event.target.closest("a")) {{
@@ -2688,24 +2985,43 @@ def write_to_html(
       }});
     }});
 
-    const defaultKey = pitcherRows.map((row) => row.dataset.pitcherKey).find((key) => Object.prototype.hasOwnProperty.call(arsenalData, key))
-      || (pitcherRows[0] ? pitcherRows[0].dataset.pitcherKey : null);
+    sortableHeaders.forEach((header) => {{
+      header.addEventListener("click", () => cycleSort(header));
+      header.addEventListener("keydown", (event) => {{
+        if (event.key !== "Enter" && event.key !== " ") {{
+          return;
+        }}
+        event.preventDefault();
+        cycleSort(header);
+      }});
+    }});
 
-    if (defaultKey) {{
-      selectPitcher(defaultKey);
-    }}
+    hideLiveToggle?.addEventListener("change", applyTableState);
+    hideFinalToggle?.addEventListener("change", applyTableState);
+
+    applyTableState();
   </script>
 </body>
 </html>
 """
 
     output_path = REPORTS_DIR / f"report-{report_key}.html"
-    archive_html_content = html_content.replace("__PITCHER_HREF__", "../index.html").replace("__BATTER_HREF__", "../batters.html")
-    root_html_content = html_content.replace("__PITCHER_HREF__", "./index.html").replace("__BATTER_HREF__", "./batters.html")
+    archive_html_content = (
+        html_content
+        .replace("__TABS_HTML__", archive_tabs_html)
+        .replace("__DATE_NAV_HTML__", archive_date_nav_html)
+    )
+    root_html_content = (
+        html_content
+        .replace("__TABS_HTML__", root_tabs_html)
+        .replace("__DATE_NAV_HTML__", root_date_nav_html)
+    )
     output_path.write_text(archive_html_content, encoding="utf-8")
-    ROOT_INDEX_FILE.write_text(root_html_content, encoding="utf-8")
+    if write_root:
+        ROOT_INDEX_FILE.write_text(root_html_content, encoding="utf-8")
     print(output_path.resolve().as_uri())
-    print(ROOT_INDEX_FILE.resolve().as_uri())
+    if write_root:
+        print(ROOT_INDEX_FILE.resolve().as_uri())
     return output_path
 
 
@@ -2764,9 +3080,13 @@ def _has_not_started_games(schedule: Sequence[Dict[str, Any]]) -> bool:
     return any(game.get("status") in NOT_STARTED_STATUSES for game in schedule)
 
 
-def resolve_effective_report_date_and_schedule(report_date: str) -> Tuple[str, List[Dict[str, Any]]]:
+def resolve_effective_report_date_and_schedule(
+    report_date: str,
+    *,
+    allow_roll_forward: bool = True,
+) -> Tuple[str, List[Dict[str, Any]]]:
     schedule = fetch_schedule(report_date)
-    if _has_not_started_games(schedule):
+    if _has_not_started_games(schedule) or not allow_roll_forward:
         return report_date, schedule
 
     next_report_date = _next_report_date(report_date)
@@ -2778,8 +3098,17 @@ def resolve_effective_report_date_and_schedule(report_date: str) -> Tuple[str, L
     return next_report_date, next_schedule
 
 
-def main(report_date: str, odds: str) -> None:
-    report_date, schedule = resolve_effective_report_date_and_schedule(report_date)
+def main(
+    report_date: str,
+    odds: str,
+    *,
+    allow_roll_forward: bool = True,
+    write_root: bool = True,
+) -> None:
+    report_date, schedule = resolve_effective_report_date_and_schedule(
+        report_date,
+        allow_roll_forward=allow_roll_forward,
+    )
     report_key = report_date.replace("/", "")
     print((REPORTS_DIR / f"report-{report_key}.html").resolve().as_uri())
 
@@ -2788,7 +3117,7 @@ def main(report_date: str, odds: str) -> None:
     if not results:
         print("\033[93mNo probable pitchers found for the selected date.\033[0m")
         empty_df = pd.DataFrame(columns=REPORT_COLUMN_ORDER)
-        write_to_html(empty_df, report_key, report_date, pitcher_arsenal_lookup={})
+        write_to_html(empty_df, report_key, report_date, pitcher_arsenal_lookup={}, write_root=write_root)
         return
 
     report_year = datetime.datetime.strptime(report_date, "%m/%d/%Y").year
@@ -2820,25 +3149,44 @@ def main(report_date: str, odds: str) -> None:
 
     final_df = sort_pitchers_for_report(final_df)
 
-    if odds.lower() != "n":
+    if odds.lower() != "n" and write_root:
         try:
             write_to_google_sheet(final_df, SPREADSHEET_NAME, report_date)
         except Exception as exc:
             print(f"\033[91mGoogle Sheet write failed: {exc}\033[0m")
 
-    write_to_html(final_df, report_key, report_date, pitcher_arsenal_lookup=arsenal_lookup)
+    write_to_html(
+        final_df,
+        report_key,
+        report_date,
+        pitcher_arsenal_lookup=arsenal_lookup,
+        write_root=write_root,
+    )
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python3 Pitchers.py <today|tmrw|MM/DD|MM/DD/YYYY> <y|n>")
+def _parse_cli_args(argv: Sequence[str]) -> Tuple[str, str, bool, bool]:
+    if len(argv) < 3:
+        print("Usage: python3 Pitchers.py <today|tmrw|MM/DD|MM/DD/YYYY> <y|n> [--exact] [--no-root]")
         sys.exit(1)
 
-    date_input = str(sys.argv[1])
-    odds = str(sys.argv[2]).lower()
+    date_input = str(argv[1])
+    odds = str(argv[2]).lower()
     if odds not in {"y", "n"}:
         print("Second argument must be 'y' or 'n'.")
         sys.exit(1)
+
+    supported_flags = {"--exact", "--no-root"}
+    raw_flags = [str(flag) for flag in argv[3:]]
+    unexpected_flags = [flag for flag in raw_flags if flag not in supported_flags]
+    if unexpected_flags:
+        print(f"Unsupported flags: {', '.join(unexpected_flags)}")
+        sys.exit(1)
+
+    return date_input, odds, "--exact" in raw_flags, "--no-root" in raw_flags
+
+
+if __name__ == "__main__":
+    date_input, odds, exact_mode, no_root = _parse_cli_args(sys.argv)
 
     try:
         report_date = resolve_date_input(date_input)
@@ -2847,4 +3195,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print(f"\033[94mRunning at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\033[0m")
-    main(report_date, odds)
+    main(report_date, odds, allow_roll_forward=not exact_mode, write_root=not no_root)
