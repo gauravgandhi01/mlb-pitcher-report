@@ -48,11 +48,19 @@
       opacity: 0.95;
       font-size: 13px;
     }
+    .hero-nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 14px;
+    }
     .report-tabs {
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 0;
     }
     .report-tab {
       display: inline-flex;
@@ -84,22 +92,24 @@
       pointer-events: none;
     }
     .date-nav {
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
     }
     .date-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 0;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -117,13 +127,12 @@
       pointer-events: none;
     }
     .date-pill-label {
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 10px;
+      display: none;
     }
     .date-pill-date {
-      opacity: 0.9;
+      opacity: 0.94;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }
     .panel {
       background: var(--panel);
@@ -561,6 +570,15 @@
       .hero h1 {
         font-size: 23px;
       }
+      .hero-nav-row {
+        align-items: stretch;
+      }
+      .report-tabs {
+        width: 100%;
+      }
+      .date-nav {
+        width: 100%;
+      }
       .panel-header {
         align-items: flex-start;
         flex-direction: column;
@@ -578,9 +596,11 @@
   <div class="layout">
     <section class="hero">
       <h1>MLB Daily Batter Report</h1>
-      <p>06/27/2026 slate. Updated 2026-06-27 23:42:03 EDT.</p>
-      <nav class="report-tabs" aria-label="Report pages"><a class="report-tab" href="./report-06272026.html" title="Pitchers report for 06/27/2026">Pitchers</a><span class="report-tab active" title="Batters report for 06/27/2026">Batters</span><a class="report-tab" href="./matchups-report-06272026.html" title="Matchups report for 06/27/2026">Matchups</a></nav>
-      <nav class="date-nav" aria-label="Archive dates"><a class="date-pill" href="./batters-report-06262026.html" title="Yesterday archive (06/26/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">06/26</span></a><span class="date-pill active" title="Today archive (06/27/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">06/27</span></span><a class="date-pill" href="./batters-report-06282026.html" title="Tomorrow archive (06/28/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">06/28</span></a></nav>
+      <p>06/27/2026 slate. Updated 2026-06-28 00:03:40 EDT.</p>
+      <div class="hero-nav-row">
+        <nav class="report-tabs" aria-label="Report pages"><a class="report-tab" href="./report-06272026.html" title="Pitchers report for 06/27/2026">Pitchers</a><span class="report-tab active" title="Batters report for 06/27/2026">Batters</span><a class="report-tab" href="./matchups-report-06272026.html" title="Matchups report for 06/27/2026">Matchups</a></nav>
+        <nav class="date-nav" aria-label="Archive dates"><span class="date-pill active" title="Yesterday archive (06/27/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">06/27</span></span><a class="date-pill" href="./batters-report-06282026.html" title="Today archive (06/28/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">06/28</span></a><a class="date-pill" href="./batters-report-06292026.html" title="Tomorrow archive (06/29/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">06/29</span></a></nav>
+      </div>
     </section>
 
     <section class="panel panel-legend">
@@ -631,6 +651,20 @@
 <td class="group-matchup">2-4</td>
 </tr>
 <tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Freddie Freeman<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter cell-strong">5</td>
+<td class="group-batter cell-elite">0.360</td>
+<td class="group-batter cell-strong">0.318</td>
+<td class="group-batter cell-strong">0.286</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
 <td class="column-name group-context"><span class="batter-name">Mauricio Dubón<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
 <td class="column-team group-context"><span class="team-cell" title="Atlanta Braves"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="San Francisco Giants"><span class="opp-team"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span><span class="opp-time">9:05p</span></span></td>
@@ -645,6 +679,34 @@
 <td class="group-matchup">48-139</td>
 </tr>
 <tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Mookie Betts<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">3</td>
+<td class="group-batter cell-elite">0.393</td>
+<td class="group-batter cell-elite">0.375</td>
+<td class="group-batter">0.231</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Jackson Chourio<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">7:10p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Peterson</span></td>
+<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">3</td>
+<td class="group-batter">0.258</td>
+<td class="group-batter cell-strong">0.294</td>
+<td class="group-batter cell-strong">0.299</td>
+<td class="group-matchup cell-elite">0.400</td>
+<td class="group-matchup">2-5</td>
+</tr>
+<tr class="row-final row-target">
 <td class="column-name group-context"><span class="batter-name">Ozzie Albies<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
 <td class="column-team group-context"><span class="team-cell" title="Atlanta Braves"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="San Francisco Giants"><span class="opp-team"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span><span class="opp-time">9:05p</span></span></td>
@@ -657,20 +719,6 @@
 <td class="group-batter cell-strong">0.281</td>
 <td class="group-matchup cell-elite">0.367</td>
 <td class="group-matchup">51-139</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">William Contreras<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Peterson</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">3</td>
-<td class="group-batter cell-elite">0.462</td>
-<td class="group-batter cell-elite">0.429</td>
-<td class="group-batter cell-elite">0.306</td>
-<td class="group-matchup cell-strong">0.314</td>
-<td class="group-matchup">43-137</td>
 </tr>
 </tbody>
 </table>
@@ -740,20 +788,6 @@
 <td class="group-batter">0.259</td>
 <td class="group-batter">0.256</td>
 <td class="group-batter">0.261</td>
-<td class="group-matchup cell-elite">0.600</td>
-<td class="group-matchup">3-5</td>
-</tr>
-<tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Luke Raley<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Seattle Mariners"><span class="team-badge"><img alt="Seattle Mariners logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/136.svg"/></span><span class="team-abbrev">SEA<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Cleveland Guardians"><span class="opp-team"><span class="team-badge"><img alt="Cleveland Guardians logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/114.svg"/></span><span class="team-abbrev">CLE</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Cecconi</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 7 stayed under 7.5"><span class="total-value">7.5</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">2</td>
-<td class="group-batter cell-weak">0.188</td>
-<td class="group-batter cell-weak">0.158</td>
-<td class="group-batter">0.241</td>
 <td class="group-matchup cell-elite">0.600</td>
 <td class="group-matchup">3-5</td>
 </tr>
@@ -828,6 +862,62 @@
 <td class="group-matchup">29-66</td>
 </tr>
 <tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Alex Freeland<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter cell-strong">0.300</td>
+<td class="group-batter">0.242</td>
+<td class="group-batter">0.236</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Shohei Ohtani<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">2</td>
+<td class="group-batter">0.261</td>
+<td class="group-batter">0.222</td>
+<td class="group-batter cell-strong">0.294</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Andy Pages<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">1</td>
+<td class="group-batter cell-weak">0.214</td>
+<td class="group-batter cell-weak">0.204</td>
+<td class="group-batter">0.267</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Kyle Tucker<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter cell-weak">0.143</td>
+<td class="group-batter cell-weak">0.219</td>
+<td class="group-batter">0.232</td>
+<td class="group-matchup cell-elite">0.432</td>
+<td class="group-matchup">35-81</td>
+</tr>
+<tr class="row-final row-target">
 <td class="column-name group-context"><span class="batter-name">Corey Seager<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
 <td class="column-team group-context"><span class="team-cell" title="Texas Rangers"><span class="team-badge"><img alt="Texas Rangers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/140.svg"/></span><span class="team-abbrev">TEX<span class="team-result team-result-win" title="Won">W</span></span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Toronto Blue Jays"><span class="opp-team"><span class="team-badge"><img alt="Toronto Blue Jays logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/141.svg"/></span><span class="team-abbrev">TOR</span></span><span class="opp-time">3:07p</span></span></td>
@@ -840,6 +930,48 @@
 <td class="group-batter cell-weak">0.183</td>
 <td class="group-matchup cell-elite">0.429</td>
 <td class="group-matchup">3-7</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Fernando Tatis Jr.<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">1</td>
+<td class="group-batter cell-strong">0.296</td>
+<td class="group-batter cell-strong">0.319</td>
+<td class="group-batter cell-strong">0.285</td>
+<td class="group-matchup cell-elite">0.400</td>
+<td class="group-matchup">34-85</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Manny Machado<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">1</td>
+<td class="group-batter cell-strong">0.280</td>
+<td class="group-batter">0.233</td>
+<td class="group-batter cell-weak">0.186</td>
+<td class="group-matchup cell-elite">0.400</td>
+<td class="group-matchup">34-85</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Xander Bogaerts<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter">0.238</td>
+<td class="group-batter cell-weak">0.194</td>
+<td class="group-batter cell-weak">0.227</td>
+<td class="group-matchup cell-elite">0.400</td>
+<td class="group-matchup">34-85</td>
 </tr>
 <tr class="row-final row-target">
 <td class="column-name group-context"><span class="batter-name">Isaac Paredes<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
@@ -896,6 +1028,48 @@
 <td class="group-batter">0.265</td>
 <td class="group-matchup cell-elite">0.367</td>
 <td class="group-matchup">51-139</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Will Wagner<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter">0.267</td>
+<td class="group-batter cell-weak">0.208</td>
+<td class="group-batter">0.267</td>
+<td class="group-matchup cell-elite">0.366</td>
+<td class="group-matchup">34-93</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Freddy Fermin<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter">0.238</td>
+<td class="group-batter cell-weak">0.000</td>
+<td class="group-batter cell-weak">0.145</td>
+<td class="group-matchup cell-elite">0.366</td>
+<td class="group-matchup">34-93</td>
+</tr>
+<tr class="row-final row-target">
+<td class="column-name group-context"><span class="batter-name">Samad Taylor<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="San Diego Padres"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="Los Angeles Dodgers"><span class="opp-team"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Yamamoto</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
+<td class="group-batter">0</td>
+<td class="group-batter cell-elite">0.385</td>
+<td class="group-batter cell-elite">0.381</td>
+<td class="group-batter cell-elite">0.361</td>
+<td class="group-matchup cell-elite">0.366</td>
+<td class="group-matchup">34-93</td>
 </tr>
 <tr class="row-final row-target">
 <td class="column-name group-context"><span class="batter-name">Drew Gilbert<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
@@ -994,132 +1168,6 @@
 <td class="group-batter cell-weak">0.216</td>
 <td class="group-matchup cell-strong">0.333</td>
 <td class="group-matchup">1-3</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Mike Yastrzemski<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Atlanta Braves"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="San Francisco Giants"><span class="opp-team"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF</span></span><span class="opp-time">9:05p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Webb</span></td>
-<td class="column-total group-context"><span class="total-cell" title="Final total 5 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter cell-weak">0.150</td>
-<td class="group-batter cell-weak">0.130</td>
-<td class="group-batter cell-weak">0.223</td>
-<td class="group-matchup cell-strong">0.325</td>
-<td class="group-matchup">51-157</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Brice Turang<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Peterson</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter">0.226</td>
-<td class="group-batter cell-weak">0.213</td>
-<td class="group-batter">0.258</td>
-<td class="group-matchup cell-strong">0.321</td>
-<td class="group-matchup">43-134</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Casey Schmitt<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Atlanta Braves"><span class="opp-team"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL</span></span><span class="opp-time">9:05p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Elder</span></td>
-<td class="column-total group-context"><span class="total-cell" title="Final total 5 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter cell-elite">0.357</td>
-<td class="group-batter cell-elite">0.395</td>
-<td class="group-batter cell-strong">0.290</td>
-<td class="group-matchup cell-strong">0.318</td>
-<td class="group-matchup">21-66</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Luis Arraez<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Atlanta Braves"><span class="opp-team"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL</span></span><span class="opp-time">9:05p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Elder</span></td>
-<td class="column-total group-context"><span class="total-cell" title="Final total 5 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">4</td>
-<td class="group-batter cell-elite">0.346</td>
-<td class="group-batter cell-strong">0.286</td>
-<td class="group-batter cell-elite">0.321</td>
-<td class="group-matchup cell-strong">0.318</td>
-<td class="group-matchup">21-66</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Bryce Eldridge<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="San Francisco Giants"><span class="team-badge"><img alt="San Francisco Giants logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/137.svg"/></span><span class="team-abbrev">SF<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Atlanta Braves"><span class="opp-team"><span class="team-badge"><img alt="Atlanta Braves logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/144.svg"/></span><span class="team-abbrev">ATL</span></span><span class="opp-time">9:05p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Elder</span></td>
-<td class="column-total group-context"><span class="total-cell" title="Final total 5 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">1</td>
-<td class="group-batter cell-weak">0.083</td>
-<td class="group-batter cell-weak">0.179</td>
-<td class="group-batter cell-strong">0.277</td>
-<td class="group-matchup cell-strong">0.318</td>
-<td class="group-matchup">21-66</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Andrew Vaughn<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Peterson</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter">0.267</td>
-<td class="group-batter">0.238</td>
-<td class="group-batter cell-elite">0.342</td>
-<td class="group-matchup cell-strong">0.314</td>
-<td class="group-matchup">43-137</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Cooper Pratt<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Milwaukee Brewers"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Chicago Cubs"><span class="opp-team"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Peterson</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">1</td>
-<td class="group-batter">0.250</td>
-<td class="group-batter cell-strong">0.276</td>
-<td class="group-batter cell-strong">0.276</td>
-<td class="group-matchup cell-strong">0.314</td>
-<td class="group-matchup">43-137</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Pete Crow-Armstrong<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter cell-elite">0.370</td>
-<td class="group-batter cell-elite">0.429</td>
-<td class="group-batter cell-strong">0.284</td>
-<td class="group-matchup cell-strong">0.314</td>
-<td class="group-matchup">37-118</td>
-</tr>
-<tr class="row-final">
-<td class="column-name group-context"><span class="batter-name">Salvador Perez<span class="batter-game-mark batter-game-mark-hit" title="Had a hit in this final game">✓</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Kansas City Royals"><span class="team-badge"><img alt="Kansas City Royals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/118.svg"/></span><span class="team-abbrev">KC<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Chicago White Sox"><span class="opp-team"><span class="team-badge"><img alt="Chicago White Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/145.svg"/></span><span class="team-abbrev">CWS</span></span><span class="opp-time">4:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Martin</span></td>
-<td class="column-total group-context"><span class="total-cell" title="Final total 3 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
-<td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-batter">0</td>
-<td class="group-batter cell-weak">0.115</td>
-<td class="group-batter cell-weak">0.173</td>
-<td class="group-batter cell-weak">0.199</td>
-<td class="group-matchup cell-strong">0.308</td>
-<td class="group-matchup">4-13</td>
 </tr>
 </tbody>
 </table>
@@ -1301,7 +1349,7 @@
 <td class="group-matchup cell-elite">25.0%</td>
 <td class="group-matchup">3-4</td>
 </tr>
-<tr class="row-final row-fallback row-target">
+<tr class="row-final row-fallback">
 <td class="column-name group-context"><span class="batter-name">Chase Meidroth<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
 <td class="column-team group-context"><span class="team-cell" title="Chicago White Sox"><span class="team-badge"><img alt="Chicago White Sox logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/145.svg"/></span><span class="team-abbrev">CWS<span class="team-result team-result-win" title="Won">W</span></span></span></td>
 <td class="column-opponent group-context"><span class="opp-cell" title="Kansas City Royals"><span class="opp-team"><span class="team-badge"><img alt="Kansas City Royals logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/118.svg"/></span><span class="team-abbrev">KC</span></span><span class="opp-time">4:10p</span></span></td>
@@ -1309,9 +1357,9 @@
 <td class="column-total group-context"><span class="total-cell" title="Final total 3 stayed under 8.0"><span class="total-value">8.0</span><span class="total-result total-result-under">U</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
 <td class="group-matchup">1</td>
-<td class="group-matchup">4</td>
-<td class="group-matchup cell-elite">25.0%</td>
-<td class="group-matchup">1-4</td>
+<td class="group-matchup">7</td>
+<td class="group-matchup cell-strong">14.3%</td>
+<td class="group-matchup">1-7</td>
 </tr>
 <tr class="row-final">
 <td class="column-name group-context"><span class="batter-name">Jarred Kelenic<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
@@ -1458,76 +1506,76 @@
 <td class="group-matchup">29-80</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Josh Bell<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Minnesota Twins"><span class="team-badge"><img alt="Minnesota Twins logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/142.svg"/></span><span class="team-abbrev">MIN<span class="team-result team-result-loss" title="Lost">L</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Colorado Rockies"><span class="opp-team"><span class="team-badge"><img alt="Colorado Rockies logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/115.svg"/></span><span class="team-abbrev">COL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Lorenzen</span></td>
-<td class="column-total group-context cell-elite"><span class="total-cell" title="Final total 13 went over 9.5"><span class="total-value">9.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Mookie Betts<span class="batter-game-mark batter-game-mark-hit" title="Had a home run in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-strong">2</td>
-<td class="group-matchup">36</td>
-<td class="group-matchup">5.6%</td>
-<td class="group-matchup">9-31</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-81</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Pete Crow-Armstrong<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Shohei Ohtani<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-elite">7</td>
-<td class="group-matchup">133</td>
-<td class="group-matchup">5.3%</td>
-<td class="group-matchup">37-118</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-81</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Dansby Swanson<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Freddie Freeman<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-elite">7</td>
-<td class="group-matchup">143</td>
-<td class="group-matchup">4.9%</td>
-<td class="group-matchup">37-128</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-81</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Carson Kelly<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Alex Freeland<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-elite">7</td>
-<td class="group-matchup">143</td>
-<td class="group-matchup">4.9%</td>
-<td class="group-matchup">37-128</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-81</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Matt Shaw<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Andy Pages<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-elite">7</td>
-<td class="group-matchup">143</td>
-<td class="group-matchup">4.9%</td>
-<td class="group-matchup">23-128</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-81</td>
 </tr>
 <tr class="row-final row-target">
-<td class="column-name group-context"><span class="batter-name">Michael Busch<span class="batter-game-mark batter-game-mark-no-hit" title="No home run in this final game">X</span></span></td>
-<td class="column-team group-context"><span class="team-cell" title="Chicago Cubs"><span class="team-badge"><img alt="Chicago Cubs logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/112.svg"/></span><span class="team-abbrev">CHC<span class="team-result team-result-win" title="Won">W</span></span></span></td>
-<td class="column-opponent group-context"><span class="opp-cell" title="Milwaukee Brewers"><span class="opp-team"><span class="team-badge"><img alt="Milwaukee Brewers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/158.svg"/></span><span class="team-abbrev">MIL</span></span><span class="opp-time">7:10p</span></span></td>
-<td class="column-pitcher group-context"><span class="pitcher-name">Harrison</span></td>
-<td class="column-total group-context cell-weak"><span class="total-cell" title="Final total 10 went over 7.5"><span class="total-value">7.5</span><span class="total-result total-result-over">O</span></span></td>
+<td class="column-name group-context"><span class="batter-name">Dalton Rushing<span class="batter-game-mark batter-game-mark-hit" title="Had a home run in this final game">✓</span></span></td>
+<td class="column-team group-context"><span class="team-cell" title="Los Angeles Dodgers"><span class="team-badge"><img alt="Los Angeles Dodgers logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/119.svg"/></span><span class="team-abbrev">LAD<span class="team-result team-result-win" title="Won">W</span></span></span></td>
+<td class="column-opponent group-context"><span class="opp-cell" title="San Diego Padres"><span class="opp-team"><span class="team-badge"><img alt="San Diego Padres logo" class="team-logo" src="https://www.mlbstatic.com/team-logos/135.svg"/></span><span class="team-abbrev">SD</span></span><span class="opp-time">8:40p</span></span></td>
+<td class="column-pitcher group-context"><span class="pitcher-name">Hart</span></td>
+<td class="column-total group-context"><span class="total-cell" title="Final total 18 went over 8.0"><span class="total-value">8.0</span><span class="total-result total-result-over">O</span></span></td>
 <td class="column-status group-context"><span class="status-pill status-final">Final</span></td>
-<td class="group-matchup cell-elite">7</td>
-<td class="group-matchup">143</td>
-<td class="group-matchup">4.9%</td>
-<td class="group-matchup">37-141</td>
+<td class="group-matchup cell-elite">6</td>
+<td class="group-matchup">98</td>
+<td class="group-matchup">6.1%</td>
+<td class="group-matchup">35-115</td>
 </tr>
 </tbody>
 </table>
