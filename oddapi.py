@@ -30,12 +30,29 @@ _event_data_cache: Dict[str, Dict[str, Any]] = {}
 _event_pitcher_odds_cache: Dict[str, pd.DataFrame] = {}
 _pitcher_team_cache: Dict[str, Optional[str]] = {}
 ALT_LINES_TOKEN = " || ALT: "
+TEAM_NAME_ALIASES: Dict[str, Tuple[str, ...]] = {
+    "athletics": ("athletics", "oakland athletics"),
+    "oakland athletics": ("athletics", "oakland athletics"),
+}
 
 
 def _normalize_person_name(name: Any) -> str:
     text = unidecode(str(name or "")).lower().strip()
     text = text.replace(".", "").replace("'", "")
     return " ".join(text.split())
+
+
+def _normalize_team_name(name: Any) -> str:
+    text = unidecode(str(name or "")).lower().strip()
+    text = text.replace(".", "").replace("'", "")
+    return " ".join(text.split())
+
+
+def _team_name_variants(team_name: Any) -> set[str]:
+    normalized = _normalize_team_name(team_name)
+    if not normalized:
+        return set()
+    return set(TEAM_NAME_ALIASES.get(normalized, (normalized,)))
 
 
 def _choose_best_player_match(players: List[Dict[str, Any]], pitcher_name: str) -> Optional[Dict[str, Any]]:
@@ -225,8 +242,11 @@ def request_event_id(
 ) -> Optional[str]:
     del event_data
     games = _fetch_events_for_date(api_key, date)
+    team_name_variants = _team_name_variants(team_name)
     for game in games:
-        if team_name in (game.get("home_team"), game.get("away_team")):
+        home_team = _normalize_team_name(game.get("home_team"))
+        away_team = _normalize_team_name(game.get("away_team"))
+        if home_team in team_name_variants or away_team in team_name_variants:
             return game.get("id")
     return None
 

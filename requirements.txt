@@ -4,8 +4,5 @@ beautifulsoup4
 requests
 pybaseball
 unidecode
-gspread
-gspread-dataframe
-google-auth
 MLB-StatsAPI
 jinja2

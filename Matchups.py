@@ -15,9 +15,9 @@ from report_data import (
     compute_recent_metrics,
     extract_confirmed_espn_lineup,
     extract_espn_odds,
+    fetch_game_batter_vs_pitcher_stat_lines,
     extract_game_logs,
     extract_last_game_lineup_player_ids_from_boxscore,
-    extract_season_hitting_stats,
     fetch_last_game_lineup_player_ids,
     fetch_park_context,
     fetch_people_stats_map,
@@ -44,6 +44,7 @@ from report_data import (
     normalize_team_name,
 )
 from site_nav import build_date_nav_html, build_report_tabs
+from team_logos import get_team_logo_src
 
 REPORTS_DIR = Path("reports")
 ROOT_MATCHUPS_FILE = Path(__file__).resolve().parent / "matchups.html"
@@ -253,13 +254,6 @@ def extract_pitcher_season_stats(person: Dict[str, Any]) -> Dict[str, Any]:
         "AVG": to_float(stat.get("avg")),
         "IP/start": ((outs / 3.0) / games_started) if outs and games_started > 0 else None,
     }
-
-
-def _team_logo_url(team_id: Any) -> str:
-    team_id_value = to_int(team_id)
-    if team_id_value is None:
-        return ""
-    return f"https://www.mlbstatic.com/team-logos/{team_id_value}.svg"
 
 
 def _status_badge(status: str) -> str:
@@ -480,10 +474,11 @@ def _build_player_snapshot(person_id: int, person: Dict[str, Any], report_date: 
     return {
         "id": person_id,
         "name": str(person.get("fullName") or "").strip(),
-        "vsp": parse_vs_pitcher_stats(indexed),
+        "vsp": aggregate_stat_lines([]),
         "recent7": compute_recent_metrics(game_logs, report_date, max_games=RECENT_GAMES),
         "recent14": compute_recent_metrics(game_logs, report_date, window_days=RECENT_WINDOW_DAYS),
-        "season": extract_season_hitting_stats(person),
+        "season": compute_recent_metrics(game_logs, report_date),
+        "__indexed": indexed,
     }
 
 
@@ -628,13 +623,14 @@ def _build_offense_matchup(
     opponent_name: str,
     opponent_abbrev: str,
     pitcher_name: str,
+    game_id: Optional[int],
     start_time: str,
     status: str,
     report_date: dt.date,
     report_year: int,
     espn_summary: Optional[Dict[str, Any]],
 ) -> OffenseMatchup:
-    del start_time, status
+    del start_time
 
     roster_entries = filter_active_hitters(fetch_team_roster(team_id))
     confirmed_lineup_entries = extract_confirmed_espn_lineup(espn_summary, team_abbrev) if espn_summary and team_abbrev else []
@@ -656,11 +652,26 @@ def _build_offense_matchup(
         pitcher_id=(pitcher_context or {}).get("id"),
     )
 
-    player_snapshots = [
-        _build_player_snapshot(player_id, people_by_id[player_id], report_date)
-        for player_id in requested_ids
-        if player_id in people_by_id
-    ]
+    player_snapshots = []
+    same_day_bvp_lines: Dict[int, Dict[str, Any]] = {}
+    if (
+        game_id is not None
+        and pitcher_context
+        and pitcher_context.get("id")
+        and str(status or "").strip() not in NOT_STARTED_STATUSES
+    ):
+        same_day_bvp_lines = fetch_game_batter_vs_pitcher_stat_lines(int(game_id), int(pitcher_context["id"]))
+
+    for player_id in requested_ids:
+        if player_id not in people_by_id:
+            continue
+        snapshot = _build_player_snapshot(player_id, people_by_id[player_id], report_date)
+        snapshot["vsp"] = parse_vs_pitcher_stats(
+            snapshot.pop("__indexed"),
+            report_date=report_date,
+            same_day_line=same_day_bvp_lines.get(player_id),
+        )
+        player_snapshots.append(snapshot)
     lineup_source, selected_snapshots = _select_lineup_source(confirmed_lineup_ids, last_game_lineup_ids, player_snapshots)
 
     matchup_stats = aggregate_stat_lines([snapshot["vsp"] for snapshot in selected_snapshots])
@@ -778,6 +789,7 @@ def build_matchups(schedule: Sequence[Dict[str, Any]], report_date: str) -> List
             opponent_name=home_team_name,
             opponent_abbrev=home_team_abbrev,
             pitcher_name=str(game.get("home_probable_pitcher") or "").strip(),
+            game_id=to_int(game.get("game_id")),
             start_time=format_local_start_time(game.get("game_datetime")),
             status=status_text,
             report_date=report_date_obj,
@@ -792,6 +804,7 @@ def build_matchups(schedule: Sequence[Dict[str, Any]], report_date: str) -> List
             opponent_name=away_team_name,
             opponent_abbrev=away_team_abbrev,
             pitcher_name=str(game.get("away_probable_pitcher") or "").strip(),
+            game_id=to_int(game.get("game_id")),
             start_time=format_local_start_time(game.get("game_datetime")),
             status=status_text,
             report_date=report_date_obj,
@@ -1171,7 +1184,7 @@ def _render_offense_panel(offense: OffenseMatchup) -> str:
         f'<section class="offense-panel source-{escape(source_slug, quote=True)}">'
         '<div class="offense-header">'
         '<div class="team-heading">'
-        f'<img class="team-logo" src="{escape(_team_logo_url(offense.team_id), quote=True)}" alt="{escape(offense.team_name, quote=True)} logo">'
+        f'<img class="team-logo" src="{escape(get_team_logo_src(team_id=offense.team_id, team_abbrev=offense.team_abbrev, team_name=offense.team_name), quote=True)}" alt="{escape(offense.team_name, quote=True)} logo">'
         '<div>'
         f'<h3>{escape(offense.team_name)}</h3>'
         "</div></div>"
@@ -1199,7 +1212,7 @@ def _render_team_chip(
     side_html = f'<span class="{side_value_class}">{escape(side_value)}</span>' if side_value != "-" else ""
     starter_html = f'<span class="team-chip-starter">{escape(starter_label)}</span>' if starter_label else ""
     return (
-        f'<span class="team-chip"><img class="team-logo small" src="{escape(_team_logo_url(team_id), quote=True)}" alt="{escape(team_name, quote=True)} logo">'
+        f'<span class="team-chip"><img class="team-logo small" src="{escape(get_team_logo_src(team_id=team_id, team_abbrev=team_abbrev, team_name=team_name), quote=True)}" alt="{escape(team_name, quote=True)} logo">'
         '<span class="team-chip-copy">'
         f'<span class="team-chip-main"><span>{escape(team_abbrev)}</span>{side_html}</span>'
         f"{starter_html}"
@@ -1332,8 +1345,10 @@ def _render_page_html(
     <section class="hero">
       <h1>{escape(heading)}</h1>
       <p>{escape(display_date)} slate. Updated {escape(updated_at)}. {escape(description)}</p>
-      {tabs_html}
-      {date_nav_html}
+      <div class="hero-nav-row">
+        {tabs_html}
+        {date_nav_html}
+      </div>
       {view_tabs_html}
     </section>
     <section class="legend-panel">
@@ -1390,7 +1405,20 @@ def _summary_page_css() -> str:
       font-size: 12px;
       max-width: 1020px;
     }
-    .report-tabs,
+    .hero-nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 10px;
+    }
+    .report-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0;
+    }
     .matchup-view-tabs {
       display: inline-flex;
       flex-wrap: wrap;
@@ -1430,22 +1458,24 @@ def _summary_page_css() -> str:
       pointer-events: none;
     }
     .date-nav {
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
     }
     .date-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
+      gap: 0;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1463,13 +1493,12 @@ def _summary_page_css() -> str:
       pointer-events: none;
     }
     .date-pill-label {
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 10px;
+      display: none;
     }
     .date-pill-date {
-      opacity: 0.9;
+      opacity: 0.94;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }
     .legend-panel {
       background: var(--panel);
@@ -1909,6 +1938,15 @@ def _summary_page_css() -> str:
       .hero h1 {
         font-size: 20px;
       }
+      .hero-nav-row {
+        align-items: stretch;
+      }
+      .report-tabs {
+        width: 100%;
+      }
+      .date-nav {
+        width: 100%;
+      }
       .summary-cards {
         grid-template-columns: 1fr;
       }
@@ -1960,7 +1998,20 @@ def _detail_page_css() -> str:
       font-size: 12px;
       max-width: 980px;
     }
-    .report-tabs,
+    .hero-nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 10px;
+    }
+    .report-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0;
+    }
     .matchup-view-tabs {
       display: inline-flex;
       flex-wrap: wrap;
@@ -2000,22 +2051,24 @@ def _detail_page_css() -> str:
       pointer-events: none;
     }
     .date-nav {
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
     }
     .date-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
+      gap: 0;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -2033,13 +2086,12 @@ def _detail_page_css() -> str:
       pointer-events: none;
     }
     .date-pill-label {
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 10px;
+      display: none;
     }
     .date-pill-date {
-      opacity: 0.9;
+      opacity: 0.94;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }
     .legend-panel {
       background: var(--panel);
@@ -2470,6 +2522,15 @@ def _detail_page_css() -> str:
       }
       .hero {
         padding: 14px;
+      }
+      .hero-nav-row {
+        align-items: stretch;
+      }
+      .report-tabs {
+        width: 100%;
+      }
+      .date-nav {
+        width: 100%;
       }
       .hero h1 {
         font-size: 21px;

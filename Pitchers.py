@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import datetime
 import json
 import re
@@ -12,33 +11,38 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
-import gspread
 import pandas as pd
 import requests
 import statsapi
 from bs4 import BeautifulSoup
-from google.oauth2.service_account import Credentials
-from gspread_dataframe import set_with_dataframe
 from pybaseball import team_batting
 from unidecode import unidecode
 
 from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
 from site_nav import build_date_nav_html, build_report_tabs
+from team_logos import get_team_logo_src
 
 REPORTS_DIR = Path("reports")
 ROOT_INDEX_FILE = Path(__file__).resolve().parent / "index.html"
-SHEETS_CREDS_FILE = Path("sheets_creds.json")
-TEAM_LOGOS_FILE = Path(__file__).resolve().parent / "All Real Teams and Logos v2.json"
-SPREADSHEET_NAME = "MLB Sheet"
 SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 COMPLETED_STATUSES = {"Final", "In Progress"}
 PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX","DraftKings"]
 OPP_HAND_K_COLUMN = "Opp K% vH"
+OPP_LAST_5_K_COLUMN = "Opp l5 K%"
+OPP_LAST_10_K_COLUMN = "Opp l10 K%"
+K_PA_COLUMN = "K/PA"
+PA_GP_COLUMN = "PA/GP"
+BEST_K_ODDS_COLUMN = "Best K Odds"
 MATCHUP_SOURCE_COLUMN = "Matchup Src"
 START_TIME_COLUMN = "Start"
 MATCHUP_SOURCE_ESPN = "ESPN (AB)"
 MATCHUP_SOURCE_SAVANT = "Savant (PA)"
+MATCHUP_K_MIN_SAMPLE = 15
+MATCHUP_K_HIGH_CONFIDENCE_SAMPLE = 20
+MATCHUP_K_STRONG_PCT = 25.0
+MATCHUP_K_ELITE_PCT = 28.0
+MATCHUP_K_WEAK_PCT = 18.0
 WHIFF_CSV_URL_TEMPLATE = (
     "https://baseballsavant.mlb.com/leaderboard/custom"
     "?year={year}&type=pitcher&filter=&min=0"
@@ -64,37 +68,36 @@ ARSENAL_PITCH_COLUMNS = [
 ARSENAL_META_KEY = "__league_averages__"
 REPORT_COLUMN_ORDER = [
     "Name",
-    "Hand",
     "GP",
     "AB",
     "K",
-    "BB",
     "AVG",
-    "AB/GP",
+    PA_GP_COLUMN,
     "K/9",
     "Whiff%",
-    "K/AB",
+    K_PA_COLUMN,
     "K%",
     "PA",
     MATCHUP_SOURCE_COLUMN,
-    "SO/PA",
     OPP_HAND_K_COLUMN,
+    OPP_LAST_5_K_COLUMN,
+    OPP_LAST_10_K_COLUMN,
+    "SO/PA",
     "r",
+    "Ks",
     "Opponent",
     START_TIME_COLUMN,
     "Status",
-    "Ks",
+    BEST_K_ODDS_COLUMN,
 ]
 PITCHER_STAT_COLUMNS = {
-    "Hand",
     "GP",
     "AB",
     "K",
-    "BB",
     "AVG",
-    "AB/GP",
+    PA_GP_COLUMN,
     "K/9",
-    "K/AB",
+    K_PA_COLUMN,
     "Ks",
 }
 OPPONENT_STAT_COLUMNS = {
@@ -103,23 +106,31 @@ OPPONENT_STAT_COLUMNS = {
     MATCHUP_SOURCE_COLUMN,
     "SO/PA",
     OPP_HAND_K_COLUMN,
+    OPP_LAST_5_K_COLUMN,
+    OPP_LAST_10_K_COLUMN,
     "r",
 }
 SAVANT_STAT_COLUMNS = {"Whiff%"}
+OPPONENT_K_CONTEXT_COLUMNS = {
+    OPP_HAND_K_COLUMN,
+    OPP_LAST_5_K_COLUMN,
+    OPP_LAST_10_K_COLUMN,
+}
 PITCHERS_SORTABLE_COLUMNS = {
     "GP",
     "AB",
     "K",
-    "BB",
     "AVG",
-    "AB/GP",
+    PA_GP_COLUMN,
     "K/9",
     "Whiff%",
-    "K/AB",
+    K_PA_COLUMN,
     "K%",
     "PA",
     "SO/PA",
     OPP_HAND_K_COLUMN,
+    OPP_LAST_5_K_COLUMN,
+    OPP_LAST_10_K_COLUMN,
     "r",
     "Ks",
 }
@@ -131,20 +142,31 @@ STAT_HEADER_TOOLTIPS = {
     "K": "Pitcher strikeouts this season.",
     "BB": "Walks issued by this pitcher this season.",
     "AVG": "Opponent batting average allowed by this pitcher.",
-    "AB/GP": "Average at-bats faced per game pitched.",
+    PA_GP_COLUMN: "Average plate appearances faced per game pitched.",
     "K/9": "Strikeouts per 9 innings pitched.",
     "Whiff%": "Statcast whiff rate (swing-and-miss rate) from Baseball Savant.",
-    "K/AB": "Strikeout rate proxy: K divided by (AB + BB), shown as a percent.",
-    "K%": "Opponent-lineup strikeout rate vs this pitcher. Tiny suffix indicates source: E = ESPN confirmed lineup (K/AB), S = Savant probable lineup (K/PA).",
-    "PA": "Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits.",
+    K_PA_COLUMN: "Strikeout rate: strikeouts divided by batters faced, shown as a percent.",
+    "K%": "Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample.",
+    "PA": "Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample.",
     MATCHUP_SOURCE_COLUMN: "Source for K% and PA sample: ESPN confirmed lineup (AB-based) or Savant probable-lineup (PA-based).",
-    "SO/PA": "Opponent team strikeouts per plate appearance (season percent).",
+    "SO/PA": "Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r.",
     OPP_HAND_K_COLUMN: "Opponent team strikeout percent versus the pitcher's handedness.",
-    "r": "Rank of SO/PA among today's probable-pitcher matchups (1 = most strikeout-prone opponent).",
-    "Opponent": "Team this pitcher is facing, with scheduled local start time.",
+    OPP_LAST_5_K_COLUMN: "Opponent team strikeout percent over its last 5 completed games before the report date.",
+    OPP_LAST_10_K_COLUMN: "Opponent team strikeout percent over its last 10 completed games before the report date.",
+    "r": "Overall MLB rank of the opponent's season strikeout rate (1 = most strikeout-prone opponent).",
+    "Opponent": "Team this pitcher is facing, with the game time color-coded by status (pregame, in progress, or final).",
     START_TIME_COLUMN: "Scheduled game start time (local time).",
     "Status": "Game status.",
     "Ks": "Strikeouts recorded by this pitcher in the game once started/final.",
+    BEST_K_ODDS_COLUMN: "Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines.",
+}
+INTERNAL_ONLY_COLUMNS = {"Hand", "BB", "BF", "Team", "Pitcher", "Error"}
+SPORTSBOOK_TAGS = {
+    "fanduel": "FD",
+    "betrivers": "BR",
+    "novig": "NV",
+    "prophetx": "PX",
+    "draftkings": "DK",
 }
 TEAM_MAPPING = {
     "SEA": "Seattle Mariners",
@@ -201,20 +223,8 @@ SPORTSBOOK_FALLBACK_COLORS = [
     "#0891B2",
     "#BE123C",
 ]
-TEAM_LOGO_ABBREVIATION_ALIASES = {
-    "CCB": ["CHC"],
-    "CWS": ["CHW"],
-    "KC": ["KCR"],
-    "SD": ["SDP"],
-    "TPA": ["TBR"],
-    "WAS": ["WSN"],
-}
-TEAM_LOGO_URL_FALLBACKS = {
-    "MIN": ["https://upload.wikimedia.org/wikipedia/commons/2/2f/Minnesota_Twins_Insignia.svg"],
-}
 TEAM_HAND_SPLIT_CACHE: Dict[Tuple[int, int], Dict[str, Optional[float]]] = {}
-TEAM_LOGO_LOOKUP: Optional[Dict[str, Dict[str, Any]]] = None
-TEAM_LOGO_SRC_CACHE: Dict[Tuple[str, ...], str] = {}
+TEAM_RECENT_K_CACHE: Dict[Tuple[int, int, str], Dict[str, Optional[float]]] = {}
 
 
 def _normalize_person_name(name: Any) -> str:
@@ -228,145 +238,6 @@ def _normalize_team_name(name: Any) -> str:
     text = text.replace(".", "").replace("'", "")
     text = re.sub(r"[^a-z0-9 ]+", " ", text)
     return " ".join(text.split())
-
-
-def _team_logo_lookup_keys(team: Dict[str, Any]) -> List[str]:
-    abbrev = str(team.get("abbrev") or "").strip()
-    region = str(team.get("region") or "").strip()
-    name = str(team.get("name") or "").strip()
-    full_name = " ".join(part for part in [region, name] if part)
-
-    keys = [full_name, name, abbrev, *TEAM_LOGO_ABBREVIATION_ALIASES.get(abbrev, [])]
-    normalized_keys = [_normalize_team_name(key) for key in keys]
-    return [key for key in normalized_keys if key]
-
-
-def _unique_logo_urls(urls: Sequence[Any]) -> List[str]:
-    unique_urls: List[str] = []
-    seen_urls = set()
-    for url in urls:
-        text = str(url or "").strip()
-        if not text or text in seen_urls:
-            continue
-        seen_urls.add(text)
-        unique_urls.append(text)
-    return unique_urls
-
-
-def _load_team_logo_lookup() -> Dict[str, Dict[str, Any]]:
-    global TEAM_LOGO_LOOKUP
-    if TEAM_LOGO_LOOKUP is not None:
-        return TEAM_LOGO_LOOKUP
-
-    lookup: Dict[str, Dict[str, Any]] = {}
-    try:
-        with TEAM_LOGOS_FILE.open("r", encoding="utf-8") as team_file:
-            team_data = json.load(team_file)
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"\033[91mFailed to load team logos: {exc}\033[0m")
-        TEAM_LOGO_LOOKUP = lookup
-        return lookup
-
-    for team in team_data.get("teams", []):
-        if not isinstance(team, dict):
-            continue
-        abbrev = str(team.get("abbrev") or "").strip()
-        logo_urls = _unique_logo_urls(
-            [
-                team.get("imgURLSmall"),
-                team.get("imgURL"),
-                *TEAM_LOGO_URL_FALLBACKS.get(abbrev, []),
-            ]
-        )
-        if not logo_urls:
-            continue
-        region = str(team.get("region") or "").strip()
-        name = str(team.get("name") or "").strip()
-        display_name = (
-            " ".join(part for part in [region, name] if part)
-            or name
-            or abbrev
-        )
-        logo_details = {"name": display_name, "url": logo_urls[0], "urls": logo_urls}
-        for key in _team_logo_lookup_keys(team):
-            lookup[key] = logo_details
-
-    TEAM_LOGO_LOOKUP = lookup
-    return lookup
-
-
-def _team_logo_details(team_name: Any) -> Optional[Dict[str, Any]]:
-    normalized = _normalize_team_name(team_name)
-    if not normalized:
-        return None
-    return _load_team_logo_lookup().get(normalized)
-
-
-def _logo_mime_type(url: str, content_type: str) -> Optional[str]:
-    mime_type = content_type.split(";", 1)[0].strip().lower()
-    if mime_type.startswith("image/"):
-        return mime_type
-    lower_url = url.lower()
-    if lower_url.endswith(".svg"):
-        return "image/svg+xml"
-    if lower_url.endswith(".png"):
-        return "image/png"
-    if lower_url.endswith(".jpg") or lower_url.endswith(".jpeg"):
-        return "image/jpeg"
-    if lower_url.endswith(".gif"):
-        return "image/gif"
-    if lower_url.endswith(".webp"):
-        return "image/webp"
-    return None
-
-
-def _fetch_logo_data_uri(url: str) -> Optional[Tuple[str, int]]:
-    if not url.startswith(("http://", "https://")):
-        return None
-
-    try:
-        response = requests.get(
-            url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10,
-        )
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
-
-    mime_type = _logo_mime_type(url, response.headers.get("content-type", ""))
-    if not mime_type:
-        return None
-
-    image_data = response.content
-    if not image_data or len(image_data) > 1_500_000:
-        return None
-
-    encoded = base64.b64encode(image_data).decode("ascii")
-    return f"data:{mime_type};base64,{encoded}", len(image_data)
-
-
-def _team_logo_src(logo_details: Dict[str, Any]) -> str:
-    logo_urls = tuple(_unique_logo_urls(logo_details.get("urls") or [logo_details.get("url")]))
-    if not logo_urls:
-        return ""
-
-    cached = TEAM_LOGO_SRC_CACHE.get(logo_urls)
-    if cached is not None:
-        return cached
-
-    data_uri_candidates = [
-        candidate
-        for candidate in (_fetch_logo_data_uri(url) for url in logo_urls)
-        if candidate is not None
-    ]
-    if data_uri_candidates:
-        src = min(data_uri_candidates, key=lambda item: item[1])[0]
-    else:
-        src = logo_urls[0]
-
-    TEAM_LOGO_SRC_CACHE[logo_urls] = src
-    return src
 
 
 def _format_local_start_time(game_datetime: Any) -> str:
@@ -418,6 +289,7 @@ def parse_pitcher_stats(raw_data: str, name: str) -> Dict[str, Any]:
         "GP": data.get("gamesPlayed"),
         "AB": data.get("atBats"),
         "BB": data.get("baseOnBalls"),
+        "BF": data.get("battersFaced"),
         "AVG": data.get("avg"),
         "K": data.get("strikeOuts"),
         "K/9": data.get("strikeoutsPer9Inn"),
@@ -873,7 +745,9 @@ def prepare_team_batting_df(year: int) -> pd.DataFrame:
                     continue
                 rows.append({"Team": team_name, "SO/PA": float(100 * strikeouts / plate_appearances)})
             if rows:
-                return pd.DataFrame(rows).sort_values(by="SO/PA", ascending=False).reset_index(drop=True)
+                df = pd.DataFrame(rows).sort_values(by=["SO/PA", "Team"], ascending=[False, True]).reset_index(drop=True)
+                df["r"] = df.index + 1
+                return df
         except Exception as exc:
             last_error = exc
 
@@ -881,14 +755,15 @@ def prepare_team_batting_df(year: int) -> pd.DataFrame:
         try:
             df = team_batting(candidate_year)
             df["SO/PA"] = 100 * df["SO"] / df["PA"]
-            df = df[["Team", "SO/PA"]].sort_values(by="SO/PA", ascending=False)
+            df = df[["Team", "SO/PA"]].sort_values(by=["SO/PA", "Team"], ascending=[False, True]).reset_index(drop=True)
             df["Team"] = df["Team"].apply(get_team_full_name)
+            df["r"] = df.index + 1
             return df
         except Exception as exc:
             last_error = exc
 
     print(f"\033[91mFailed to load team batting data: {last_error}\033[0m")
-    return pd.DataFrame(columns=["Team", "SO/PA"])
+    return pd.DataFrame(columns=["Team", "SO/PA", "r"])
 
 
 def _to_optional_float(value: Any) -> Optional[float]:
@@ -991,6 +866,87 @@ def _to_int(value: Any) -> Optional[int]:
         return None
 
 
+def _parse_stat_date(value: Any) -> Optional[datetime.date]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _recent_team_k_percent(
+    splits: Sequence[Dict[str, Any]],
+    cutoff_date: datetime.date,
+    limit: int,
+) -> Optional[float]:
+    prior_games: List[Tuple[datetime.date, int, float, float]] = []
+    for split in splits:
+        game_date = _parse_stat_date(split.get("date"))
+        if game_date is None or game_date >= cutoff_date:
+            continue
+
+        stat = split.get("stat") or {}
+        strikeouts = pd.to_numeric(stat.get("strikeOuts"), errors="coerce")
+        plate_appearances = pd.to_numeric(stat.get("plateAppearances"), errors="coerce")
+        if pd.isna(strikeouts) or pd.isna(plate_appearances) or plate_appearances <= 0:
+            continue
+
+        game_info = split.get("game") or {}
+        game_pk = _to_int(game_info.get("gamePk")) or 0
+        prior_games.append((game_date, game_pk, float(strikeouts), float(plate_appearances)))
+
+    if not prior_games:
+        return None
+
+    prior_games.sort(key=lambda row: (row[0], row[1]))
+    recent_games = prior_games[-limit:]
+    total_strikeouts = sum(row[2] for row in recent_games)
+    total_plate_appearances = sum(row[3] for row in recent_games)
+    if total_plate_appearances <= 0:
+        return None
+    return float(100 * total_strikeouts / total_plate_appearances)
+
+
+def _get_team_recent_k_lookup(
+    team_id: int,
+    season: int,
+    cutoff_date: datetime.date,
+) -> Dict[str, Optional[float]]:
+    cache_key = (team_id, season, cutoff_date.isoformat())
+    cached = TEAM_RECENT_K_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    result = {
+        "last_5": None,
+        "last_10": None,
+    }
+    try:
+        data = statsapi.get(
+            "team_stats",
+            {
+                "teamId": team_id,
+                "season": season,
+                "group": "hitting",
+                "stats": "gameLog",
+            },
+        )
+    except Exception:
+        TEAM_RECENT_K_CACHE[cache_key] = result
+        return result
+
+    stats_blocks = data.get("stats") or []
+    splits = (stats_blocks[0].get("splits") or []) if stats_blocks else []
+    result = {
+        "last_5": _recent_team_k_percent(splits, cutoff_date, 5),
+        "last_10": _recent_team_k_percent(splits, cutoff_date, 10),
+    }
+    TEAM_RECENT_K_CACHE[cache_key] = result
+    return result
+
+
 def _fetch_team_split_k_percent(team_id: int, season: int, sit_code: str) -> Optional[float]:
     try:
         data = statsapi.get(
@@ -1064,6 +1020,28 @@ def build_opponent_hand_k_lookup(
     }
 
 
+def build_opponent_recent_k_lookup(
+    schedule: Sequence[Dict[str, Any]],
+    season: int,
+    report_date: datetime.date,
+) -> Dict[str, Dict[str, Optional[float]]]:
+    team_name_to_id: Dict[str, int] = {}
+    for game in schedule:
+        away_name = str(game.get("away_name", "")).strip()
+        home_name = str(game.get("home_name", "")).strip()
+        away_id = _to_int(game.get("away_id"))
+        home_id = _to_int(game.get("home_id"))
+        if away_name and away_id is not None:
+            team_name_to_id[away_name] = away_id
+        if home_name and home_id is not None:
+            team_name_to_id[home_name] = home_id
+
+    return {
+        team_name: _get_team_recent_k_lookup(team_id, season, report_date)
+        for team_name, team_id in team_name_to_id.items()
+    }
+
+
 def add_opponent_hand_matchup_k_percent(
     pitchers: pd.DataFrame,
     opponent_hand_lookup: Dict[str, Dict[str, Optional[float]]],
@@ -1086,6 +1064,29 @@ def add_opponent_hand_matchup_k_percent(
             values.append(None)
 
     enriched[OPP_HAND_K_COLUMN] = values
+    return enriched
+
+
+def add_opponent_recent_k_percent(
+    pitchers: pd.DataFrame,
+    opponent_recent_lookup: Dict[str, Dict[str, Optional[float]]],
+) -> pd.DataFrame:
+    enriched = pitchers.copy()
+    if enriched.empty:
+        enriched[OPP_LAST_5_K_COLUMN] = pd.NA
+        enriched[OPP_LAST_10_K_COLUMN] = pd.NA
+        return enriched
+
+    last_5_values: List[Optional[float]] = []
+    last_10_values: List[Optional[float]] = []
+    for _, row in enriched.iterrows():
+        opponent = str(row.get("Opponent", "")).strip()
+        recent_lookup = opponent_recent_lookup.get(opponent, {})
+        last_5_values.append(recent_lookup.get("last_5"))
+        last_10_values.append(recent_lookup.get("last_10"))
+
+    enriched[OPP_LAST_5_K_COLUMN] = last_5_values
+    enriched[OPP_LAST_10_K_COLUMN] = last_10_values
     return enriched
 
 
@@ -1115,9 +1116,9 @@ def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
         if "Status" in sorted_df.columns
         else pd.Series([""] * len(sorted_df), index=sorted_df.index)
     )
-    kab_series = (
-        pd.to_numeric(sorted_df["K/AB"], errors="coerce")
-        if "K/AB" in sorted_df.columns
+    k_pa_series = (
+        pd.to_numeric(sorted_df[K_PA_COLUMN], errors="coerce")
+        if K_PA_COLUMN in sorted_df.columns
         else pd.Series([float("nan")] * len(sorted_df), index=sorted_df.index)
     )
     so_pa_series = (
@@ -1125,7 +1126,7 @@ def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
         if "SO/PA" in sorted_df.columns
         else pd.Series([float("nan")] * len(sorted_df), index=sorted_df.index)
     )
-    sort_metric_series = kab_series if kab_series.notna().any() else so_pa_series
+    sort_metric_series = k_pa_series if k_pa_series.notna().any() else so_pa_series
 
     sorted_df["__status_sort"] = status_series.map(lambda status: 0 if status in NOT_STARTED_STATUSES else 1)
     sorted_df["__metric_missing"] = sort_metric_series.isna().astype(int)
@@ -1148,27 +1149,36 @@ def sort_pitchers_for_report(pitchers: pd.DataFrame) -> pd.DataFrame:
 def calculate_additional_metrics(date: str, pitchers: pd.DataFrame) -> pd.DataFrame:
     pitchers = pitchers.copy()
 
-    for col in ["AB", "GP", "K", "BB", "SO/PA", "K%", "PA", "K/9"]:
+    for col in ["AB", "GP", "K", "BB", "BF", "SO/PA", "K%", "PA", "K/9", "r"]:
         if col not in pitchers.columns:
             pitchers[col] = pd.NA
 
-    ab = pd.to_numeric(pitchers["AB"], errors="coerce")
     gp = pd.to_numeric(pitchers["GP"], errors="coerce")
     k = pd.to_numeric(pitchers["K"], errors="coerce")
-    bb = pd.to_numeric(pitchers["BB"], errors="coerce")
-    so_pa = pd.to_numeric(pitchers["SO/PA"], errors="coerce")
-    k_ab_denominator = ab + bb
+    bf = pd.to_numeric(pitchers["BF"], errors="coerce")
+    status_series = (
+        pitchers["Status"].astype(str).str.strip()
+        if "Status" in pitchers.columns
+        else pd.Series([""] * len(pitchers), index=pitchers.index)
+    )
 
-    pitchers["AB/GP"] = ab / gp
-    pitchers["K/AB"] = 100 * (k / k_ab_denominator)
-    pitchers["Ks"] = [get_strikeouts_by_player_name(date, name) for name in pitchers["Name"]]
-    pitchers["r"] = so_pa.rank(ascending=False)
+    valid_pa_gp = bf.notna() & (bf > 0) & gp.notna() & (gp > 0)
+    pitchers[PA_GP_COLUMN] = pd.Series(pd.NA, index=pitchers.index, dtype="object")
+    pitchers.loc[valid_pa_gp, PA_GP_COLUMN] = bf[valid_pa_gp] / gp[valid_pa_gp]
+    pitchers[K_PA_COLUMN] = pd.Series(pd.NA, index=pitchers.index, dtype="object")
+    valid_bf = bf.notna() & (bf > 0)
+    pitchers.loc[valid_bf, K_PA_COLUMN] = 100 * (k[valid_bf] / bf[valid_bf])
+    pitchers["Ks"] = [
+        get_strikeouts_by_player_name(date, name) if status in COMPLETED_STATUSES else ""
+        for name, status in zip(pitchers["Name"], status_series)
+    ]
 
     for col in REPORT_COLUMN_ORDER:
         if col not in pitchers.columns:
             pitchers[col] = pd.NA
 
-    pitchers = pitchers[REPORT_COLUMN_ORDER].copy()
+    extra_columns = [col for col in pitchers.columns if col not in REPORT_COLUMN_ORDER]
+    pitchers = pitchers[REPORT_COLUMN_ORDER + extra_columns].copy()
     return sort_pitchers_for_report(pitchers)
 
 
@@ -1204,7 +1214,7 @@ def merge_with_odds_data(pitchers: pd.DataFrame, report_date: str) -> pd.DataFra
 
 
 def _odds_columns_from_df(df: pd.DataFrame) -> List[str]:
-    return [col for col in df.columns if col not in REPORT_COLUMN_ORDER]
+    return [col for col in df.columns if col not in REPORT_COLUMN_ORDER and col not in INTERNAL_ONLY_COLUMNS]
 
 
 def _split_primary_and_alts(value: Any) -> Tuple[str, List[str]]:
@@ -1218,75 +1228,298 @@ def _split_primary_and_alts(value: Any) -> Tuple[str, List[str]]:
     return primary_line.strip(), alternate_lines
 
 
-def _render_odds_line_html(line_text: str, line_class: str) -> str:
-    match = PRIMARY_ODDS_PATTERN.match(line_text.strip())
+def _format_odds_point(point: Any) -> str:
+    numeric = pd.to_numeric(point, errors="coerce")
+    if pd.isna(numeric):
+        return str(point)
+    return f"{float(numeric):g}"
+
+
+def _sportsbook_tag_for_column(column_name: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "", str(column_name or "").lower())
+    if normalized in SPORTSBOOK_TAGS:
+        return SPORTSBOOK_TAGS[normalized]
+    fallback = re.sub(r"[^A-Z0-9]+", "", str(column_name or "").upper())
+    return (fallback or "BOOK")[:4]
+
+
+def _book_sort_key(book_name: str) -> Tuple[int, str]:
+    try:
+        return (PREFERRED_ODDS_COLUMNS.index(book_name), book_name.lower())
+    except ValueError:
+        return (len(PREFERRED_ODDS_COLUMNS), book_name.lower())
+
+
+def _parse_odds_line(line_text: str) -> Optional[Dict[str, Any]]:
+    match = PRIMARY_ODDS_PATTERN.match(str(line_text or "").strip())
     if not match:
-        return f'<span class="{line_class}">{escape(line_text)}</span>'
-
-    point_text = escape(match.group(1))
-    over_text = escape(match.group(2))
-    under_text = escape(match.group(3))
-    return (
-        f'<span class="{line_class} odds-line">'
-        f'<span class="odds-point">{point_text}</span>'
-        f'<span class="odds-sep">:</span>'
-        f'<span class="odds-over">{over_text}</span>'
-        f'<span class="odds-pipe">|</span>'
-        f'<span class="odds-under">{under_text}</span>'
-        f"</span>"
-    )
-
-
-def _extract_primary_odds_tuple(value: Any) -> Optional[Tuple[str, Optional[int], Optional[int]]]:
-    primary_line, _ = _split_primary_and_alts(value)
-    if not primary_line:
         return None
 
-    match = PRIMARY_ODDS_PATTERN.match(primary_line)
-    if not match:
+    point_value = pd.to_numeric(match.group(1), errors="coerce")
+    if pd.isna(point_value):
         return None
 
-    point = match.group(1)
     over_price = _safe_int(match.group(2))
     under_price = _safe_int(match.group(3))
     if over_price is None and under_price is None:
         return None
-    return (point, over_price, under_price)
+
+    return {
+        "point": float(point_value),
+        "point_text": _format_odds_point(point_value),
+        "over_price": over_price,
+        "under_price": under_price,
+    }
 
 
-def _render_odds_cell(value: Any) -> str:
+def _parse_book_odds_entries(book_name: str, value: Any) -> List[Dict[str, Any]]:
     if value is None:
-        return "-"
+        return []
     text = str(value).strip()
     if text in {"", "-", "N/A", "nan", "None"}:
-        return "-"
+        return []
 
     primary_line, alternate_lines = _split_primary_and_alts(text)
-    if not primary_line:
-        return "-"
-
-    primary_html = _render_odds_line_html(primary_line, "odds-main")
-    if not alternate_lines:
-        return (
-            f'<div class="odds-cell">'
-            f"{primary_html}"
-            f'<span class="odds-arrow-placeholder" aria-hidden="true"></span>'
-            f"</div>"
+    parsed_entries: List[Dict[str, Any]] = []
+    for line_text, is_primary in [(primary_line, True), *[(line, False) for line in alternate_lines]]:
+        parsed = _parse_odds_line(line_text)
+        if not parsed:
+            continue
+        parsed_entries.append(
+            {
+                "book": book_name,
+                "tag": _sportsbook_tag_for_column(book_name),
+                "is_primary": is_primary,
+                **parsed,
+            }
         )
 
-    alt_items = "".join(
-        f"<li>{_render_odds_line_html(line, 'odds-alt-line')}</li>" for line in alternate_lines
+    deduped: Dict[Tuple[str, float], Dict[str, Any]] = {}
+    for entry in parsed_entries:
+        key = (entry["book"], entry["point"])
+        existing = deduped.get(key)
+        if existing is None or (entry["is_primary"] and not existing["is_primary"]):
+            deduped[key] = entry
+    return list(deduped.values())
+
+
+def _collect_pitcher_odds_entries(row_data: Any, odds_columns: Sequence[str]) -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
+    for odds_column in odds_columns:
+        entries.extend(_parse_book_odds_entries(odds_column, row_data.get(odds_column)))
+    return entries
+
+
+def _choose_consensus_primary_point(entries: Sequence[Dict[str, Any]]) -> Optional[float]:
+    primary_entries = [entry for entry in entries if entry.get("is_primary")]
+    if not primary_entries:
+        return None
+
+    counts: Dict[float, int] = {}
+    earliest_book_rank: Dict[float, Tuple[int, str]] = {}
+    for entry in primary_entries:
+        point = float(entry["point"])
+        counts[point] = counts.get(point, 0) + 1
+        book_rank = _book_sort_key(str(entry.get("book", "")))
+        existing_rank = earliest_book_rank.get(point)
+        if existing_rank is None or book_rank < existing_rank:
+            earliest_book_rank[point] = book_rank
+
+    return min(
+        counts,
+        key=lambda point: (-counts[point], earliest_book_rank.get(point, (len(PREFERRED_ODDS_COLUMNS), "")), point),
     )
+
+
+def _best_price_entry(
+    entries: Sequence[Dict[str, Any]],
+    point: float,
+    side: str,
+) -> Optional[Dict[str, Any]]:
+    side_key = f"{side}_price"
+    candidates = [
+        entry
+        for entry in entries
+        if float(entry.get("point", float("nan"))) == float(point) and entry.get(side_key) is not None
+    ]
+    if not candidates:
+        return None
+    return max(
+        candidates,
+        key=lambda entry: (int(entry[side_key]), -_book_sort_key(str(entry.get("book", "")))[0], str(entry.get("book", ""))),
+    )
+
+
+def _price_text(price: Optional[int]) -> str:
+    if price is None:
+        return "-"
+    return f"{price:+d}"
+
+
+def _render_sportsbook_badge(
+    book_name: Any,
+    tag_text: Any,
+    *,
+    extra_class: str = "",
+) -> str:
+    book_text = str(book_name or "").strip()
+    tag = str(tag_text or "").strip()
+    if not book_text or not tag or tag == "-":
+        return ""
+
+    classes = ["k-src-marker", "sportsbook-badge"]
+    if extra_class:
+        classes.append(extra_class)
+    color = _sportsbook_color_for_column(book_text)
+    title = escape(book_text, quote=True)
     return (
-        f'<div class="odds-cell">'
-        f"{primary_html}"
-        f'<details class="odds-details">'
-        f'<summary aria-label="Show alternate odds" title="Show alternate odds">'
-        f'<span class="odds-arrow">&#9662;</span>'
-        f"</summary>"
-        f"<ul>{alt_items}</ul>"
-        f"</details>"
-        f"</div>"
+        f'<span class="{" ".join(classes)}" style="--sportsbook-color: {escape(color)};" '
+        f'title="{title}">{escape(tag)}</span>'
+    )
+
+
+def _render_odds_price_span(side: str, price: Optional[int], *, is_best: bool = False) -> str:
+    classes = [f"odds-{side}"]
+    if is_best:
+        classes.append(f"best-{side}")
+    return f'<span class="{" ".join(classes)}">{escape(_price_text(price))}</span>'
+
+
+def _classify_best_odds_point(point: Any) -> str:
+    numeric = pd.to_numeric(point, errors="coerce")
+    if pd.isna(numeric):
+        return "best-odds-point-neutral"
+
+    value = float(numeric)
+    if value >= 7.5:
+        return "best-odds-point-elite"
+    if value >= 6.5:
+        return "best-odds-point-strong"
+    if value <= 4.5:
+        return "best-odds-point-weak"
+    return "best-odds-point-neutral"
+
+
+def summarize_pitcher_best_k_odds(
+    row_data: Any,
+    odds_columns: Sequence[str],
+) -> Dict[str, Any]:
+    entries = _collect_pitcher_odds_entries(row_data, odds_columns)
+    if not entries:
+        return {"summary": "-", "consensus_point": None, "entries": [], "line_groups": []}
+
+    consensus_point = _choose_consensus_primary_point(entries)
+    if consensus_point is None:
+        return {"summary": "-", "consensus_point": None, "entries": entries, "line_groups": []}
+
+    best_over = _best_price_entry(entries, consensus_point, "over")
+    best_under = _best_price_entry(entries, consensus_point, "under")
+    summary = " | ".join(
+        [
+            _format_odds_point(consensus_point),
+            f'O {_price_text(best_over.get("over_price") if best_over else None)} {best_over.get("tag") if best_over else "-"}',
+            f'U {_price_text(best_under.get("under_price") if best_under else None)} {best_under.get("tag") if best_under else "-"}',
+        ]
+    )
+
+    grouped_entries: Dict[float, List[Dict[str, Any]]] = {}
+    for entry in entries:
+        grouped_entries.setdefault(float(entry["point"]), []).append(entry)
+
+    sorted_points = [consensus_point] + sorted(point for point in grouped_entries if point != consensus_point)
+    line_groups: List[Dict[str, Any]] = []
+    for point in sorted_points:
+        point_entries = sorted(grouped_entries[point], key=lambda entry: _book_sort_key(str(entry.get("book", ""))))
+        best_over_entry = _best_price_entry(point_entries, point, "over")
+        best_under_entry = _best_price_entry(point_entries, point, "under")
+        line_groups.append(
+            {
+                "point": point,
+                "point_text": _format_odds_point(point),
+                "entries": point_entries,
+                "best_over_book": best_over_entry.get("book") if best_over_entry else None,
+                "best_under_book": best_under_entry.get("book") if best_under_entry else None,
+            }
+        )
+
+    return {
+        "summary": summary,
+        "consensus_point": consensus_point,
+        "best_over": best_over,
+        "best_under": best_under,
+        "entries": entries,
+        "line_groups": line_groups,
+    }
+
+
+def _render_best_k_odds_cell(row_data: Any, odds_columns: Sequence[str]) -> str:
+    odds_summary = summarize_pitcher_best_k_odds(row_data, odds_columns)
+    summary_text = str(odds_summary.get("summary", "-")).strip() or "-"
+    line_groups = odds_summary.get("line_groups") or []
+    if summary_text == "-" or not line_groups:
+        return (
+            '<div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available">'
+            '<span class="best-odds-summary">-</span></div>'
+        )
+
+    best_over = odds_summary.get("best_over")
+    best_under = odds_summary.get("best_under")
+    consensus_point = line_groups[0].get("point")
+    consensus_point_text = str(line_groups[0].get("point_text", ""))
+    consensus_point_class = _classify_best_odds_point(consensus_point)
+    summary_parts = [
+        f'<span class="best-odds-point {consensus_point_class}">{escape(consensus_point_text)}</span>',
+        '<span class="best-odds-divider" aria-hidden="true">|</span>',
+        '<span class="best-odds-side">'
+        '<span class="best-odds-side-label">O</span>'
+        f'<span class="odds-over best-over">{escape(_price_text(best_over.get("over_price") if best_over else None))}</span>'
+        f'{_render_sportsbook_badge(best_over.get("book") if best_over else "", best_over.get("tag") if best_over else "", extra_class="sportsbook-badge-summary")}'
+        "</span>",
+        '<span class="best-odds-divider" aria-hidden="true">|</span>',
+        '<span class="best-odds-side">'
+        '<span class="best-odds-side-label">U</span>'
+        f'<span class="odds-under best-under">{escape(_price_text(best_under.get("under_price") if best_under else None))}</span>'
+        f'{_render_sportsbook_badge(best_under.get("book") if best_under else "", best_under.get("tag") if best_under else "", extra_class="sportsbook-badge-summary")}'
+        "</span>",
+    ]
+
+    detail_groups: List[str] = []
+    for group in line_groups:
+        group_entries_html = []
+        for entry in group.get("entries", []):
+            is_best_over = entry.get("book") == group.get("best_over_book")
+            is_best_under = entry.get("book") == group.get("best_under_book")
+            group_entries_html.append(
+                '<li class="odds-book-row">'
+                f'{_render_sportsbook_badge(entry.get("book"), entry.get("tag"), extra_class="sportsbook-badge-detail")}'
+                f'{_render_odds_price_span("over", entry.get("over_price"), is_best=is_best_over)}'
+                f'{_render_odds_price_span("under", entry.get("under_price"), is_best=is_best_under)}'
+                "</li>"
+            )
+        detail_groups.append(
+            '<li class="odds-line-group">'
+            f'<span class="odds-line-label">{escape(str(group.get("point_text", "")))}</span>'
+            '<ul class="odds-book-list">'
+            + "".join(group_entries_html)
+            + "</ul></li>"
+        )
+
+    cell_classes = ["best-odds-cell"]
+    if best_over is None or best_under is None:
+        cell_classes.append("best-odds-cell-missing-side")
+
+    return (
+        f'<div class="{" ".join(cell_classes)}" title="{escape(summary_text, quote=True)}" aria-label="{escape(summary_text, quote=True)}">'
+        '<span class="best-odds-summary">'
+        + "".join(summary_parts)
+        + "</span>"
+        '<details class="odds-details">'
+        '<summary aria-label="Show all strikeout odds" title="Show all strikeout odds">'
+        '<span class="odds-arrow">&#9662;</span>'
+        "</summary>"
+        '<ul class="odds-details-list">'
+        + "".join(detail_groups)
+        + "</ul></details></div>"
     )
 
 
@@ -1343,18 +1576,12 @@ def _set_tag_style_var(tag: Any, var_name: str, var_value: str) -> None:
     tag["style"] = "; ".join(f"{key}: {value}" for key, value in style_map.items()) + ";"
 
 
-def _status_badge(status: Any) -> str:
-    status_text = str(status) if status is not None else "-"
-    status_slug = status_text.lower().replace(" ", "-")
-    return f'<span class="status-pill status-{status_slug}">{status_text}</span>'
-
-
 def _render_matchup_source_marker(value: Any) -> str:
     text = str(value or "").strip()
     if text == MATCHUP_SOURCE_ESPN:
-        return '<span class="k-src-marker src-espn" title="ESPN confirmed lineup source (K/AB)">E</span>'
+        return '<span class="k-src-marker src-espn" title="ESPN confirmed lineup sample">E</span>'
     if text == MATCHUP_SOURCE_SAVANT:
-        return '<span class="k-src-marker src-savant" title="Savant probable lineup source (K/PA)">S</span>'
+        return '<span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span>'
     return ""
 
 
@@ -1368,7 +1595,20 @@ def _annotate_k_percent_with_source(k_percent_value: Any, source_value: Any) -> 
     return f'{escape(text)}<span class="k-src-gap" aria-hidden="true"></span>{marker_html}'
 
 
-def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
+def _opponent_time_chip_metadata(status: Any) -> Tuple[str, str]:
+    status_text = str(status or "").strip()
+    if status_text in NOT_STARTED_STATUSES:
+        return ("opp-time opp-time-upcoming", f"Game status: {status_text}")
+    if status_text == "In Progress":
+        return ("opp-time opp-time-live", "Game status: In Progress")
+    if status_text == "Final":
+        return ("opp-time opp-time-final", "Game status: Final")
+    if status_text:
+        return ("opp-time", f"Game status: {status_text}")
+    return ("opp-time", "Game time")
+
+
+def _render_opponent_with_start(opponent: Any, start_time: Any, status: Any = None) -> str:
     opponent_text = str(opponent or "").strip()
     start_text = str(start_time or "").strip()
     if opponent_text in {"", "-", "N/A", "nan", "None"} and start_text in {"", "-", "N/A", "nan", "None"}:
@@ -1377,10 +1617,10 @@ def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
     if opponent_text in {"", "-", "N/A", "nan", "None"}:
         opponent_html = "-"
     else:
-        logo_details = _team_logo_details(opponent_text)
-        if logo_details:
-            logo_url = escape(_team_logo_src(logo_details), quote=True)
-            logo_alt = escape(f'{logo_details["name"]} logo', quote=True)
+        logo_src = get_team_logo_src(team_name=opponent_text)
+        if logo_src:
+            logo_url = escape(logo_src, quote=True)
+            logo_alt = escape(f"{opponent_text} logo", quote=True)
             logo_html = (
                 f'<img class="opp-logo" src="{logo_url}" alt="{logo_alt}" '
                 'loading="lazy" decoding="async" referrerpolicy="no-referrer">'
@@ -1392,10 +1632,34 @@ def _render_opponent_with_start(opponent: Any, start_time: Any) -> str:
     if start_text in {"", "-", "N/A", "nan", "None"}:
         return opponent_html
 
+    time_classes, time_title = _opponent_time_chip_metadata(status)
     return (
         '<span class="opp-cell">'
         f'<span class="opp-team">{opponent_html}</span>'
-        f'<span class="opp-time" title="Scheduled local start time">{escape(start_text)}</span>'
+        f'<span class="{escape(time_classes, quote=True)}" title="{escape(time_title, quote=True)}">{escape(start_text)}</span>'
+        "</span>"
+    )
+
+
+def _render_hand_badge(hand: Any) -> str:
+    hand_text = str(hand or "").strip().upper()
+    if hand_text not in {"R", "L"}:
+        hand_text = "TBD"
+    hand_class = {"R": "hand-right", "L": "hand-left"}.get(hand_text, "hand-tbd")
+    return (
+        f'<span class="k-src-marker hand-marker {hand_class}" '
+        f'title="Pitcher handedness: {escape(hand_text)}">{escape(hand_text)}</span>'
+    )
+
+
+def _render_pitcher_name_cell(name: Any, hand: Any) -> str:
+    name_text = str(name or "").strip()
+    if not name_text:
+        return "-"
+    return (
+        '<span class="pitcher-name-cell">'
+        f"{make_pitcher_hyperlink(name_text)}"
+        f"{_render_hand_badge(hand)}"
         "</span>"
     )
 
@@ -1478,7 +1742,19 @@ def _build_metric_contexts(
     pitcher_arsenal_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Dict[str, Dict[str, Optional[float]]]:
     contexts: Dict[str, Dict[str, Optional[float]]] = {}
-    for column_name in ["K/AB", "SO/PA", OPP_HAND_K_COLUMN, "K%", "K/9", "Whiff%", "PA", "Ks"]:
+    for column_name in [
+        PA_GP_COLUMN,
+        K_PA_COLUMN,
+        "SO/PA",
+        OPP_HAND_K_COLUMN,
+        OPP_LAST_5_K_COLUMN,
+        OPP_LAST_10_K_COLUMN,
+        "K%",
+        "K/9",
+        "Whiff%",
+        "PA",
+        "Ks",
+    ]:
         series = raw_df[column_name] if column_name in raw_df.columns else pd.Series(dtype="float64")
         contexts[column_name] = _build_numeric_metric_context(series)
 
@@ -1517,6 +1793,40 @@ def _apply_relative_metric_class(
         _add_cell_class(cells, column_map, column_name, "cell-strong")
     elif delta <= -elite_band:
         _add_cell_class(cells, column_map, column_name, "cell-weak")
+
+
+def _classify_matchup_k_percent(k_pct: Optional[float], sample_size: Optional[float]) -> Optional[str]:
+    if k_pct is None or sample_size is None:
+        return None
+
+    if sample_size < MATCHUP_K_MIN_SAMPLE:
+        if k_pct >= MATCHUP_K_STRONG_PCT:
+            return "cell-low-confidence"
+        return None
+
+    if k_pct < MATCHUP_K_WEAK_PCT:
+        return "cell-weak"
+
+    if sample_size < MATCHUP_K_HIGH_CONFIDENCE_SAMPLE:
+        if k_pct >= MATCHUP_K_STRONG_PCT:
+            return "cell-strong"
+        return None
+
+    if k_pct >= MATCHUP_K_ELITE_PCT:
+        return "cell-elite"
+    if k_pct >= MATCHUP_K_STRONG_PCT:
+        return "cell-strong"
+    return None
+
+
+def _classify_matchup_sample_size(sample_size: Optional[float]) -> Optional[str]:
+    if sample_size is None:
+        return None
+    if sample_size >= MATCHUP_K_HIGH_CONFIDENCE_SAMPLE:
+        return "cell-confidence-high"
+    if sample_size < MATCHUP_K_MIN_SAMPLE:
+        return "cell-confidence-low"
+    return None
 
 
 def _build_pitcher_arsenal_payload(
@@ -1588,13 +1898,13 @@ def _build_conditional_table_html(
     column_map = {header: idx for idx, header in enumerate(headers)}
     row_tags = tbody.find_all("tr")
     odds_columns = _odds_columns_from_df(raw_df)
-    odds_col_colors = {odds_col: _sportsbook_color_for_column(odds_col) for odds_col in odds_columns}
     semantic_column_classes = {
         "Name": "column-name",
         "Opponent": "column-opponent",
-        "Status": "column-status",
-        OPP_HAND_K_COLUMN: "column-opp-hand",
+        BEST_K_ODDS_COLUMN: "column-best-odds",
     }
+    for column_name in OPPONENT_K_CONTEXT_COLUMNS:
+        semantic_column_classes[column_name] = "column-opp-hand"
     metric_contexts = _build_metric_contexts(raw_df, pitcher_arsenal_lookup=pitcher_arsenal_lookup)
 
     thead = table.find("thead")
@@ -1626,14 +1936,6 @@ def _build_conditional_table_html(
             header_cell["role"] = "button"
             header_cell["aria-sort"] = "none"
 
-    for odds_col in odds_columns:
-        col_index = column_map.get(odds_col)
-        if col_index is None or col_index >= len(header_cells):
-            continue
-        header_cell = header_cells[col_index]
-        _add_tag_class(header_cell, "sportsbook-column")
-        _set_tag_style_var(header_cell, "--sportsbook-color", odds_col_colors[odds_col])
-
     for row_index, row_tag in enumerate(row_tags):
         if row_index >= len(raw_df):
             break
@@ -1658,7 +1960,13 @@ def _build_conditional_table_html(
         k_pct = _to_float(row_data.get("K%"))
         so_pa = _to_float(row_data.get("SO/PA"))
         opp_k_vs_hand = _to_float(row_data.get(OPP_HAND_K_COLUMN))
+        opp_last_5_k = _to_float(row_data.get(OPP_LAST_5_K_COLUMN))
+        opp_last_10_k = _to_float(row_data.get(OPP_LAST_10_K_COLUMN))
         pa = _to_float(row_data.get("PA"))
+        matchup_k_pct_class = _classify_matchup_k_percent(k_pct, pa)
+        matchup_pa_class = _classify_matchup_sample_size(pa)
+        sample_is_actionable = pa is not None and pa >= MATCHUP_K_MIN_SAMPLE
+
         if status in NOT_STARTED_STATUSES and k_pct is not None and so_pa is not None:
             k_context = metric_contexts.get("K%", {})
             so_context = metric_contexts.get("SO/PA", {})
@@ -1677,7 +1985,8 @@ def _build_conditional_table_html(
                 and so_strong is not None
             ):
                 is_target = (
-                    k_pct >= (k_mean + k_strong)
+                    sample_is_actionable
+                    and k_pct >= (k_mean + k_strong)
                     and so_pa >= (so_mean + so_strong)
                     and (
                         pa is None
@@ -1692,7 +2001,7 @@ def _build_conditional_table_html(
                 elif is_caution:
                     row_classes.append("row-caution")
             else:
-                if k_pct >= 25 and so_pa >= 24 and (pa is None or pa >= 20):
+                if sample_is_actionable and k_pct >= 25 and so_pa >= 24 and (pa is None or pa >= 20):
                     row_classes.append("row-target")
                 elif k_pct <= 18 or so_pa <= 20:
                     row_classes.append("row-caution")
@@ -1716,26 +2025,6 @@ def _build_conditional_table_html(
         if row_classes:
             row_tag["class"] = row_classes
 
-        primary_odds_by_col: Dict[str, Tuple[str, Optional[int], Optional[int]]] = {}
-        best_by_point: Dict[str, Dict[str, Optional[int]]] = {}
-        for odds_col in odds_columns:
-            parsed_odds = _extract_primary_odds_tuple(row_data.get(odds_col))
-            if not parsed_odds:
-                continue
-
-            point, over_price, under_price = parsed_odds
-            primary_odds_by_col[odds_col] = parsed_odds
-
-            point_best = best_by_point.setdefault(point, {"over": None, "under": None})
-            if over_price is not None and (
-                point_best["over"] is None or over_price > point_best["over"]
-            ):
-                point_best["over"] = over_price
-            if under_price is not None and (
-                point_best["under"] is None or under_price > point_best["under"]
-            ):
-                point_best["under"] = under_price
-
         cells = row_tag.find_all("td")
         for col_name, col_class in semantic_column_classes.items():
             col_index = column_map.get(col_name)
@@ -1755,19 +2044,18 @@ def _build_conditional_table_html(
                 if sort_value is not None:
                     cells[col_index]["data-sort-value"] = f"{sort_value:.12g}"
 
-        for odds_col in odds_columns:
-            col_index = column_map.get(odds_col)
-            if col_index is None or col_index >= len(cells):
-                continue
-            odds_cell = cells[col_index]
-            _add_tag_class(odds_cell, "sportsbook-column")
-            _set_tag_style_var(odds_cell, "--sportsbook-color", odds_col_colors[odds_col])
-
-        k_ab = _to_float(row_data.get("K/AB"))
-        _apply_relative_metric_class(cells, column_map, "K/AB", k_ab, metric_contexts)
+        k_pa = _to_float(row_data.get(K_PA_COLUMN))
+        pa_per_game = _to_float(row_data.get(PA_GP_COLUMN))
+        _apply_relative_metric_class(cells, column_map, K_PA_COLUMN, k_pa, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, PA_GP_COLUMN, pa_per_game, metric_contexts)
         _apply_relative_metric_class(cells, column_map, "SO/PA", so_pa, metric_contexts)
         _apply_relative_metric_class(cells, column_map, OPP_HAND_K_COLUMN, opp_k_vs_hand, metric_contexts)
-        _apply_relative_metric_class(cells, column_map, "K%", k_pct, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, OPP_LAST_5_K_COLUMN, opp_last_5_k, metric_contexts)
+        _apply_relative_metric_class(cells, column_map, OPP_LAST_10_K_COLUMN, opp_last_10_k, metric_contexts)
+        if matchup_k_pct_class:
+            _add_cell_class(cells, column_map, "K%", matchup_k_pct_class)
+        if matchup_pa_class:
+            _add_cell_class(cells, column_map, "PA", matchup_pa_class)
 
         k_per_nine = _to_float(row_data.get("K/9"))
         _apply_relative_metric_class(cells, column_map, "K/9", k_per_nine, metric_contexts)
@@ -1785,36 +2073,6 @@ def _build_conditional_table_html(
         if ks is not None and status in COMPLETED_STATUSES:
             _apply_relative_metric_class(cells, column_map, "Ks", ks, metric_contexts)
 
-        for odds_col in odds_columns:
-            odds_col_index = column_map.get(odds_col)
-            if odds_col_index is None or odds_col_index >= len(cells):
-                continue
-            odds_class = _classify_odds_cell(cells[odds_col_index].get_text(strip=True))
-            _add_cell_class(cells, column_map, odds_col, odds_class)
-
-            parsed_odds = primary_odds_by_col.get(odds_col)
-            if not parsed_odds:
-                continue
-            point, over_price, under_price = parsed_odds
-            point_best = best_by_point.get(point, {})
-            cell = cells[odds_col_index]
-
-            if over_price is not None and point_best.get("over") is not None and over_price == point_best["over"]:
-                over_span = cell.find("span", class_="odds-over")
-                if over_span is not None:
-                    over_classes = over_span.get("class", [])
-                    if "best-over" not in over_classes:
-                        over_classes.append("best-over")
-                        over_span["class"] = over_classes
-
-            if under_price is not None and point_best.get("under") is not None and under_price == point_best["under"]:
-                under_span = cell.find("span", class_="odds-under")
-                if under_span is not None:
-                    under_classes = under_span.get("class", [])
-                    if "best-under" not in under_classes:
-                        under_classes.append("best-under")
-                        under_span["class"] = under_classes
-
     return str(table)
 
 
@@ -1822,17 +2080,25 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     report_df = df.copy()
     odds_columns = _odds_columns_from_df(report_df)
     if "Name" in report_df.columns:
-        report_df["Name"] = report_df["Name"].apply(make_pitcher_hyperlink)
-    if "Status" in report_df.columns:
-        report_df["Status"] = report_df["Status"].apply(_status_badge)
-    for col in odds_columns:
-        report_df[col] = report_df[col].apply(_render_odds_cell)
+        report_df["Name"] = report_df.apply(
+            lambda row: _render_pitcher_name_cell(row.get("Name"), row.get("Hand")),
+            axis=1,
+        )
+    if "Ks" in report_df.columns and "Status" in report_df.columns:
+        status_text = report_df["Status"].astype(str).str.strip()
+        report_df.loc[~status_text.isin(COMPLETED_STATUSES), "Ks"] = ""
+    report_df[BEST_K_ODDS_COLUMN] = report_df.apply(
+        lambda row: _render_best_k_odds_cell(row, odds_columns),
+        axis=1,
+    )
 
     format_map = {
         "SO/PA": "{:.2f}",
         OPP_HAND_K_COLUMN: "{:.2f}",
-        "AB/GP": "{:.1f}",
-        "K/AB": "{:.2f}",
+        OPP_LAST_5_K_COLUMN: "{:.2f}",
+        OPP_LAST_10_K_COLUMN: "{:.2f}",
+        PA_GP_COLUMN: "{:.1f}",
+        K_PA_COLUMN: "{:.2f}",
         "K%": "{:.1f}",
         "PA": "{:.0f}",
         "r": "{:.0f}",
@@ -1851,11 +2117,22 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
         )
     if "Opponent" in report_df.columns:
         report_df["Opponent"] = report_df.apply(
-            lambda row: _render_opponent_with_start(row.get("Opponent"), row.get(START_TIME_COLUMN)),
+            lambda row: _render_opponent_with_start(
+                row.get("Opponent"),
+                row.get(START_TIME_COLUMN),
+                row.get("Status"),
+            ),
             axis=1,
         )
 
-    report_df.drop(columns=[MATCHUP_SOURCE_COLUMN, START_TIME_COLUMN], inplace=True, errors="ignore")
+    report_df.drop(
+        columns=["Status", MATCHUP_SOURCE_COLUMN, START_TIME_COLUMN, *odds_columns, *INTERNAL_ONLY_COLUMNS],
+        inplace=True,
+        errors="ignore",
+    )
+    ordered_columns = [col for col in REPORT_COLUMN_ORDER if col in report_df.columns]
+    remaining_columns = [col for col in report_df.columns if col not in ordered_columns]
+    report_df = report_df[ordered_columns + remaining_columns]
     return report_df.fillna("-")
 
 
@@ -1954,11 +2231,19 @@ def write_to_html(
       opacity: 0.95;
       font-size: 13px;
     }}
+    .hero-nav-row {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 14px;
+    }}
     .report-tabs {{
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 0;
     }}
     .report-tab {{
       display: inline-flex;
@@ -1990,22 +2275,24 @@ def write_to_html(
       pointer-events: none;
     }}
     .date-nav {{
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
     }}
     .date-pill {{
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 0;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -2023,13 +2310,12 @@ def write_to_html(
       pointer-events: none;
     }}
     .date-pill-label {{
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 10px;
+      display: none;
     }}
     .date-pill-date {{
-      opacity: 0.9;
+      opacity: 0.94;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }}
     .panel {{
       background: var(--panel);
@@ -2043,14 +2329,23 @@ def write_to_html(
       overflow-x: auto;
       max-height: 78vh;
     }}
+    .table-toolbar {{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px 12px;
+      padding: 8px 12px 0;
+    }}
     .table-legend {{
       display: flex;
       flex-wrap: wrap;
       gap: 10px 14px;
       align-items: center;
-      padding: 6px 12px 0;
       font-size: 11px;
       color: #334155;
+      flex: 1 1 720px;
+      min-width: 0;
     }}
     .legend-item {{
       display: inline-flex;
@@ -2084,13 +2379,15 @@ def write_to_html(
     .table-controls {{
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 6px;
       align-items: center;
-      padding: 10px 12px 0;
+      justify-content: flex-end;
+      margin-left: auto;
+      flex: 0 0 auto;
     }}
     .table-controls-label {{
       color: #334155;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.05em;
       text-transform: uppercase;
@@ -2098,26 +2395,29 @@ def write_to_html(
     .toggle-chip {{
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 7px 10px;
+      gap: 4px;
+      padding: 4px 8px;
       border-radius: 999px;
       border: 1px solid #d1dbe7;
       background: #f8fbff;
       color: #0f172a;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
+      line-height: 1.1;
     }}
     .toggle-chip input {{
       margin: 0;
       accent-color: #0f766e;
+      width: 12px;
+      height: 12px;
     }}
     table.pitchers-table {{
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      font-size: 10.5px;
+      font-size: 10px;
       table-layout: auto;
-      min-width: 980px;
+      min-width: 900px;
     }}
     table.pitchers-table thead th {{
       position: sticky;
@@ -2126,10 +2426,10 @@ def write_to_html(
       background: var(--header);
       border-bottom: 1px solid var(--line);
       color: #0b2540;
-      padding: 6px 4px;
+      padding: 5px 3px;
       text-align: center;
       white-space: nowrap;
-      line-height: 1.15;
+      line-height: 1.08;
     }}
     table.pitchers-table thead th.stat-tooltip {{
       cursor: help;
@@ -2172,17 +2472,17 @@ def write_to_html(
       border-top: 4px solid var(--group-savant);
       background: color-mix(in srgb, var(--group-savant) 11%, var(--header));
     }}
-    table.pitchers-table thead th.sportsbook-column {{
-      border-top: 4px solid var(--sportsbook-color);
-      color: var(--sportsbook-color);
-      font-weight: 700;
+    table.pitchers-table thead th.column-best-odds {{
+      min-width: 156px;
+      white-space: normal;
+      line-height: 1.05;
     }}
     table.pitchers-table tbody td {{
       border-bottom: 1px solid var(--line);
-      padding: 5px 4px;
+      padding: 4px 3px;
       text-align: center;
       white-space: nowrap;
-      line-height: 1.12;
+      line-height: 1.08;
       vertical-align: middle;
     }}
     table.pitchers-table tbody td.group-pitcher {{
@@ -2205,34 +2505,26 @@ def write_to_html(
     }}
     table.pitchers-table th.column-name,
     table.pitchers-table td.column-name {{
-      min-width: 140px;
+      min-width: 118px;
       white-space: normal;
       overflow-wrap: anywhere;
     }}
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {{
-      min-width: 82px;
+      min-width: 72px;
       white-space: nowrap;
-    }}
-    table.pitchers-table th.column-status,
-    table.pitchers-table td.column-status {{
-      min-width: 74px;
     }}
     table.pitchers-table th.column-opp-hand,
     table.pitchers-table td.column-opp-hand {{
-      min-width: 82px;
+      min-width: 70px;
     }}
     table.pitchers-table th.column-opp-hand {{
       white-space: normal;
       line-height: 1.05;
     }}
-    table.pitchers-table th.sportsbook-column,
-    table.pitchers-table td.sportsbook-column {{
-      min-width: 112px;
-    }}
-    table.pitchers-table tbody td.sportsbook-column {{
-      box-shadow: inset 3px 0 0 var(--sportsbook-color);
-      background: color-mix(in srgb, var(--sportsbook-color) 10%, #ffffff);
+    table.pitchers-table td.column-best-odds {{
+      min-width: 156px;
+      white-space: normal;
     }}
     table.pitchers-table tbody tr:nth-child(even) {{
       background: #f8fbff;
@@ -2283,6 +2575,21 @@ def write_to_html(
       color: #7f1d1d;
       font-weight: 600;
     }}
+    table.pitchers-table td.cell-low-confidence {{
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+    }}
+    table.pitchers-table td.cell-confidence-high {{
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }}
+    table.pitchers-table td.cell-confidence-low {{
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 600;
+    }}
     table.pitchers-table td.cell-top-rank {{
       background: #dbeafe;
       color: #1e3a8a;
@@ -2305,15 +2612,12 @@ def write_to_html(
       color: #64748b;
       background: #f8fafc;
     }}
-    table.pitchers-table td.sportsbook-column.odds-missing {{
-      background: color-mix(in srgb, var(--sportsbook-color) 6%, #f8fafc);
-    }}
     .opp-cell {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-wrap: nowrap;
-      gap: 5px;
+      gap: 4px;
       line-height: 1.08;
       text-align: center;
     }}
@@ -2326,27 +2630,43 @@ def write_to_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      border-radius: 5px;
       background: #ffffff;
       box-shadow: inset 0 0 0 1px #e2e8f0;
     }}
     .opp-logo {{
       display: block;
-      width: 30px;
-      height: 30px;
+      width: 26px;
+      height: 26px;
       object-fit: contain;
     }}
     .opp-time {{
       display: inline-block;
-      padding: 1px 6px;
+      padding: 1px 5px;
       border-radius: 999px;
       background: #f1f5f9;
+      border: 1px solid #cbd5e1;
       color: #334155;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 700;
       letter-spacing: 0.01em;
+    }}
+    .opp-time-upcoming {{
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #155e75;
+    }}
+    .opp-time-live {{
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }}
+    .opp-time-final {{
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
     }}
     .k-src-gap {{
       display: inline-block;
@@ -2356,12 +2676,12 @@ def write_to_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 14px;
-      height: 14px;
-      padding: 0 4px;
+      min-width: 13px;
+      height: 13px;
+      padding: 0 3px;
       border-radius: 999px;
       border: 1px solid transparent;
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 800;
       line-height: 1;
       vertical-align: middle;
@@ -2378,38 +2698,136 @@ def write_to_html(
       color: #166534;
       border-color: #86efac;
     }}
-    .odds-cell {{
+    .pitcher-name-cell {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }}
+    .hand-marker {{
+      transform: none;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }}
+    .hand-marker.hand-right {{
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }}
+    .hand-marker.hand-left {{
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+    }}
+    .hand-marker.hand-tbd {{
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #cbd5e1;
+    }}
+    .best-odds-cell {{
       display: inline-grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 3px;
+      column-gap: 2px;
       align-items: center;
       justify-content: center;
       line-height: 1.1;
     }}
-    .odds-line {{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    .best-odds-cell-empty {{
+      grid-template-columns: auto;
+    }}
+    .best-odds-cell-missing-side {{
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 6px minmax(0, 1fr) 6px minmax(0, 1fr);
+      width: 100%;
+      justify-content: stretch;
+    }}
+    .best-odds-summary {{
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      column-gap: 1px;
+      gap: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 700;
       white-space: nowrap;
-      font-size: 9.5px;
     }}
-    .odds-point {{
-      text-align: right;
-      opacity: 0.9;
+    .best-odds-cell-missing-side .best-odds-summary {{
+      justify-content: flex-start;
+    }}
+    .best-odds-point {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.5rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #0f172a;
+      font-weight: 800;
+    }}
+    .best-odds-point-elite {{
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #14532d;
+    }}
+    .best-odds-point-strong {{
+      background: #fef9c3;
+      border-color: #fde68a;
+      color: #713f12;
+    }}
+    .best-odds-point-neutral {{
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }}
+    .best-odds-point-weak {{
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #7f1d1d;
+    }}
+    .best-odds-divider {{
+      color: #94a3b8;
+      font-weight: 700;
+    }}
+    .best-odds-side {{
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }}
+    .best-odds-side-label {{
+      font-size: 8px;
+      color: #64748b;
+      font-weight: 800;
+      letter-spacing: 0.03em;
     }}
     .odds-over, .odds-under {{
       text-align: right;
-      padding: 0 2px;
+      padding: 0 1px;
       border-radius: 4px;
     }}
-    .odds-main {{
-      font-weight: 700;
+    .sportsbook-badge {{
+      transform: none;
+      border-color: color-mix(in srgb, var(--sportsbook-color) 36%, #ffffff);
+      background: color-mix(in srgb, var(--sportsbook-color) 16%, #ffffff);
+      color: var(--sportsbook-color);
+    }}
+    .sportsbook-badge-summary {{
+      min-width: 18px;
+      height: 14px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }}
+    .sportsbook-badge-detail {{
+      min-width: 20px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+      justify-self: start;
     }}
     .odds-details {{
-      font-size: 10px;
+      font-size: 9.5px;
       color: #334155;
       display: inline-block;
       position: relative;
@@ -2423,8 +2841,8 @@ def write_to_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 12px;
-      height: 12px;
+      width: 11px;
+      height: 11px;
       border-radius: 50%;
       background: rgba(148, 163, 184, 0.18);
       border: 1px solid rgba(100, 116, 139, 0.35);
@@ -2432,7 +2850,7 @@ def write_to_html(
     }}
     .odds-details summary::-webkit-details-marker {{ display: none; }}
     .odds-arrow {{
-      font-size: 8px;
+      font-size: 7px;
       line-height: 1;
       transform: translateY(-1px);
       transition: transform 120ms ease;
@@ -2440,9 +2858,9 @@ def write_to_html(
     .odds-details[open] .odds-arrow {{
       transform: rotate(180deg) translateY(1px);
     }}
-    .odds-details ul {{
+    .odds-details > ul {{
       margin: 0;
-      padding: 6px 8px;
+      padding: 5px 7px;
       list-style: none;
       display: grid;
       gap: 2px;
@@ -2456,7 +2874,33 @@ def write_to_html(
       box-shadow: 0 8px 22px rgba(15, 23, 42, 0.15);
       min-width: max-content;
     }}
-    .odds-details li {{
+    .odds-details-list,
+    .odds-book-list {{
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }}
+    .odds-line-group {{
+      display: grid;
+      gap: 3px;
+      opacity: 0.95;
+      white-space: nowrap;
+    }}
+    .odds-line-label {{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 800;
+      color: #0f172a;
+    }}
+    .odds-book-list {{
+      display: grid;
+      gap: 2px;
+    }}
+    .odds-book-row {{
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+      column-gap: 4px;
       opacity: 0.9;
       white-space: nowrap;
     }}
@@ -2473,31 +2917,6 @@ def write_to_html(
     .odds-under.best-under {{
       color: #1d4ed8;
       font-weight: 800;
-    }}
-    .status-pill {{
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 12px;
-      border: 1px solid transparent;
-    }}
-    .status-pill.status-pre-game,
-    .status-pill.status-scheduled,
-    .status-pill.status-warmup {{
-      background: #ecfeff;
-      color: #155e75;
-      border-color: #a5f3fc;
-    }}
-    .status-pill.status-in-progress {{
-      background: #fff7ed;
-      color: #9a3412;
-      border-color: #fdba74;
-    }}
-    .status-pill.status-final {{
-      background: #f1f5f9;
-      color: #334155;
-      border-color: #cbd5e1;
     }}
     table.pitchers-table a {{
       color: #0f4c81;
@@ -2616,6 +3035,23 @@ def write_to_html(
     @media (max-width: 900px) {{
       body {{ padding: 12px; }}
       .hero h1 {{ font-size: 23px; }}
+      .hero-nav-row {{
+        align-items: stretch;
+      }}
+      .report-tabs {{
+        width: 100%;
+      }}
+      .date-nav {{
+        width: 100%;
+      }}
+      .table-toolbar {{
+        align-items: stretch;
+      }}
+      .table-controls {{
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }}
       .arsenal-metrics {{
         grid-template-columns: repeat(2, minmax(120px, 1fr));
       }}
@@ -2630,26 +3066,30 @@ def write_to_html(
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - {display_date}</h1>
       <p class="updated-at">Last updated: {updated_at}</p>
-      __TABS_HTML__
-      __DATE_NAV_HTML__
+      <div class="hero-nav-row">
+        __TABS_HTML__
+        __DATE_NAV_HTML__
+      </div>
     </header>
     <section class="panel">
-      <div class="table-legend">
-        <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
-        <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
-        <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-        <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
-      </div>
-      <div class="table-controls" aria-label="Pitcher table controls">
-        <span class="table-controls-label">Filters</span>
-        <label class="toggle-chip" for="hide-live-toggle">
-          <input type="checkbox" id="hide-live-toggle">
-          Hide In Progress
-        </label>
-        <label class="toggle-chip" for="hide-final-toggle">
-          <input type="checkbox" id="hide-final-toggle">
-          Hide Final
-        </label>
+      <div class="table-toolbar">
+        <div class="table-legend">
+          <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
+          <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
+          <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+        </div>
+        <div class="table-controls" aria-label="Pitcher table controls">
+          <span class="table-controls-label">Show</span>
+          <label class="toggle-chip" for="show-live-toggle">
+            <input type="checkbox" id="show-live-toggle">
+            In Progress
+          </label>
+          <label class="toggle-chip" for="show-final-toggle">
+            <input type="checkbox" id="show-final-toggle">
+            Final
+          </label>
+        </div>
       </div>
       <div class="table-wrap">
         {table_html}
@@ -2699,8 +3139,8 @@ def write_to_html(
     const tableBody = document.querySelector("table.pitchers-table tbody");
     const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
     const sortableHeaders = Array.from(document.querySelectorAll("table.pitchers-table thead th.is-sortable"));
-    const hideLiveToggle = document.getElementById("hide-live-toggle");
-    const hideFinalToggle = document.getElementById("hide-final-toggle");
+    const showLiveToggle = document.getElementById("show-live-toggle");
+    const showFinalToggle = document.getElementById("show-final-toggle");
     const nameEl = document.getElementById("arsenal-name");
     const whiffBoxEl = document.getElementById("arsenal-whiff-box");
     const whiffEl = document.getElementById("arsenal-whiff");
@@ -2941,12 +3381,12 @@ def write_to_html(
     }}
 
     function applyVisibility() {{
-      const hideLive = Boolean(hideLiveToggle?.checked);
-      const hideFinal = Boolean(hideFinalToggle?.checked);
+      const showLive = Boolean(showLiveToggle?.checked);
+      const showFinal = Boolean(showFinalToggle?.checked);
       pitcherRows.forEach((row) => {{
         const isLive = row.classList.contains("row-live");
         const isFinal = row.classList.contains("row-final");
-        row.hidden = (hideLive && isLive) || (hideFinal && isFinal);
+        row.hidden = (!showLive && isLive) || (!showFinal && isFinal);
       }});
     }}
 
@@ -2996,8 +3436,8 @@ def write_to_html(
       }});
     }});
 
-    hideLiveToggle?.addEventListener("change", applyTableState);
-    hideFinalToggle?.addEventListener("change", applyTableState);
+    showLiveToggle?.addEventListener("change", applyTableState);
+    showFinalToggle?.addEventListener("change", applyTableState);
 
     applyTableState();
   </script>
@@ -3023,36 +3463,6 @@ def write_to_html(
     if write_root:
         print(ROOT_INDEX_FILE.resolve().as_uri())
     return output_path
-
-
-def write_to_google_sheet(final_df: pd.DataFrame, sheet_name: str, report_date: str) -> None:
-    print("\033[92mWriting to Google Sheet....\033[0m")
-    if not SHEETS_CREDS_FILE.exists():
-        raise FileNotFoundError(f"{SHEETS_CREDS_FILE} not found.")
-
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive",
-    ]
-    creds = Credentials.from_service_account_file(str(SHEETS_CREDS_FILE), scopes=scopes)
-    client = gspread.authorize(creds)
-    spreadsheet = client.open(sheet_name)
-
-    sheet_tab_name = report_date.replace("/", "-")
-    try:
-        sheet = spreadsheet.worksheet(sheet_tab_name)
-    except gspread.exceptions.WorksheetNotFound:
-        sheet = spreadsheet.add_worksheet(title=sheet_tab_name, rows="100", cols="40")
-
-    sheet.clear()
-    set_with_dataframe(sheet, final_df)
-
-    if report_date == datetime.datetime.now().strftime("%m/%d/%Y"):
-        today_sheet = spreadsheet.sheet1
-        current_time = datetime.datetime.now().strftime("%H:%M")
-        today_sheet.update_title(f"TODAY: as of {current_time}")
-        today_sheet.clear()
-        set_with_dataframe(today_sheet, final_df)
 
 
 def resolve_date_input(raw_input: str) -> str:
@@ -3135,6 +3545,9 @@ def main(
     pitchers = add_pitcher_whiff_percent(pitchers, whiff_lookup)
     opponent_hand_lookup = build_opponent_hand_k_lookup(schedule, report_year)
     pitchers = add_opponent_hand_matchup_k_percent(pitchers, opponent_hand_lookup)
+    report_date_obj = datetime.datetime.strptime(report_date, "%m/%d/%Y").date()
+    opponent_recent_lookup = build_opponent_recent_k_lookup(schedule, report_year, report_date_obj)
+    pitchers = add_opponent_recent_k_percent(pitchers, opponent_recent_lookup)
     pitchers = calculate_additional_metrics(report_date, pitchers)
 
     final_df = pitchers
@@ -3148,12 +3561,6 @@ def main(
             final_df = pitchers
 
     final_df = sort_pitchers_for_report(final_df)
-
-    if odds.lower() != "n" and write_root:
-        try:
-            write_to_google_sheet(final_df, SPREADSHEET_NAME, report_date)
-        except Exception as exc:
-            print(f"\033[91mGoogle Sheet write failed: {exc}\033[0m")
 
     write_to_html(
         final_df,

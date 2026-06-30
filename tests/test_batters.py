@@ -737,6 +737,10 @@ class BattersRenderTests(unittest.TestCase):
             root_html = root_file.read_text(encoding="utf-8")
 
             self.assertIn('class="date-nav"', archive_html)
+            self.assertIn("hero-nav-row", archive_html)
+            self.assertIn(".date-pill-label {", archive_html)
+            self.assertIn("display: none;", archive_html)
+            self.assertIn("justify-content: flex-end;", archive_html)
             self.assertIn(f'href="./report-{report_key}.html"', archive_html)
             self.assertIn(f'href="./matchups-report-{report_key}.html"', archive_html)
             self.assertIn('href="./index.html"', root_html)

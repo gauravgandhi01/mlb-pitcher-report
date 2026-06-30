@@ -15,8 +15,8 @@ from report_data import (
     compute_recent_metrics,
     extract_confirmed_espn_lineup,
     extract_espn_game_total,
+    fetch_game_batter_vs_pitcher_stat_lines,
     extract_game_logs,
-    extract_season_hitting_stats as _extract_season_stat,
     fetch_espn_summary,
     fetch_people_stats_map,
     fetch_pitcher_context,
@@ -34,6 +34,7 @@ from report_data import (
     to_int as _to_int,
 )
 from site_nav import build_date_nav_html, build_report_tabs
+from team_logos import get_team_logo_src
 
 REPORTS_DIR = Path("reports")
 ROOT_BATTERS_FILE = Path(__file__).resolve().parent / "batters.html"
@@ -91,6 +92,7 @@ def build_candidate_rows(
     pitcher_name: str,
     game_total: Optional[float],
     pitch_hand: Optional[str],
+    pitcher_id: Optional[int],
     start_time: str,
     status: str,
     game_id: Optional[int],
@@ -115,11 +117,18 @@ def build_candidate_rows(
             continue
 
         indexed = index_stat_blocks(person)
-        season = _extract_season_stat(person)
         game_logs = extract_game_logs(person)
+        season = compute_recent_metrics(game_logs, report_date)
         recent7 = compute_recent_metrics(game_logs, report_date, max_games=RECENT_GAMES)
         recent14 = compute_recent_metrics(game_logs, report_date, window_days=RECENT_WINDOW_DAYS)
-        vsp = parse_vs_pitcher_stats(indexed)
+        same_day_vsp = None
+        if (
+            pitcher_id is not None
+            and game_id is not None
+            and str(status or "").strip() not in NOT_STARTED_STATUSES
+        ):
+            same_day_vsp = fetch_game_batter_vs_pitcher_stat_lines(int(game_id), int(pitcher_id)).get(person_id)
+        vsp = parse_vs_pitcher_stats(indexed, report_date=report_date, same_day_line=same_day_vsp)
         hit_streak = compute_hit_streak(game_logs, report_date)
         game_hit_result = _resolve_game_hit_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
         game_home_run_result = _resolve_game_home_run_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
@@ -468,13 +477,6 @@ def _final_total_result(status: Any, total: Any, away_score: Any, home_score: An
     return "push"
 
 
-def _team_logo_url(team_id: Any) -> str:
-    team_id_value = _to_int(team_id)
-    if team_id_value is None:
-        return ""
-    return f"https://www.mlbstatic.com/team-logos/{team_id_value}.svg"
-
-
 def _render_team_result_badge(result: Any) -> str:
     result_text = str(result or "").strip().lower()
     if result_text == "win":
@@ -519,7 +521,7 @@ def _status_badge(status: Any) -> str:
 def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any, result: Any = "") -> str:
     name_text = str(team_name or "").strip()
     abbrev_text = str(team_abbrev or "").strip() or name_text[:3].upper()
-    logo_url = escape(_team_logo_url(team_id), quote=True)
+    logo_url = escape(get_team_logo_src(team_id=team_id, team_abbrev=abbrev_text, team_name=name_text), quote=True)
     title = escape(name_text or abbrev_text, quote=True)
     result_html = _render_team_result_badge(result)
     return (
@@ -544,7 +546,7 @@ def _render_opponent_cell(
 ) -> str:
     name_text = str(opponent_name or "").strip()
     abbrev_text = str(opponent_abbrev or "").strip() or name_text[:3].upper()
-    logo_url = escape(_team_logo_url(opponent_id), quote=True)
+    logo_url = escape(get_team_logo_src(team_id=opponent_id, team_abbrev=abbrev_text, team_name=name_text), quote=True)
     title = escape(name_text or abbrev_text, quote=True)
     time_text = str(start_time or "").strip()
     time_html = (
@@ -996,11 +998,19 @@ def write_html(
       opacity: 0.95;
       font-size: 13px;
     }}
+    .hero-nav-row {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 14px;
+    }}
     .report-tabs {{
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 0;
     }}
     .report-tab {{
       display: inline-flex;
@@ -1032,22 +1042,24 @@ def write_html(
       pointer-events: none;
     }}
     .date-nav {{
-      display: inline-flex;
+      display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
     }}
     .date-pill {{
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 0;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1065,13 +1077,12 @@ def write_html(
       pointer-events: none;
     }}
     .date-pill-label {{
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 10px;
+      display: none;
     }}
     .date-pill-date {{
-      opacity: 0.9;
+      opacity: 0.94;
       font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }}
     .panel {{
       background: var(--panel);
@@ -1509,6 +1520,15 @@ def write_html(
       .hero h1 {{
         font-size: 23px;
       }}
+      .hero-nav-row {{
+        align-items: stretch;
+      }}
+      .report-tabs {{
+        width: 100%;
+      }}
+      .date-nav {{
+        width: 100%;
+      }}
       .panel-header {{
         align-items: flex-start;
         flex-direction: column;
@@ -1527,8 +1547,10 @@ def write_html(
     <section class="hero">
       <h1>MLB Daily Batter Report</h1>
       <p>{escape(display_date)} slate. Updated {escape(updated_at)}.</p>
-      __TABS_HTML__
-      __DATE_NAV_HTML__
+      <div class="hero-nav-row">
+        __TABS_HTML__
+        __DATE_NAV_HTML__
+      </div>
     </section>
 
     <section class="panel panel-legend">
@@ -1697,6 +1719,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 pitcher_name=str(pitcher_context.get("name") or pitcher_name),
                 game_total=game_total,
                 pitch_hand=str(pitcher_context.get("hand") or ""),
+                pitcher_id=int(pitcher_context["id"]),
                 start_time=start_time,
                 status=status,
                 game_id=_to_int(game.get("game_id")),

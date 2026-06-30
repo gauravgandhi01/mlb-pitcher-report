@@ -24,6 +24,7 @@ MLB_TEAM_IDS_CACHE: Dict[int, List[int]] = {}
 TEAM_HAND_RANK_CACHE: Dict[Tuple[int, str], Dict[int, Dict[str, int]]] = {}
 PITCHER_SEASON_RANK_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, int]]] = {}
 PARK_WEATHER_CACHE: Dict[Tuple[int, str], Optional[Dict[str, Any]]] = {}
+GAME_BVP_LINE_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, Any]]] = {}
 
 MLB_PARK_METADATA: Dict[int, Dict[str, Any]] = {
     1: {"name": "Angel Stadium", "lat": 33.8003, "lon": -117.8827, "roof_type": "open"},
@@ -808,56 +809,176 @@ def aggregate_stat_lines(
     return totals
 
 
-def parse_vs_pitcher_stats(indexed_blocks: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+def _stat_line_from_values(
+    *,
+    pa: int = 0,
+    ab: int = 0,
+    hits: int = 0,
+    walks: int = 0,
+    hit_by_pitch: int = 0,
+    sac_flies: int = 0,
+    total_bases: int = 0,
+    strike_outs: int = 0,
+    home_runs: int = 0,
+    rbi: int = 0,
+) -> Dict[str, int]:
+    return {
+        "PA": max(pa, 0),
+        "AB": max(ab, 0),
+        "H": max(hits, 0),
+        "BB": max(walks, 0),
+        "HBP": max(hit_by_pitch, 0),
+        "SF": max(sac_flies, 0),
+        "TB": max(total_bases, 0),
+        "K": max(strike_outs, 0),
+        "HR": max(home_runs, 0),
+        "RBI": max(rbi, 0),
+    }
+
+
+def _stat_line_from_split_stat(stat: Dict[str, Any]) -> Dict[str, int]:
+    return _stat_line_from_values(
+        pa=to_int(stat.get("plateAppearances")) or 0,
+        ab=to_int(stat.get("atBats")) or 0,
+        hits=to_int(stat.get("hits")) or 0,
+        walks=to_int(stat.get("baseOnBalls")) or 0,
+        hit_by_pitch=to_int(stat.get("hitByPitch")) or 0,
+        sac_flies=to_int(stat.get("sacFlies")) or 0,
+        total_bases=to_int(stat.get("totalBases")) or 0,
+        strike_outs=to_int(stat.get("strikeOuts")) or 0,
+        home_runs=to_int(stat.get("homeRuns")) or 0,
+        rbi=to_int(stat.get("rbi")) or 0,
+    )
+
+
+def _subtract_stat_line(base_line: Dict[str, Any], adjustment_line: Optional[Dict[str, Any]]) -> Dict[str, int]:
+    if not adjustment_line:
+        return _stat_line_from_values(
+            pa=to_int(base_line.get("PA")) or 0,
+            ab=to_int(base_line.get("AB")) or 0,
+            hits=to_int(base_line.get("H")) or 0,
+            walks=to_int(base_line.get("BB")) or 0,
+            hit_by_pitch=to_int(base_line.get("HBP")) or 0,
+            sac_flies=to_int(base_line.get("SF")) or 0,
+            total_bases=to_int(base_line.get("TB")) or 0,
+            strike_outs=to_int(base_line.get("K")) or 0,
+            home_runs=to_int(base_line.get("HR")) or 0,
+            rbi=to_int(base_line.get("RBI")) or 0,
+        )
+
+    return _stat_line_from_values(
+        pa=(to_int(base_line.get("PA")) or 0) - (to_int(adjustment_line.get("PA")) or 0),
+        ab=(to_int(base_line.get("AB")) or 0) - (to_int(adjustment_line.get("AB")) or 0),
+        hits=(to_int(base_line.get("H")) or 0) - (to_int(adjustment_line.get("H")) or 0),
+        walks=(to_int(base_line.get("BB")) or 0) - (to_int(adjustment_line.get("BB")) or 0),
+        hit_by_pitch=(to_int(base_line.get("HBP")) or 0) - (to_int(adjustment_line.get("HBP")) or 0),
+        sac_flies=(to_int(base_line.get("SF")) or 0) - (to_int(adjustment_line.get("SF")) or 0),
+        total_bases=(to_int(base_line.get("TB")) or 0) - (to_int(adjustment_line.get("TB")) or 0),
+        strike_outs=(to_int(base_line.get("K")) or 0) - (to_int(adjustment_line.get("K")) or 0),
+        home_runs=(to_int(base_line.get("HR")) or 0) - (to_int(adjustment_line.get("HR")) or 0),
+        rbi=(to_int(base_line.get("RBI")) or 0) - (to_int(adjustment_line.get("RBI")) or 0),
+    )
+
+
+def extract_batter_vs_pitcher_stat_lines_from_plays(
+    plays: Sequence[Dict[str, Any]],
+    pitcher_id: int,
+) -> Dict[int, Dict[str, Any]]:
+    stat_lines: Dict[int, Dict[str, Any]] = {}
+    non_at_bat_events = {"walk", "intent_walk", "hit_by_pitch", "sac_fly", "sac_bunt", "catcher_interf"}
+    hit_event_bases = {"single": 1, "double": 2, "triple": 3, "home_run": 4}
+    strikeout_events = {"strikeout", "strikeout_double_play"}
+
+    for play in plays:
+        if str((play.get("result") or {}).get("type") or "").strip() != "atBat":
+            continue
+        matchup = play.get("matchup") or {}
+        batter_id = to_int((matchup.get("batter") or {}).get("id"))
+        play_pitcher_id = to_int((matchup.get("pitcher") or {}).get("id"))
+        if batter_id is None or play_pitcher_id != int(pitcher_id):
+            continue
+
+        event_type = str((play.get("result") or {}).get("eventType") or "").strip().lower()
+        if not event_type:
+            continue
+
+        line = stat_lines.setdefault(batter_id, _stat_line_from_values())
+        line["PA"] += 1
+        if event_type not in non_at_bat_events:
+            line["AB"] += 1
+
+        bases = hit_event_bases.get(event_type, 0)
+        if bases > 0:
+            line["H"] += 1
+            line["TB"] += bases
+            if event_type == "home_run":
+                line["HR"] += 1
+        if event_type in {"walk", "intent_walk"}:
+            line["BB"] += 1
+        if event_type == "hit_by_pitch":
+            line["HBP"] += 1
+        if event_type == "sac_fly":
+            line["SF"] += 1
+        if event_type in strikeout_events:
+            line["K"] += 1
+
+        line["RBI"] += to_int((play.get("result") or {}).get("rbi")) or 0
+
+    return stat_lines
+
+
+def fetch_game_batter_vs_pitcher_stat_lines(game_id: int, pitcher_id: int) -> Dict[int, Dict[str, Any]]:
+    cache_key = (int(game_id), int(pitcher_id))
+    cached = GAME_BVP_LINE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        payload = statsapi.get("game_playByPlay", {"gamePk": int(game_id)})
+    except Exception:
+        payload = {}
+
+    stat_lines = extract_batter_vs_pitcher_stat_lines_from_plays(payload.get("allPlays") or [], int(pitcher_id))
+    GAME_BVP_LINE_CACHE[cache_key] = stat_lines
+    return stat_lines
+
+
+def parse_vs_pitcher_stats(
+    indexed_blocks: Dict[str, List[Dict[str, Any]]],
+    *,
+    report_date: Optional[dt.date] = None,
+    same_day_line: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    report_year = report_date.year if report_date is not None else None
+    season_splits = []
+    for block in indexed_blocks.get("vsPlayer", []):
+        season_splits.extend(block.get("splits") or [])
+    if season_splits:
+        rows = []
+        for split in season_splits:
+            season_value = to_int(split.get("season"))
+            if report_year is not None and season_value is not None and season_value > report_year:
+                continue
+            line = _stat_line_from_split_stat(split.get("stat") or {})
+            if report_year is not None and season_value == report_year:
+                line = _subtract_stat_line(line, same_day_line)
+            rows.append(line)
+        return aggregate_stat_lines(rows)
+
     total_split = first_stat_split(indexed_blocks.get("vsPlayerTotal", []))
     if total_split is not None:
         stat = total_split.get("stat") or {}
-        totals = aggregate_stat_lines(
-            [
-                {
-                    "PA": to_int(stat.get("plateAppearances")) or 0,
-                    "AB": to_int(stat.get("atBats")) or 0,
-                    "H": to_int(stat.get("hits")) or 0,
-                    "BB": to_int(stat.get("baseOnBalls")) or 0,
-                    "HBP": to_int(stat.get("hitByPitch")) or 0,
-                    "SF": to_int(stat.get("sacFlies")) or 0,
-                    "TB": to_int(stat.get("totalBases")) or 0,
-                    "K": to_int(stat.get("strikeOuts")) or 0,
-                    "HR": to_int(stat.get("homeRuns")) or 0,
-                    "RBI": to_int(stat.get("rbi")) or 0,
-                }
-            ]
-        )
-        if totals.get("AVG") is None:
+        line = _stat_line_from_split_stat(stat)
+        if same_day_line:
+            line = _subtract_stat_line(line, same_day_line)
+        totals = aggregate_stat_lines([line])
+        if totals.get("AVG") is None and not same_day_line:
             totals["AVG"] = to_float(stat.get("avg"))
-        if totals.get("OPS") is None:
+        if totals.get("OPS") is None and not same_day_line:
             totals["OPS"] = to_float(stat.get("ops"))
         return totals
 
-    splits = []
-    for block in indexed_blocks.get("vsPlayer", []):
-        splits.extend(block.get("splits") or [])
-    if not splits:
-        return aggregate_stat_lines([])
-
-    rows = []
-    for split in splits:
-        stat = split.get("stat") or {}
-        rows.append(
-            {
-                "PA": to_int(stat.get("plateAppearances")) or 0,
-                "AB": to_int(stat.get("atBats")) or 0,
-                "H": to_int(stat.get("hits")) or 0,
-                "BB": to_int(stat.get("baseOnBalls")) or 0,
-                "HBP": to_int(stat.get("hitByPitch")) or 0,
-                "SF": to_int(stat.get("sacFlies")) or 0,
-                "TB": to_int(stat.get("totalBases")) or 0,
-                "K": to_int(stat.get("strikeOuts")) or 0,
-                "HR": to_int(stat.get("homeRuns")) or 0,
-                "RBI": to_int(stat.get("rbi")) or 0,
-            }
-        )
-    return aggregate_stat_lines(rows)
+    return aggregate_stat_lines([])
 
 
 def extract_season_hitting_stats(person: Dict[str, Any]) -> Dict[str, Any]:

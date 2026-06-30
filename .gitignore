@@ -9,3 +9,4 @@ log.txt
 debug/
 cron.log
 cron_update.log
+reports/
