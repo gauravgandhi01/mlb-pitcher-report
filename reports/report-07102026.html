@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLB Pitcher Report 07/10/2026</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #0f766e;
+      --line: #dbe3ee;
+      --header: #e5eef9;
+      --group-pitcher: #0f766e;
+      --group-opponent: #b45309;
+      --group-savant: #0369a1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #ffffff 0%, var(--bg) 45%);
+      color: var(--text);
+      padding: 24px;
+    }
+    .layout {
+      max-width: 1800px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .hero {
+      background: linear-gradient(120deg, #0f766e 0%, #0369a1 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 35px rgba(3, 105, 161, 0.2);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+    .hero .updated-at {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 13px;
+    }
+    .hero-nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 14px;
+    }
+    .report-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0;
+    }
+    .report-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .report-tab:hover {
+      background: rgba(255, 255, 255, 0.20);
+    }
+    .report-tab.active {
+      background: #ffffff;
+      border-color: #ffffff;
+      color: #0f4c81;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+    }
+    .report-tab.disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .date-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
+    }
+    .date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .date-pill:hover {
+      background: rgba(255, 255, 255, 0.20);
+    }
+    .date-pill.active {
+      background: rgba(15, 23, 42, 0.18);
+      border-color: rgba(255, 255, 255, 0.38);
+    }
+    .date-pill.disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .date-pill-label {
+      display: none;
+    }
+    .date-pill-date {
+      opacity: 0.94;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .panel {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .table-wrap {
+      overflow-y: auto;
+      overflow-x: auto;
+      max-height: 78vh;
+    }
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px 12px;
+      padding: 8px 12px 0;
+    }
+    .table-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+      font-size: 11px;
+      color: #334155;
+      flex: 1 1 720px;
+      min-width: 0;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .legend-swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      border: 1px solid rgba(15, 23, 42, 0.22);
+      display: inline-block;
+    }
+    .legend-pitcher .legend-swatch {
+      background: color-mix(in srgb, var(--group-pitcher) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-pitcher) 62%, #ffffff);
+    }
+    .legend-opponent .legend-swatch {
+      background: color-mix(in srgb, var(--group-opponent) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-opponent) 62%, #ffffff);
+    }
+    .legend-savant .legend-swatch {
+      background: color-mix(in srgb, var(--group-savant) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-savant) 62%, #ffffff);
+    }
+    .legend-note {
+      color: #475569;
+      font-size: 11px;
+    }
+    .table-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
+    .table-controls-label {
+      color: #334155;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #d1dbe7;
+      background: #f8fbff;
+      color: #0f172a;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .toggle-chip input {
+      margin: 0;
+      accent-color: #0f766e;
+      width: 12px;
+      height: 12px;
+    }
+    table.pitchers-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 10px;
+      table-layout: auto;
+      min-width: 900px;
+    }
+    table.pitchers-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--header);
+      border-bottom: 1px solid var(--line);
+      color: #0b2540;
+      padding: 5px 3px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.08;
+    }
+    table.pitchers-table thead th.stat-tooltip {
+      cursor: help;
+      text-decoration: underline dotted rgba(15, 23, 42, 0.35);
+      text-underline-offset: 2px;
+    }
+    table.pitchers-table thead th.is-sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    table.pitchers-table thead th.is-sortable::after {
+      content: "\2195";
+      display: inline-block;
+      margin-left: 5px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    table.pitchers-table thead th.is-sortable[data-sort-direction="desc"]::after {
+      content: "\2193";
+      color: #0f4c81;
+    }
+    table.pitchers-table thead th.is-sortable[data-sort-direction="asc"]::after {
+      content: "\2191";
+      color: #0f4c81;
+    }
+    table.pitchers-table thead th.is-sortable:focus-visible {
+      outline: 2px solid #0f4c81;
+      outline-offset: -2px;
+    }
+    table.pitchers-table thead th.group-pitcher {
+      border-top: 4px solid var(--group-pitcher);
+      background: color-mix(in srgb, var(--group-pitcher) 10%, var(--header));
+    }
+    table.pitchers-table thead th.group-opponent {
+      border-top: 4px solid var(--group-opponent);
+      background: color-mix(in srgb, var(--group-opponent) 11%, var(--header));
+    }
+    table.pitchers-table thead th.group-savant {
+      border-top: 4px solid var(--group-savant);
+      background: color-mix(in srgb, var(--group-savant) 11%, var(--header));
+    }
+    table.pitchers-table thead th.column-best-odds {
+      min-width: 156px;
+      white-space: normal;
+      line-height: 1.05;
+    }
+    table.pitchers-table tbody td {
+      border-bottom: 1px solid var(--line);
+      padding: 4px 3px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.08;
+      vertical-align: middle;
+    }
+    table.pitchers-table tbody td.group-pitcher {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-pitcher) 28%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-opponent {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-opponent) 28%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-savant {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-savant) 30%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-pitcher:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-pitcher) 4%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-opponent:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-opponent) 5%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-savant:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-savant) 5%, #ffffff);
+    }
+    table.pitchers-table th.column-name,
+    table.pitchers-table td.column-name {
+      min-width: 118px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table th.column-opponent,
+    table.pitchers-table td.column-opponent {
+      min-width: 72px;
+      white-space: nowrap;
+    }
+    table.pitchers-table th.column-opp-hand,
+    table.pitchers-table td.column-opp-hand {
+      min-width: 70px;
+    }
+    table.pitchers-table th.column-opp-hand {
+      white-space: normal;
+      line-height: 1.05;
+    }
+    table.pitchers-table td.column-best-odds {
+      min-width: 156px;
+      white-space: normal;
+    }
+    table.pitchers-table tbody tr:nth-child(even) {
+      background: #f8fbff;
+    }
+    table.pitchers-table tbody tr:hover {
+      background: #eef7ff;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable {
+      cursor: pointer;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable.row-selected {
+      outline: 2px solid #0f766e;
+      outline-offset: -2px;
+    }
+    table.pitchers-table tbody tr.row-upcoming {
+      background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-live {
+      background: linear-gradient(to right, rgba(249, 115, 22, 0.14), transparent);
+    }
+    table.pitchers-table tbody tr.row-final {
+      background: linear-gradient(to right, rgba(100, 116, 139, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-target {
+      box-shadow: inset 4px 0 0 #16a34a;
+    }
+    table.pitchers-table tbody tr.row-caution {
+      box-shadow: inset 4px 0 0 #dc2626;
+    }
+    table.pitchers-table tbody tr.row-ks-hot {
+      box-shadow: inset 4px 0 0 #7c3aed;
+    }
+    table.pitchers-table tbody tr.row-ks-cold {
+      box-shadow: inset 4px 0 0 #64748b;
+    }
+    table.pitchers-table td.cell-elite {
+      background: #dcfce7;
+      color: #14532d;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-strong {
+      background: #fef9c3;
+      color: #713f12;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-weak {
+      background: #fee2e2;
+      color: #7f1d1d;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-low-confidence {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-confidence-high {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-confidence-low {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-top-rank {
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-low-rank {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    table.pitchers-table td.odds-plus {
+      font-weight: 700;
+    }
+    table.pitchers-table td.odds-even {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-juice {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-missing {
+      color: #64748b;
+      background: #f8fafc;
+    }
+    .opp-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      gap: 4px;
+      line-height: 1.08;
+      text-align: center;
+    }
+    .opp-cell .opp-team {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .opp-cell .opp-team a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 5px;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px #e2e8f0;
+    }
+    .opp-logo {
+      display: block;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+    }
+    .opp-time {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .opp-time-upcoming {
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #155e75;
+    }
+    .opp-time-live {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+    .opp-time-final {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+    .k-src-gap {
+      display: inline-block;
+      width: 4px;
+    }
+    .k-src-marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 13px;
+      height: 13px;
+      padding: 0 3px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 7.5px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      transform: translateY(-1px);
+      letter-spacing: 0.03em;
+    }
+    .k-src-marker.src-espn {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .k-src-marker.src-savant {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+    .pitcher-name-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .hand-marker {
+      transform: none;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }
+    .hand-marker.hand-right {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .hand-marker.hand-left {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+    }
+    .hand-marker.hand-tbd {
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #cbd5e1;
+    }
+    .best-odds-cell {
+      display: inline-grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 2px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+    .best-odds-cell-empty {
+      grid-template-columns: auto;
+    }
+    .best-odds-cell-missing-side {
+      display: grid;
+      width: 100%;
+      justify-content: stretch;
+    }
+    .best-odds-summary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .best-odds-cell-missing-side .best-odds-summary {
+      justify-content: flex-start;
+    }
+    .best-odds-point {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.5rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .best-odds-point-elite {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #14532d;
+    }
+    .best-odds-point-strong {
+      background: #fef9c3;
+      border-color: #fde68a;
+      color: #713f12;
+    }
+    .best-odds-point-neutral {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+    .best-odds-point-weak {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #7f1d1d;
+    }
+    .best-odds-divider {
+      color: #94a3b8;
+      font-weight: 700;
+    }
+    .best-odds-side {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .best-odds-side-label {
+      font-size: 8px;
+      color: #64748b;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .odds-over, .odds-under {
+      text-align: right;
+      padding: 0 1px;
+      border-radius: 4px;
+    }
+    .sportsbook-badge {
+      transform: none;
+      border-color: color-mix(in srgb, var(--sportsbook-color) 36%, #ffffff);
+      background: color-mix(in srgb, var(--sportsbook-color) 16%, #ffffff);
+      color: var(--sportsbook-color);
+    }
+    .sportsbook-badge-summary {
+      min-width: 18px;
+      height: 14px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }
+    .sportsbook-badge-detail {
+      min-width: 20px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+      justify-self: start;
+    }
+    .odds-details {
+      font-size: 9.5px;
+      color: #334155;
+      display: inline-block;
+      position: relative;
+      margin: 0;
+    }
+    .odds-details summary {
+      cursor: pointer;
+      color: #334155;
+      list-style: none;
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.18);
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      padding: 0;
+    }
+    .odds-details summary::-webkit-details-marker { display: none; }
+    .odds-arrow {
+      font-size: 7px;
+      line-height: 1;
+      transform: translateY(-1px);
+      transition: transform 120ms ease;
+    }
+    .odds-details[open] .odds-arrow {
+      transform: rotate(180deg) translateY(1px);
+    }
+    .odds-details > ul {
+      margin: 0;
+      padding: 5px 7px;
+      list-style: none;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 30;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.15);
+      min-width: max-content;
+    }
+    .odds-details-list,
+    .odds-book-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .odds-line-group {
+      display: grid;
+      gap: 3px;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
+    .odds-line-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .odds-book-list {
+      display: grid;
+      gap: 2px;
+    }
+    .odds-book-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+      column-gap: 4px;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+    .odds-arrow-placeholder {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      opacity: 0;
+    }
+    .odds-over.best-over {
+      color: #15803d;
+      font-weight: 800;
+    }
+    .odds-under.best-under {
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+    table.pitchers-table a {
+      color: #0f4c81;
+      text-decoration: none;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table a:hover {
+      text-decoration: underline;
+    }
+    .arsenal-card {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .arsenal-card h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #0b2540;
+    }
+    .arsenal-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .arsenal-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .arsenal-metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fbff;
+      display: grid;
+      gap: 4px;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .arsenal-metric.metric-above {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    .arsenal-metric.metric-below {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .arsenal-metric.metric-neutral {
+      background: #f8fbff;
+      border-color: var(--line);
+    }
+    .arsenal-metric-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .arsenal-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .arsenal-metric-meta {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.1;
+      min-height: 12px;
+    }
+    .arsenal-pitches {
+      display: grid;
+      gap: 8px;
+      min-height: 42px;
+    }
+    .arsenal-pitch-row {
+      display: grid;
+      grid-template-columns: 90px 56px minmax(120px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .arsenal-pitch-label {
+      font-weight: 600;
+    }
+    .arsenal-pitch-value {
+      text-align: right;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .arsenal-pitch-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+    .arsenal-pitch-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f766e, #0284c7);
+      border-radius: inherit;
+    }
+    .arsenal-empty {
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }
+    .arsenal-future-slot {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #64748b;
+      font-size: 12px;
+      background: #fafcff;
+    }
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .hero h1 { font-size: 23px; }
+      .hero-nav-row {
+        align-items: stretch;
+      }
+      .report-tabs {
+        width: 100%;
+      }
+      .date-nav {
+        width: 100%;
+      }
+      .table-toolbar {
+        align-items: stretch;
+      }
+      .table-controls {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+      .arsenal-metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .arsenal-pitch-row {
+        grid-template-columns: 78px 56px minmax(100px, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header class="hero">
+      <h1>MLB Pitcher Strikeout Report - 07/10/2026</h1>
+      <p class="updated-at">Last updated: 2026-07-09 10:23:13 EDT</p>
+      <div class="hero-nav-row">
+        <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/10/2026">Pitchers</span><a class="report-tab" href="./batters-report-07102026.html" title="Batters report for 07/10/2026">Batters</a><a class="report-tab" href="./matchups-report-07102026.html" title="Matchups report for 07/10/2026">Matchups</a></nav>
+        <nav class="date-nav" aria-label="Archive dates"><a class="date-pill" href="./report-07082026.html" title="Yesterday archive (07/08/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/08</span></a><a class="date-pill" href="./report-07092026.html" title="Today archive (07/09/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/09</span></a><span class="date-pill active" title="Tomorrow archive (07/10/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/10</span></span></nav>
+      </div>
+    </header>
+    <section class="panel">
+      <div class="table-toolbar">
+        <div class="table-legend">
+          <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
+          <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
+          <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+        </div>
+        <div class="table-controls" aria-label="Pitcher table controls">
+          <span class="table-controls-label">Show</span>
+          <label class="toggle-chip" for="show-live-toggle">
+            <input type="checkbox" id="show-live-toggle">
+            In Progress
+          </label>
+          <label class="toggle-chip" for="show-final-toggle">
+            <input type="checkbox" id="show-final-toggle">
+            Final
+          </label>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="dataframe pitchers-table">
+<thead>
+<tr style="text-align: right;">
+<th aria-label="Name: Probable starting pitcher." class="column-name stat-tooltip" title="Probable starting pitcher.">Name</th>
+<th aria-label="GP: Games pitched this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="1" data-sort-key="GP" role="button" tabindex="0" title="Games pitched this season.">GP</th>
+<th aria-label="AB: At-bats against this pitcher this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="2" data-sort-key="AB" role="button" tabindex="0" title="At-bats against this pitcher this season.">AB</th>
+<th aria-label="K: Pitcher strikeouts this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="3" data-sort-key="K" role="button" tabindex="0" title="Pitcher strikeouts this season.">K</th>
+<th aria-label="AVG: Opponent batting average allowed by this pitcher." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="4" data-sort-key="AVG" role="button" tabindex="0" title="Opponent batting average allowed by this pitcher.">AVG</th>
+<th aria-label="PA/GP: Average plate appearances faced per game pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="5" data-sort-key="PA/GP" role="button" tabindex="0" title="Average plate appearances faced per game pitched.">PA/GP</th>
+<th aria-label="K/9: Strikeouts per 9 innings pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="6" data-sort-key="K/9" role="button" tabindex="0" title="Strikeouts per 9 innings pitched.">K/9</th>
+<th aria-label="Whiff%: Statcast whiff rate (swing-and-miss rate) from Baseball Savant." aria-sort="none" class="group-savant stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="7" data-sort-key="Whiff%" role="button" tabindex="0" title="Statcast whiff rate (swing-and-miss rate) from Baseball Savant.">Whiff%</th>
+<th aria-label="K/PA: Strikeout rate: strikeouts divided by batters faced, shown as a percent." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="8" data-sort-key="K/PA" role="button" tabindex="0" title="Strikeout rate: strikeouts divided by batters faced, shown as a percent.">K/PA</th>
+<th aria-label="K%: Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample.">K%</th>
+<th aria-label="PA: Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample.">PA</th>
+<th aria-label="Opp K% vH: Opponent team strikeout percent versus the pitcher's handedness." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="11" data-sort-key="Opp K% vH" role="button" tabindex="0" title="Opponent team strikeout percent versus the pitcher's handedness.">Opp K% vH</th>
+<th aria-label="Opp l5 K%: Opponent team strikeout percent over its last 5 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="12" data-sort-key="Opp l5 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 5 completed games before the report date.">Opp l5 K%</th>
+<th aria-label="Opp l10 K%: Opponent team strikeout percent over its last 10 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="13" data-sort-key="Opp l10 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 10 completed games before the report date.">Opp l10 K%</th>
+<th aria-label="SO/PA: Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="14" data-sort-key="SO/PA" role="button" tabindex="0" title="Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r.">SO/PA</th>
+<th aria-label="r: Overall MLB rank of the opponent's season strikeout rate (1 = most strikeout-prone opponent)." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="15" data-sort-key="r" role="button" tabindex="0" title="Overall MLB rank of the opponent's season strikeout rate (1 = most strikeout-prone opponent).">r</th>
+<th aria-label="Ks: Strikeouts recorded by this pitcher in the game once started/final." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="16" data-sort-key="Ks" role="button" tabindex="0" title="Strikeouts recorded by this pitcher in the game once started/final.">Ks</th>
+<th aria-label="Opponent: Team this pitcher is facing, with the game time color-coded by status (pregame, in progress, or final)." class="column-opponent stat-tooltip" title="Team this pitcher is facing, with the game time color-coded by status (pregame, in progress, or final).">Opponent</th>
+<th aria-label="Best K Odds: Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines." class="column-best-odds stat-tooltip" title="Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines.">Best K Odds</th>
+</tr>
+</thead>
+<tbody>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="0" data-pitcher-key="hunter greene">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Hunter%20Greene-k-log">Hunter Greene</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="1">1</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="16">16</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="7">7</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.438">.438</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="20">20.0</td>
+<td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="18.9">18.9</td>
+<td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="32.6">32.6</td>
+<td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="35">35.00</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.8">22.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="123">123</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.1728865194">21.17</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="19.3548387097">19.35</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="20.8542713568">20.85</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="21.2771813928">21.28</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="22">22</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Chicago%20Cubs-k-per-pa-log" title="Chicago Cubs"><img alt="Chicago Cubs logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzMuNTY0IDIzMy41NzUiPjx0aXRsZT5DaGljYWdvIEN1YnMgaGF0IGRhcmsgbG9nbzwvdGl0bGU+PHBhdGggZD0iTTAgMTE2Ljc4N0MwIDUyLjI5IDUyLjI4NCAwIDExNi43NyAwYzY0LjUxIDAgMTE2Ljc5NCA1Mi4yOSAxMTYuNzk0IDExNi43ODcgMCA2NC40OTgtNTIuMjg0IDExNi43ODctMTE2Ljc5MyAxMTYuNzg3QzUyLjI4NSAyMzMuNTc0IDAgMTgxLjI4NCAwIDExNi43ODd6IiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTcuNTMgMTE2LjMyOGMwLTYwLjMxIDQ4Ljg5NC0xMDkuMjE1IDEwOS4yMS0xMDkuMjE1IDYwLjMxIDAgMTA5LjIyIDQ4LjkwNSAxMDkuMjIgMTA5LjIxNXMtNDguOTEgMTA5LjIyNi0xMDkuMjIgMTA5LjIyNmMtNjAuMzE2IDAtMTA5LjIxLTQ4LjkxNi0xMDkuMjEtMTA5LjIyNnptMTA5LjIxIDgwLjY4OGM0NC41NDYgMCA4MC42NjctMzYuMTMgODAuNjY3LTgwLjY4OCAwLTQ0LjU0Ny0zNi4xMi04MC42NjgtODAuNjY4LTgwLjY2OC00NC41NTMgMC04MC42NyAzNi4xMi04MC42NyA4MC42NjguMDAyIDQ0LjU1OCAzNi4xMTcgODAuNjg4IDgwLjY3IDgwLjY4OHoiIGZpbGw9IiMwRTMzODYiLz48cGF0aCBkPSJNMTUyLjI1NiAxMzkuMTRjLTcuNTEzIDExLjY2NC0yMC42MDcgMTkuMzk3LTM1LjUxNiAxOS4zOTctMjMuMzEgMC00Mi4xOTItMTguODk0LTQyLjE5Mi00Mi4yMDggMC0yMy4yODQgMTguODgyLTQyLjE5OCA0Mi4xOTItNDIuMTk4IDE1LjM1OCAwIDI4LjgxIDguMjI0IDM2LjIgMjAuNTA2bDIwLjc2OC0yMC4yNmMtMTIuODk2LTE3LjQ3My0zMy42LTI4Ljc5NS01Ni45NjgtMjguNzk1LTM5LjA2MyAwLTcwLjc0NiAzMS43LTcwLjc0NiA3MC43NDYgMCAzOS4wNjcgMzEuNjgzIDcwLjczNCA3MC43NDYgNzAuNzM0IDIzLjEyMiAwIDQzLjY0NC0xMS4wNzUgNTYuNTQ2LTI4LjIwNmwtMjEuMDMtMTkuNzE3eiIgZmlsbD0iI0NDMzQzMyIvPjxwYXRoIGQ9Ik0xMDQuMjU0IDEyMy4zNDVWOTcuNjloMTIuNzF2MjUuOTY0YzAgOS4zMjQtMi4yIDExLjUwMy05LjU5NyAxMS41MDNIOTQuMTVjLTYuMDk0IDAtOC4wNjMtMy45NDItOC4wNjMtMTIuMTg3Vjk3LjY5SDk4Ljc5djI1LjY1NGMwIDMuNDkzIDUuNDY0IDMuNDkzIDUuNDY0IDBNMTIxLjU2NyAxMzUuMTU3Vjk3LjY5aDIwLjA2M2M3LjU1NiAwIDEwLjc5OCAxLjc3NCAxMC43OTggMTAuNTQzIDAgNC42MDMtLjg3NiA2Ljk5NS0zLjUwOCA4LjMyIDMuNTA4IDEuOTY0IDMuNTA4IDUuNjkyIDMuNTA4IDguOTggMCA4LjMxLTMuNjc1IDkuNjI0LTEwLjc5OCA5LjYyNGgtMjAuMDYzeiIgZmlsbD0iI0NDMzQzMyIvPjxwYXRoIGQ9Ik0xNDAuMzE2IDEwNy45Yy0uMDQ0LTEuNTI3LTEuNDg1LTEuNDItNS40MDUtMS40MnY1LjI1NWMyLjE5IDAgNS40MDYuMjI0IDUuNDA2LTEuNzUyVjEwNy45ek0xNDAuMjI0IDEyMy4xNjNjLS42NjctMS43OTUtMS4wNC0xLjU4LTUuMzEzLTEuNTh2NS4yNTRjMi43MzUgMCA1LjMxNC4yMjQgNS4zMTQtMS43NSAwLS40ODIuMTMtMS41NSAwLTEuOTI0eiIgZmlsbD0iI0ZGRiIvPjxwYXRoIGQ9Ik0xNzcuNzc2IDEzNS4xNTdjNi44NCAwIDEwLjM4Mi0xLjg1OCAxMC4zODItNy45MDQgMC0uNzM3LS4wMzgtNy42MzYtLjAzOC04LjM4NC4wMzgtNC4zOS0zLjExOC03LjI0Mi03LjUzLTcuMjQyaC05LjE1MmMtMi40ODQgMC0xLjkyOC0zLjYyLTEuOTI4LTQuNzEgMC0xLjc1IDUuMTc0LTIuMjk2IDUuMTc0LjU1NnYxLjc0aDEzLjQ3NGMwLTguNzQ2LTEuNTk3LTExLjUyMy0xMC4zODItMTEuNTIzLTIuMDMuMDMzLTkuNTEuMDMzLTExLjg0LjAzMy01LjYyNyAwLTguNzAzIDIuMi04LjkxNyA4Ljc1OC0uMjA0IDYuNTcgMCAzLjcxOCAwIDYuMTQyIDAgMi4zOTMtLjM3IDcuNzY1IDcgNy43NjVoOS4yOTZjMi42MzMgMCAyLjExIDMuMDY1IDIuMTEgMy4wNjV2MS45NTRjMCAyLjIxLTQuNDQzIDIuMzA3LTUuNDQ2LjQ5LS42NjMtMS4xOTUtLjMxLTMuMDk2LS4zMS0zLjA5NmgtMTIuNjVjMCAyLjYwNi0xLjQyMiAxMi4zNTcgNi4yMTUgMTIuMzU3aDE0LjU0eiIgZmlsbD0iI0NDMzQzMyIvPjxnPjxwYXRoIGQ9Ik0xNzQuNTQgMTQxLjc5aC0yLjE2MnY1LjkxNmgtMS40N3YtNS45MTdoLTIuMTU3di0xLjI4M2g1Ljc5djEuMjgyem05Ljg0MiA1LjkxNmgtMS40NzN2LTUuNzEzaC0uMDI4bC0yLjA4MiA1LjcxM2gtMS40MmwtMi4wMDQtNS43MTNoLS4wNTR2NS43MTNoLTEuNDUydi03LjE5OGgyLjUzMmwxLjY3NyA0LjcyaC4wM2wxLjc0OC00LjcyaDIuNTI1djcuMTk4eiIgZmlsbD0iIzBFMzM4NiIvPjwvZz48L3N2Zz4="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:10p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="1" data-pitcher-key="nolan mclean">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Nolan%20McLean-k-log">Nolan McLean</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="370">370</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="118">118</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.205">.205</td>
+<td class="group-pitcher cell-strong" data-sort-key="PA/GP" data-sort-value="23.4444444444">23.4</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="10.48">10.5</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.1">25.1</td>
+<td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="27.9620853081">27.96</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.5702811245">22.57</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.009569378">22.01</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.498694517">23.50</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="22.0379146919">22.04</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="15">15</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Boston%20Red%20Sox-k-per-pa-log" title="Boston Red Sox"><img alt="Boston Red Sox logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjkuOTg3IDE4MC4wOTEiPjx0aXRsZT5Cb3N0b24gUmVkIFNveCBoYXQgZGFyayBsb2dvPC90aXRsZT48cGF0aCBkPSJNMTE2LjE3MyAxMDYuMTI0Yy0yLjA4LTcuMzk0LTQuNC0xMi40OS04LjMyNC0xNi4wNzQgMy45MjItMy41NjIgNi4yNDUtOC42NjcgOC4zMjMtMTYuMDczIDIuNTY1LTkuMTIgMy44NS0xNS44MTUgMTMuODE0LTIwLjI5LTE0Ljk0Ni02Ljg3Ni0xNi4zNzItMTUuMjUtMjAuNTEtMjYuMzFDMTA0LjkxNSAxNS4xOTUgOTAuMTAyIDAgNjguNjc1IDAgNTkuNjggMCA1MS4zNiAyLjc0IDQ0LjU5OCA3LjM3IDM5Ljg1OCAyLjg4NyAzMy41MTIuMTI1IDI2LjUyOC4xMjUgMTEuODc1LjEyNCAwIDEyLjIwNyAwIDI3LjA4N2MwIDUuNDg4IDEuNiAxMC41OTUgNC4zNTYgMTQuODQ1QzUuOTcgMzUuMjYgMTEuMDU4IDMwLjE0MiAxNi40NCAzMC4yMmM1LjYyLjA4IDEwLjMwMyA1LjQ1NiAxMC4zMSAxMi4xNjJsLS4wMTMgMjcuMDk4YzAgOS45Mi0xMC4xNCAxNy44MS0yMy4yNyAyMC41NyAxMy4xMyAyLjc3NSAyMy4yNyAxMC42NjUgMjMuMjcgMjAuNTczbC4wMTIgMjcuMTFjLS4wMDcgNi42OTUtNC42OSAxMi4wNy0xMC4zMSAxMi4xNi01LjM4Mi4wOC0xMC40Ny01LjA1LTEyLjA4NC0xMS43MUMxLjYgMTQyLjQzIDAgMTQ3LjUzNyAwIDE1My4wMDNjMCAxNC45MDIgMTEuODc1IDI2Ljk3NCAyNi41MjggMjYuOTc0IDYuOTgzIDAgMTMuMzMtMi43NCAxOC4wNy03LjI0NyA2Ljc2MyA0LjYzMyAxNS4wOCA3LjM2IDI0LjA3NiA3LjM2IDIxLjQyNyAwIDM2LjI0LTE1LjE2IDQwLjgwNS0yNy4zOCA0LjEzNi0xMS4wMjIgNS41Ni0xOS40MSAyMC41MDgtMjYuMjk2LTkuOTY1LTQuNDUyLTExLjI1LTExLjE0OC0xMy44MTUtMjAuMjltLTM0LjI5NSAyOS41MWMwIDYuMDEtNS43MTUgMTEuMDE0LTEyLjc2IDExLjAxNC00Ljc2IDAtOC43Ny0xLjc2LTExLjEwMi00LjY0NXYtMzIuMzg1YzIuMzMzLTIuODk2IDYuMzQtNC41MyAxMS4xMDMtNC41MyA3LjA0MyAwIDEyLjc1OCA0Ljg3IDEyLjc1OCAxMC44ODggMCAzLjk0NS0zLjQxIDcuNDc0LTcuMzM4IDkuODMgMy45MyAyLjM1NSA3LjMzOCA1Ljg5NCA3LjMzOCA5LjgyOG0wLTcxLjYzMmMwIDYuMDItNS43MTUgMTAuODktMTIuNzYgMTAuODktNC43NiAwLTguNzctMS42MzUtMTEuMTAyLTQuNTJWMzcuOTg1YzIuMzMzLTIuODk3IDYuMzQtNC41MDggMTEuMTAzLTQuNTA4IDcuMDQzIDAgMTIuNzU4IDQuODU4IDEyLjc1OCAxMC44NjYgMCAzLjk0NS0zLjQxIDcuNDg0LTcuMzM4IDkuODI4IDMuOTMgMi4zNjcgNy4zMzggNS44OTYgNy4zMzggOS44MyIgZmlsbD0iI0ZGRiIvPjxwYXRoIGQ9Ik02OC42OTcgMjUuMTM2Yy04LjIyMyAwLTE1LjM2NCA0LjA4LTE4Ljk4MyAxMC4wNjZ2MzcuOTRDNTMuMzM0IDc5LjEzIDYwLjQ3NCA4My4yIDY4LjY5NyA4My4yYzExLjg3IDAgMjEuNDg0LTguNSAyMS40ODQtMTguOTYgMC0zLjY5Ny0xLjE5NC03LjE0Ni0zLjI3NC0xMC4wNjYgMi4wOC0yLjkyIDMuMjc1LTYuMzggMy4yNzUtMTAuMDc3IDAtMTAuNDctOS42MTQtMTguOTYtMjEuNDgzLTE4Ljk2TTg0Ljg1NSA2NC4yNGMwIDcuNDk2LTcuMjUgMTMuNjE3LTE2LjE1OCAxMy42MTctNS43MzIgMC0xMC43ODItMi41MTQtMTMuNjUtNi4zMjRWMzYuODAzYzIuODY4LTMuOCA3LjkxOC02LjMyMyAxMy42NS02LjMyMyA4LjkxIDAgMTYuMTU4IDYuMDk3IDE2LjE1OCAxMy42MTYgMCAzLjk5LTIuMDM1IDcuNTc0LTUuMjgyIDEwLjA3NyAzLjI0NyAyLjQ2OCA1LjI4MiA2LjA3NSA1LjI4MiAxMC4wNjUiIGZpbGw9IiMwRDJCNTYiLz48cGF0aCBkPSJNMTE0LjI4IDExMC40NTNjLTEuNjMtNC44MDItMi4xOTMtMTQuMDMzLTExLjQwMi0yMC40MTMgOS4yMDgtNi4zNyA5Ljc3My0xNS42IDExLjQwMi0yMC4zOSAyLjY2NS03Ljc4IDQuNDI0LTEyLjU1OCAxMC4wODItMTUuOTI4LTIwLjE2LTExLjY3Ny0xMC40MjYtMjIuMjg1LTI3LjE0OC0zOS4wMTJDODIuNzcuMjcgNjAuMDY4LS44OCA0NC4zMzIgMTEuMjgzYy00LjM1LTQuODkyLTEwLjY3NC03Ljk1Ny0xNy43Mi03Ljk1Ny0xMy4wOTcgMC0yMy43MTUgMTAuNjE4LTIzLjcxNSAyMy43MTUgMCAyLjgzLjQ4NSA1LjU0NyAxLjQwNCA4LjA3MyAyLjI2Ni00LjY5IDYuNzU4LTcuODkgMTEuOTM3LTcuODkgNy40NCAwIDEzLjQ3NiA2LjYxNiAxMy40NzYgMTQuNzQzVjY4Ljk1YzAgMi44My0uOTQ2IDE1LjM5OC0xNy4xMTYgMjEuMDkgMTYuMTcgNS43MTUgMTcuMTE2IDE4LjI3MiAxNy4xMTYgMjEuMXYyNi45NzRjMCA4LjE1LTYuMDM2IDE0LjczMy0xMy40NzYgMTQuNzMzLTUuMTggMC05LjY3LTMuMTY4LTExLjkzNi03Ljg2OC0uOTE4IDIuNTI0LTEuNDAzIDUuMjUyLTEuNDAzIDguMDcgMCAxMy4wOTcgMTAuNjE4IDIzLjcxNSAyMy43MTYgMjMuNzE1IDcuMDQ0IDAgMTMuMzY4LTMuMDc3IDE3LjcyLTcuOTU3IDE1LjczNSAxMi4xNSAzOC40MzYgMTEgNTIuODgyLTMuNDM4IDE2LjcyMi0xNi43MDQgNi45ODgtMjcuMzIzIDI3LjE0OC0zOS4wMTItNS42NTgtMy4zNDgtNy40MTgtOC4xMjgtMTAuMDgzLTE1LjkwNW0tMTAuNDUgMzMuNjEzYy0xLjg5MyA1LjU4LTMuNjk2IDEwLjg1NC0xMC4zODYgMTcuNTQtMTMuNTc3IDEzLjU4Mi0zNi4wOTggMTMuMTMtNDkuNjg3LS40NS0yLjkxMyA2LjMzMy05LjczOCAxMC4yOC0xNy4xNDQgMTAuMjgtOC45ODUgMC0xNi40ODYtNi40ODItMTguMDctMTUuMDE1IDIuMzM0IDEuMTUgNC45NTQgMS43NzIgNy42OTMgMS43NzIgMTAuMzY1IDAgMTguODA3LTkuMDA3IDE4LjgwNy0yMC4wNzZ2LTI2Ljk3M2MwLTQuNjc4LTEuNzk3LTE0LjIwMy0xMS4wMy0yMS4xIDkuMjMzLTYuOTEgMTEuMDMtMTYuNDEzIDExLjAzLTIxLjA5VjQxLjk2NGMwLTExLjA0Ni04LjQ0Mi0yMC4wNTMtMTguODA3LTIwLjA1My0yLjc0IDAtNS4zNi42My03LjY5MyAxLjczNiAxLjU4NC04LjUxIDkuMDg1LTE0Ljk5IDE4LjA3LTE0Ljk5IDcuNDA2IDAgMTQuMjMgMy45NDQgMTcuMTQ0IDEwLjI2NyAxMy41OS0xMy41NzIgMzYuMTEtMTQuMDIyIDQ5LjY4Ny0uNDQgNi42OSA2LjY4NCA4LjQ5MyAxMS45NSAxMC4zODcgMTcuNTQgMi4wNTIgNS45OTYgNC4xNiAxMi4xNzQgMTEuODYgMTguMjYtMy4xMTcgMy44NjctNC42OTUgOC41MS02LjQ0NyAxMy42NC0uMzg0IDEuMTA0LS42NzYgMi4zMi0xLjAxIDMuNTczLS45MzUgMy42OTctNC42MzIgMTMuNDM3LTEyLjYxMiAxOC41NDMgNy45OCA1LjEzIDExLjY3OCAxNC44NDYgMTIuNjEzIDE4LjU0My4zMzQgMS4yNzQuNjI2IDIuNDcgMS4wMSAzLjU3NCAxLjc1MiA1LjE0IDMuMzMgOS43OTUgNi40NDYgMTMuNjUtNy43IDYuMDk2LTkuODA4IDEyLjI2Mi0xMS44NiAxOC4yNiIgZmlsbD0iIzBEMkI1NiIvPjxwYXRoIGQ9Ik02OC42OTcgOTYuODkzYy04LjIyMyAwLTE1LjM2NCA0LjA4LTE4Ljk4MyAxMC4wNDNWMTQ0LjljMy42MiA1Ljk4NSAxMC43NiAxMC4wNTUgMTguOTgzIDEwLjA1NSAxMS44NyAwIDIxLjQ4NC04LjUgMjEuNDg0LTE4Ljk2IDAtMy42OTctMS4xOTQtNy4xNDYtMy4yNzQtMTAuMDY2IDIuMDgtMi45NDMgMy4yNzUtNi4zOCAzLjI3NS0xMC4wNzggMC0xMC40Ny05LjYxNC0xOC45Ni0yMS40ODMtMTguOTZtMTYuMTU4IDM5LjEwM2MwIDcuNTA3LTcuMjUgMTMuNjE3LTE2LjE1OCAxMy42MTctNS43MzIgMC0xMC43ODItMi41MjUtMTMuNjUtNi4zMjR2LTM0LjczYzIuODY4LTMuODA4IDcuOTE4LTYuMzIyIDEzLjY1LTYuMzIyIDguOTEgMCAxNi4xNTggNi4wOTggMTYuMTU4IDEzLjYxNyAwIDMuOTktMi4wMzUgNy41NzQtNS4yODIgMTAuMDc3IDMuMjQ3IDIuNDggNS4yODIgNi4wODYgNS4yODIgMTAuMDY1TTk3LjcyNyAxNzAuMDAyaC44NTd2Mi4zNTZoLjU0N3YtMi4zNTZoLjg2M3YtLjQ2MmgtMi4yNjZNMTAyLjEzIDE3MS41NDdsLS43NjgtMi4wMDdoLS43OTR2Mi44MThoLjUwN3YtMi4xODdoLjAxN2wuODM0IDIuMTg4aC4zOWwuODMzLTIuMTg3aC4wMTZ2Mi4xODhoLjV2LTIuODE4aC0uNzc2IiBmaWxsPSIjMEQyQjU2Ii8+PHBhdGggZD0iTTEwOC4yMzggMTA4LjU4MmMtLjk0LTMuNjk3LTQuNjQzLTEzLjQyNS0xMi42MTgtMTguNTQyIDcuOTc1LTUuMTE4IDExLjY3Ny0xNC44NDYgMTIuNjE4LTE4LjU0My4zMjItMS4yNS42Mi0yLjQ1NyAxLjAwNC0zLjU3NCAxLjc0Ni01LjEyOCAzLjM0Mi05Ljc3MiA2LjQ0Mi0xMy42NC03LjY5My02LjA5Ny05LjgwMi0xMi4yNjMtMTEuODUzLTE4LjI2LTEuODkzLTUuNTktMy42OTYtMTAuODY1LTEwLjM4LTE3LjU0LTEzLjU4My0xMy41OC0zNi4xMS0xMy4xMy00OS42ODcuNDQyLTIuOTItNi4zMjMtOS43NDQtMTAuMjY4LTE3LjE1LTEwLjI2OC04Ljk4IDAtMTYuNDg2IDYuNDgtMTguMDcgMTQuOTkgMi4zMzQtMS4xMDQgNC45NTQtMS43NDcgNy42OTMtMS43NDcgMTAuMzY1IDAgMTguOCA5LjAwNyAxOC44IDIwLjA2NFY2OC45NWMwIDQuNjktMS43OSAxNC4xOS0xMS4wMjIgMjEuMDkgOS4yMzIgNi45MSAxMS4wMjMgMTYuNDIzIDExLjAyMyAyMS4xdjI2Ljk3NGMwIDExLjA3LTguNDM2IDIwLjA3Ni0xOC44IDIwLjA3Ni0yLjc0IDAtNS4zNi0uNjItNy42OTQtMS43NyAxLjU4NCA4LjUzMiA5LjA5IDE1LjAxMyAxOC4wNyAxNS4wMTMgNy40MDYgMCAxNC4yMy0zLjk0NSAxNy4xNS0xMC4yOCAxMy41NzcgMTMuNTk0IDM2LjEwNCAxNC4wMzMgNDkuNjg3LjQ1IDYuNjg0LTYuNjg0IDguNDg3LTExLjk2IDEwLjM4LTE3LjU0IDIuMDUyLTUuOTk1IDQuMTYtMTIuMTYgMTEuODU0LTE4LjI2LTMuMS0zLjg1NC00LjY5NS04LjUxLTYuNDQyLTEzLjY1LS4zODQtMS4xMDItLjY4Mi0yLjI5Ny0xLjAwNC0zLjU3TTkwLjE4IDEzNS45OTRjMCAxMC40Ni05LjYyIDE4Ljk2LTIxLjQ4MyAxOC45Ni04LjIyMyAwLTE1LjM2NC00LjA3LTE4Ljk4My0xMC4wNTV2LTM3Ljk2NGMzLjYyLTUuOTYzIDEwLjc2LTEwLjA0MyAxOC45ODMtMTAuMDQzIDExLjg2MyAwIDIxLjQ4NCA4LjQ4OCAyMS40ODQgMTguOTYgMCAzLjY5Ny0xLjE5NCA3LjEzNC0zLjI3NCAxMC4wNzcgMi4wOCAyLjkwOCAzLjI3NSA2LjM2OCAzLjI3NSAxMC4wNjVtMC03MS43NTdjMCAxMC40Ni05LjYyIDE4Ljk2LTIxLjQ4MyAxOC45Ni04LjIyMyAwLTE1LjM2NC00LjA3LTE4Ljk4My0xMC4wNTV2LTM3Ljk0YzMuNjItNS45ODcgMTAuNzYtMTAuMDY3IDE4Ljk4My0xMC4wNjcgMTEuODYzIDAgMjEuNDg0IDguNDg4IDIxLjQ4NCAxOC45NiAwIDMuNjk3LTEuMTk0IDcuMTU3LTMuMjc0IDEwLjA3NyAyLjA4IDIuOTIgMy4yNzUgNi4zNjggMy4yNzUgMTAuMDY1IiBmaWxsPSIjQkQzMDM5Ii8+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:15p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="2" data-pitcher-key="shohei ohtani">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Shohei%20Ohtani-k-log">Shohei Ohtani</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="14">14</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="305">305</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="95">95</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.18">.180</td>
+<td class="group-pitcher cell-strong" data-sort-key="PA/GP" data-sort-value="24.2857142857">24.3</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="9.98">10.0</td>
+<td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="30.4">30.4</td>
+<td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="27.9411764706">27.94</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="29.4">29.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="51">51</td>
+<td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.5046055266">20.50</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.1117318436">20.11</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.0217391304">19.02</td>
+<td class="group-opponent cell-weak" data-sort-key="SO/PA" data-sort-value="19.3973083675">19.40</td>
+<td class="group-opponent cell-low-rank" data-sort-key="r" data-sort-value="29">29</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Arizona%20Diamondbacks-k-per-pa-log" title="Arizona Diamondbacks"><img alt="Arizona Diamondbacks logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzUuOTYyIDE4Mi43MTYiPjx0aXRsZT5Bcml6b25hIERpYW1vbmRiYWNrcyBoYXQgZGFyayBsb2dvPC90aXRsZT48cGF0aCBkPSJNMjI1Ljg4MiAxNzYuMjc4aC0yLjIxN3Y2LjA2aC0xLjUxdi02LjA2aC0yLjIzdi0xLjMxMmg1Ljk1N3YxLjMxMnptMTAuMDggNi4wNmgtMS41MDZ2LTUuODY1aC0uMDNsLTIuMTM4IDUuODY2aC0xLjQ0NWwtMi4wNy01Ljg2N2gtLjA0M3Y1Ljg2NmgtMS41MDZ2LTcuMzc0aDIuNjE3bDEuNzE0IDQuODFoLjA0MmwxLjc4Ni00LjgxaDIuNTh2Ny4zNzN6TTc4LjA0NyAxNTUuMjhsMjguMTM1LTQ3LjI0NmMuNzM1IDIuOTAzIDIuMjEgOC42ODMgMi40MzUgOS41Ny0xLjQ0NSAyLjQ5LTIzLjIwNCA0MC4xMy0yMy4yMDQgNDAuMTNzMzIuMS0yNi41MjYgMzMuNTc2LTI3Ljc0MmMuNTQuNjQ0IDIzLjc4NiAyOC44NDUgMjMuNzg2IDI4Ljg0NXMtMTAuOTMtMzYuNTEtMTEuNjctMzguOTk4Yy41NTctLjg4OCA0LjIwNi02LjcxNyA2LjUxNS0xMC40MjJsOS45NTQgNDUuOTQ2LTE5Ljg4OCAyNy4zNTJoODUuNDczTDE3Mi4zMDYgMGwtNTYuODUyLjAzNkwwIDE4Mi43MTZoOTEuMTFMNzguMDQ2IDE1NS4yOHptMjkuMTQzLTQ4LjkzNmwxNy45MzMtMzAuMTFoNS4zMDhsNi41MjMgMzAuMTFIMTA3LjE5eiIgZmlsbD0iI0UzRDRBRCIvPjxwYXRoIGQ9Ik0xMjMuOTYzIDcuMTloNDIuMzMybDM3LjQ5NCAxNjguMzI0aC02MC45MWwxMy42MS0xOC40MTMtMTkuNTM3LTg3LjM3NC0xNi4xNDgtLjAxMi01Mi4xMSA4NS43MjMgOS43MjIgMjAuMDAzaC02MC4zNWwtNS45MiAzLjY2OEg4NC45MmwtMTEuNTE0LTIzLjc0NSA0OS40Mi04Mi40MThoMTAuNzY2bDE4LjY2IDgzLjI0NS0xNi43NjUgMjIuOTNoNzMuMDI0TDE2OS40NDggMy40OTcgMTIxLjUyIDMuNDYiLz48cGF0aCBkPSJNNjAuOTk0IDE0NC43ODZsNi4zMS0zLjk4NC0xMS4yMjItMjYuNzA4IDM1Ljc1LTIyLjM5Ny0xMi4yODUtMjIuMDMyIDM0LjU3OC0xNi42ODctMTEuMTYtMTkuNjYzIDI2LjYyMi0xMS44My05LjcyNC0xNC4yOTUtMi4yNTgtMy4zMDNMNi41NzggMTc5LjA0NyIvPjxwYXRoIGQ9Ik0xMTIuNTk1IDExOC4xNWwtMTMuNjMzIDIzLjU2M3MxNy45NzUtMTQuODUzIDIwLjUyNi0xNi45NTVjMS43NiAyLjEzOCAxNC40NiAxNy41MjYgMTQuNDYgMTcuNTI2cy02LjI4LTIwLjk4Ny02Ljg4Mi0yMi45OWw1Ljc3Ni05LjIyaC0yMi4zMDZzMS42NzYgNi42MDcgMi4wNiA4LjA3N3oiIGZpbGw9IiNBNzE5MzAiLz48cGF0aCBmaWxsPSIjQTcxOTMwIiBkPSJNNjguNjk1IDE1NS40MzdsNTIuMTEtODUuNzIzIDE2LjE0OC4wMTJMMTU2LjQ5IDE1Ny4xbC0xMy42MSAxOC40MTRoNjAuOTFMMTY2LjI5NCA3LjE5aC00Mi4zMzJsMTAuNDMzIDE2LjAyLTI2LjMgMTEuODMgMTEuMzI1IDE5LjYxNC0zNC41NTMgMTYuNTQyTDk2LjQzIDkyLjYzM2wtMzUuNzYzIDIyLjU0Mkw3MS42ODMgMTQyLjJsLTUzLjYxNiAzMy4yNGg2MC4zNSIvPjwvc3ZnPg=="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">10:10p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="3" data-pitcher-key="braxton ashcraft">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Braxton%20Ashcraft-k-log">Braxton Ashcraft</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="401">401</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="122">122</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.234">.234</td>
+<td class="group-pitcher cell-strong" data-sort-key="PA/GP" data-sort-value="24.3888888889">24.4</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="10.14">10.1</td>
+<td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="27.4">27.4</td>
+<td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="27.7904328018">27.79</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="12.5">12.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="8">8</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.971659919">20.97</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="17.8010471204">17.80</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.5928753181">19.59</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="20.9483960948">20.95</td>
+<td class="group-opponent cell-low-rank" data-sort-key="r" data-sort-value="24">24</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Milwaukee%20Brewers-k-per-pa-log" title="Milwaukee Brewers"><img alt="Milwaukee Brewers logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNTcuMjcxIDE3MS42NzEiPjxwYXRoIGQ9Ik0xNTcuMjcxIDUwLjAxNnYyMS42NTNjMCAxOC4wNzItMi45NTYgMjkuMDItMTcuMTQ2IDU5LjAyOS0xNC45NDIgMzEuNTkyLTMzLjM2NiA0MC45NzMtNTUuNDE1IDQwLjk3My0xNC40OTUgMC0yOC4xMjctNC43NzUtMzkuMTM4LTEzLjU5NGwtLjA5OS4wMzctMi40NTYtMi4yLS40NTUtLjQwMWMtMy4xMjYtMi43OTEtNS43ODgtNS43OTctOC4wODMtOC44ODVhMjcuMTA0IDI3LjEwNCAwIDAgMS0uNTY3LS43NjljLS4wMzMtLjA0Mi0uMDctLjA4Ny0uMDkxLS4xMzItLjE0MS0uMTg2LS4yNzMtLjM3Ni0uNDA5LS41NjJhNjEuNTMyIDYxLjUzMiAwIDAgMS0zLjYyNi01Ljc2NCAxMS4zMjcgMTEuMzI3IDAgMCAxLS4zNi0uNjQxYy0zLjYyNi02LjUzMy02LjAyLTEzLjAzMi04LjAyOS0xOC40NzMtLjU3NS0xLjU1NS0xLjExNi0zLjAyMy0xLjY0OS00LjM4Ny00LjE2LTEwLjY4OC0xMi4yMTUtMzEuNTcyLTE2LjExNC00Mi4wOTgtNC4wNTItMTAuOTI4LTQuNjcyLTE4LjY4NC0yLjA3OS0yNS45NCAyLjc3OC03Ljc2NSA4Ljk5My0xMy45NzkgMTcuNDY5LTIwLjkxMkMyNy41MTYgMjAgMzQuODAxIDE0LjIzMiA0NC44NjkgNi45NjQgNTEuMTc0IDIuNDEgNTcuOTM4IDAgNjQuNDI5IDBjMi43NDkgMCA1LjM0Ni40NDIgNy43MjcgMS4zMTEuNDI2LjE1Ny44OTcuMzI2IDEuNTE0LjU1OCAyLjE4Ny44MjcgNC4xMyAxLjk1MSA1LjgwNSAzLjMzNi4xNzQtLjA5OS4zMzktLjE5OS41LS4yOTQgNC42MjYtMi43MDQgOS44Mi00LjEzIDE1LjAxNy00LjEzIDQuMTEgMCA4LjEzNy44ODkgMTEuNjUxIDIuNTY3Ljc2MS4zNjQgMS4yMDMuNTg3IDEuNzA4Ljg2bC44ODUuNDU5YzIuNzYyIDEuNDE0IDUuMTM5IDMuMjI1IDcuMDU4IDUuMzMgMy4wNzYtMS4wMyA2LjA2MS0xLjU1MSA4LjkxLTEuNTUxIDQuMzM3IDAgOC4zOTMgMS4xODcgMTIuMDU2IDMuNTE5bC44NzMuNTU0YzEuNjc0IDEuMDY3IDIuNTE4IDEuNiAzLjgyIDIuNTEgOS45MzQgNi44NzYgMTUuMzE4IDE0LjQ4OCAxNS4zMTggMzQuOTg3IiBmaWxsPSIjZmZjNTJmIi8+PHBhdGggZD0iTTEzOC4yODUgMjAuMzNjLTEuMzk4LS45NjctMi4yMTItMS40NzItNC40OS0yLjkyNy00LjQyOC0yLjgyNC0xMC4yOTktMy43NTQtMTguMzA4LS4xNzQtLjUyOS4yMzYtMS4wMjYuNDU1LTEuNTEzLjY3NC0xLjc4Mi0zLjY1MS00Ljk0MS02LjA5OC03LjY3NC03LjQ5Ni0xLjEyMS0uNTc1LTEuNDMxLS43NjEtMi40NC0xLjI0MS01LjQzNy0yLjYwMS0xMy4yOTctMi45NzctMjAuNjM1IDEuMzExLTEuNDc2Ljg2LTMuNDA3IDIuMDA1LTUuMDY5IDIuOTg1LTEuNjk1LTIuODk0LTQuMzA4LTQuNjM1LTYuNzYtNS41NjEtLjU4Ny0uMjE5LTEuMDM4LS4zODUtMS40NTEtLjUzNC01LjQxNi0xLjk3Ni0xMy4zMzgtLjkyNi0yMS4zMDEgNC44MTctOS40OCA2Ljg1MS0xNi40MzkgMTIuMzA1LTI1LjUzNSAxOS43NTFDNi40NzEgNDUuNTUxIDIuOTM2IDUzLjM3NCA5LjY4IDcxLjU2MmMzLjcwNCAxMC4wMDEgMTEuNTY4IDMwLjQxNCAxNi4wNzUgNDEuOTk5IDIuNTg0IDYuNjQgNS4yODQgMTUuMjUzIDEwLjE1OSAyMy41NjdoLjAwNGE2NC4wMiA2NC4wMiAwIDAgMCAxLjM5NCAyLjI3NGMuMTI4LjE5OS4yNjQuMzkzLjM5My41ODcgMi4yMTYgMy4zNjEgNC44NDYgNi42MTUgOC4wMTMgOS42MzMuMjUyLjI0LjUwOC40ODguNzY1LjcyNC4xMzIuMTIuMjQ4LjI0NC4zOC4zNmwuMDEyLS4wMTNjOS45MjcgOS4wMzggMjMuMDc1IDE0LjUzMyAzNy44MzYgMTQuNTMzIDI3LjA3NyAwIDQ5LjAyNy0yMS45NTUgNDkuMDI3LTQ5LjAyM3YtLjA1NGMwLTI1Ljg0NS0yMC45NS00Ni43OTUtNDYuNzk1LTQ2Ljc5NS0xNC4wNDEgMC0yOC4xNDggOC4xMTYtMzYuNDY3IDIwLjkxN2EyNTQwNy42MzYgMjU0MDcuNjM2IDAgMCAwLTE2LjgwNy00MS4wNTZjLTMuMDY4LTcuNDY3LTIuMzY1LTExLjI1IDIuMzIzLTE1LjU5NSAyLjM5NC0yLjIyIDUuMzA1LTQuNDQxIDguNTM4LTYuNjMyIDMuMzAzLTIuMjM3IDcuMDI5LS45MTggNy4wMjkgMy40NDhWNzYuNjhjNy41NDEtNy42MTIgMTYuNzktMTIuNTY5IDI4LjYzNi0xNC43NTZsLS4xODItMzguMTc0Yy44NDQtLjUyMSAxLjYzMy0xLjAwNSAyLjIyNS0xLjM0OCAzLjAyMi0xLjc1MyA1LjE4NS4xOSA1LjE4NSAzLjAwNnYzNS41NDFjLjE4NiAwIC4zNzYtLjAwOC41NjItLjAwOGE1NC4xMTQgNTQuMTE0IDAgMCAxIDI3LjM5NiA3LjQyNlYyOC41MjVjLjc1Ni0uMzA2IDEuNDY4LS41OTEgMi4wMTgtLjgxIDMuMDI3LTEuMjAzIDUuMDczLjY3NCA1LjA3MyAzLjQxMXMtLjIxMSA0Mi4yMzgtLjIxMSA0Mi4yMzhjMTEuMTIyIDkuMTc0IDE4LjM0MSAyMi42NzggMTkuNDc4IDM3LjkwMiA1LjMwNS0xMS4yOTIgOS4wODQtMjEuODEgOS4wODQtMzkuNTk3VjUwLjAxNmMtLjAwMi0xOC4wMy00LjA5MS0yMy44MzktMTIuNTM4LTI5LjY4Nk04Ni41MTcgODguNTYzYzE1LjYwOCAwIDI4LjI1OSAxMi42NTYgMjguMjU5IDI4LjI2cy0xMi42NTIgMjguMjYtMjguMjU5IDI4LjI2Yy0xNS42MDQgMC0yOC4yNTYtMTIuNjU2LTI4LjI1Ni0yOC4yNnMxMi42NTEtMjguMjYgMjguMjU2LTI4LjI2IiBmaWxsPSIjMTIyODRiIi8+PHBhdGggZD0iTTY1LjA4NyAxMTYuODI0YzAtNS4xMjcgMS44MDctOS44MzYgNC44MTctMTMuNTMyIDUuOTkxIDcuOTg4IDUuOTkxIDE5LjA3MyAwIDI3LjA2MWEyMS4zNTIgMjEuMzUyIDAgMCAxLTQuODE3LTEzLjUyOW04LjU2MyAxNy4xMzhjNy44ODUtMTAuMDIyIDcuODg1LTI0LjI1Ny4wMDQtMzQuMjc5YTIxLjMxIDIxLjMxIDAgMCAxIDEyLjg2Mi00LjMwOCAyMS4zMyAyMS4zMyAwIDAgMSAxMi44NjcgNC4zMDhjLTcuODg1IDEwLjAyMi03Ljg4NSAyNC4yNTcgMCAzNC4yNzlhMjEuMzI0IDIxLjMyNCAwIDAgMS0xMi44NjcgNC4zMDggMjEuMzIzIDIxLjMyMyAwIDAgMS0xMi44NjYtNC4zMDhtMjkuNDgtMy42MWMtNS45OTEtNy45ODgtNS45OTEtMTkuMDczIDAtMjcuMDYxIDMuMDEgMy42OTYgNC44MjEgOC40MDUgNC44MjEgMTMuNTMycy0xLjgxMSA5LjgzMy00LjgyMSAxMy41MjkiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMTM4Ljg4OSAxNTUuODYyaC0yLjA1M3Y1LjYwMmgtMS4zODZ2LTUuNjAyaC0yLjA1NnYtMS4yMTdoNS40OTV2MS4yMTd6bTkuMzMgNS42MDJoLTEuMzg2di01LjQyN2gtLjAzN2wtMS45NzggNS40MjdoLTEuMzQ5bC0xLjktNS40MjdoLS4wMzd2NS40MjdoLTEuMzk4di02LjgxOWgyLjQxOWwxLjU4NyA0LjQ1MmguMDM3bDEuNjUxLTQuNDUyaDIuMzl2Ni44MTl6IiBmaWxsPSIjZmZjNTJmIi8+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">6:40p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-initial-index="4" data-pitcher-key="hunter brown">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Hunter%20Brown-k-log">Hunter Brown</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="6">6</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="108">108</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="35">35</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.213">.213</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="21.3333333333">21.3</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="10.74">10.7</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="25">25.0</td>
+<td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="27.34375">27.34</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="29.5">29.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="95">95</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.3632901752">21.36</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.4782608696">18.48</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.164021164">21.16</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="22.267323862">22.27</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="14">14</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Texas%20Rangers-k-per-pa-log" title="Texas Rangers"><img alt="Texas Rangers logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMzAuMDg4IDE0OC4yMzIiPjx0aXRsZT5UZXhhcyBSYW5nZXJzIGNhcCBsb2dvPC90aXRsZT48cGF0aCBmaWxsPSIjMDAzMjc4IiBkPSJNMTcuMDg1IDQyLjU5OGwtLjAzNSA0LjMzNUgwbDYuMjkgNy45M2gxOC4yNzVsLjAxNS0zLjEyNWMwLTE3LjM4MyAxLjY1LTI4LjM5OCAxOS44My0zMC4zOHYtMi4zMDVjLTE5LjYyNS4wNjgtMjcuMzE2IDYuNi0yNy4zMjUgMjMuNTQ1bTU4LjgyMyAzMC40MTl2MzguMjEzYzAgMS45NzMuNDU0IDMuODk3IDUuODEgMy44OTdoMi43MDZWNzYuNTkyYzAtNy44MTMgMTAuODItMTAuOCAxMC44Mi0xMC44cy0yLjY1Mi0xLjA1Ni01LjM0Ny0yLjk3bC00LjY3MyAxLjMyOGMtLjA5Ny4wMi05LjMxNiAyLjcxNS05LjMxNiA4Ljg2N00xMjIuMDAyLjI5M3Y0Ni42NGgtMTIuNjU3bDYuNzY4IDguNDY3aDEzLjk3NVY4LjgxOE03NS45MDggNTAuNzljMCA0LjczNyA2Ljg2IDguNDU4IDkuNTA3IDkuNDc0bDIuNTc4IDEuMDA1Yy0xLjk2OC0xLjc5Ny0zLjU3LTQuMTIyLTMuNTctNi44ODV2LTMyLjUxbDEuNTM0LjEwN2M0LjYgMCA4Ljk1IDEuNTYzIDEyLjU3OCA0LjIxLTQuODU0LTQuNTEyLTEyLjQ4NS02LjkzNC0yMi42MjctNy4wMTJ2MzEuNjF6bS00My42MzMgODguNjI0di4wNzhsNi42NSA4Ljc0aDYwLjE1MnYtMjAuMTM2bC03LjE0LTguM3YxOS42MTgiLz48cGF0aCBmaWxsPSIjYzAxMTFmIiBkPSJNLjQzIDQyLjg0MmgxMi42NWMwLS4xMjcuMDI1LS4yMTUuMDI1LS4zMTMgMC0uMzEzLS4wMjQtLjQzLS4xMDItLjEzOCAwLTE4Ljk5NCA5Ljc1LTI3LjQ0IDMxLjYtMjcuNDRoMy44OTh2MzUuODRjMCA1Ljg2OC0zLjk2NCA5LjMyNS03LjE0OCAxMS4yOTggMy4yMDggMS44MDYgNy4xNSA1LjA0IDcuMTUgMTAuOTE4djM3Ljg5YzAgNS4xMjctMy42NSA4LjMxLTkuNTMzIDguMzFoLTYuNTN2MTYuMTM0aDU1LjQxVjExOS4yMWgtNi4xM2MtOC4xNzggMC05Ljg5Ny00LjMyNy05Ljg5Ny03Ljk4VjczLjAwOGMwLTUuODYgNC42MDUtOS4xOCA4LjIwNC0xMC45ODctMy41NTUtMi4xMTgtOC4yMDMtNS43Ny04LjIwMy0xMS4yM1YxNi45ODNsMS41Mi0xLjk2M2gyLjA0NWMyMS4xNzIgMCAzMy4zMiA5LjYyIDMzLjMyIDI2LjM5NiAwIDAtLjAwNC43NTItLjAyIDEuNDI2aDkuMjNWMEguNDN2NDIuODQyeiIvPjxwYXRoIGZpbGw9IiMwMDMyNzgiIGQ9Ik0xMDEuNzUzIDE0MC45NjdoMi4xNDh2NS44NGgxLjQ0NnYtNS44NGgyLjEyNHYtMS4yNmgtNS43MTdtMTEuMjI5IDQuNjM5aC0uMDRsLTEuNjU0LTQuNjRoLTIuNTA2djcuMWgxLjQ1di01LjY1NGguMDM0bDEuOTc4IDUuNjU1aDEuNDA2bDIuMDU2LTUuNjU1aC4wM3Y1LjY1NWgxLjQ1NHYtNy4xaC0yLjUiLz48L3N2Zz4="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">8:05p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-initial-index="5" data-pitcher-key="sean burke">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Sean%20Burke-k-log">Sean Burke</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="368">368</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="106">106</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.236">.236</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="22.8333333333">22.8</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="9.67">9.7</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="24.4">24.4</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="25.7907542579">25.79</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="31">31.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="29">29</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.83299389">21.83</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="27.4193548387">27.42</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="26.9541778976">26.95</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="22.7401129944">22.74</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="12">12</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Athletics-k-per-pa-log" title="Athletics"><img alt="Athletics logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MS43IDUxLjEiPjx0aXRsZT5PYWtsYW5kIEF0aGxldGljcyBjYXAgbG9nbzwvdGl0bGU+PHBhdGggZmlsbD0ibm9uZSIgZD0iTTI4LjUgMjYuNkwyNiAxOC45bC0yLjYgNy43eiIvPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0zMCAyNy43bC00LTEyLjEtNC4xIDEyLjFIMzB6bS0xLjUtMS4xaC01LjJsMi42LTcuNyAyLjYgNy43eiIvPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik00OS42IDM1LjZjLS40IDAtLjguMS0xIC40LTMuMSAzLjQtNC43IDMuOS01LjQgMy45LS42IDAtMS4zLS4zLTIuMS0yLjZsLTEwLTMwLjJjLTEuMi0zLjUtMy4zLTUuOC02LjMtNi44LS45LS4yLTEuNy0uMy0yLjYtLjMtNC43IDAtOC40IDMuNS05LjcgOS4zLS4xLjUuMSAxIC42IDEuMi41LjIgMSAuMSAxLjMtLjQuOS0xLjMgMi42LTIuOCA0LjMtMi44LjUgMCAxLjEuMSAxLjYuNCAxLjcgMSAxLjggMS44LjkgNC41bC0uMi43Yy0xLS42LTIuMi0xLTMuNS0xLTIuNyAwLTYgMS44LTYuNiA2LjkgMCAuNC4yLjkuNiAxLjEuNC4yLjkuMSAxLjItLjIuMy0uMyAxLjItLjYgMi4zLS42IDEuMSAwIDIuMS40IDIuNSAxIC42LjguMyAyIDAgMi45bC01LjggMTYuOWMtNiAuMy0xMC40IDMuOS0xMS44IDkuNi0uMS41LjEgMSAuNiAxLjIuNS4yIDEgMCAxLjMtLjQuNi0xIDQuNC0zIDkuMS0zIDMuNyAwIDcuMiAxLjEgMTAuMyAzLjQuNS4zIDEuMS4yIDEuNC0uMmw1LjktNy4yYy4zLS40LjMtMS0uMS0xLjQtLjUtLjUtMS43LS43LTIuNi0uNy0uOSAwLTIuNi4yLTQuMiAxLjQtMS0uNy0yLjEtMS4zLTMuMy0xLjdsMi41LTcuNGg5LjlsMy44IDExLjNjMS4zIDMuOCAzLjYgNi4zIDYgNi4zLjkgMCAyLjMtLjQgMy40LTIuMSAwIDAgNi4zLTkuNSA3LjEtMTAuNi42LS45LjQtMS41LjItMS45LS4yLS42LTEtLjktMS42LS45em0uNyAyLjJjLS44IDEuMS03LjEgMTAuNi03LjEgMTAuNi0yLjMgMy42LTYgLjktNy42LTMuOWwtNC0xMkgyMC4ybC0zLjEgOS4xYzEuOC41IDMuNCAxLjQgNC43IDIuNCAyLjQtMi4zIDUuNi0xLjcgNi0xLjNMMjIgNDkuOWMtOS4zLTYuNy0xOS41LTIuNC0yMC45LS4xQzIuNiA0My41IDcuNyA0MSAxMi42IDQxbDYtMTcuNmMyLTUuOS00LjctNi02LjUtNC40LjctNi43IDYuNy03LjMgOS41LTQuM2wuNy0yLjFjLjktMi44LjktNC4zLTEuNC01LjctMi43LTEuNi01LjcuMy03LjMgMi42IDEuNy03LjIgNi41LTkuMyAxMS04LjEgMi45LjkgNC42IDMuMyA1LjYgNi4xbDEwIDMwLjJjMS4xIDMuMiAzLjEgNS44IDkuMi0uOS4xLS4yIDEuNi0uMS45IDF6Ii8+PHBhdGggZmlsbD0iIzAwMzgzMSIgZD0iTTQ5LjMgMzYuN2MtNi4yIDYuNy04LjEgNC4xLTkuMi45bC0xMC0zMC4yYy0uOS0yLjgtMi42LTUuMi01LjYtNi4xLTQuNS0xLjItOS4zLjktMTEgOC4xIDEuNi0yLjMgNC42LTQuMyA3LjMtMi42IDIuMyAxLjQgMi4zIDIuOSAxLjQgNS43bC0uNyAyLjFjLTIuOC0zLTguOC0yLjQtOS41IDQuMyAxLjgtMS43IDguNS0xLjUgNi41IDQuNGwtNiAxNy42Yy01IDAtMTAgMi42LTExLjUgOC44IDEuNC0yLjIgMTEuNi02LjYgMjAuOS4xbDUuOS03LjJjLS40LS40LTMuNi0xLjEtNiAxLjMtMS4zLTEuMS0yLjktMS45LTQuNy0yLjRsMy4xLTkuMWgxMS40bDQgMTJjMS42IDQuOCA1LjIgNy41IDcuNiAzLjkgMCAwIDYuMy05LjUgNy4xLTEwLjYuNy0xLS44LTEuMS0xLTF6TTI2IDE1LjZsNCAxMi4xaC04LjFMMjYgMTUuNnoiLz48cGF0aCBmaWxsPSJub25lIiBkPSJNNDAuMyAxOS42bDMtMy45di00LjhoLTUuN3Y1LjhoLjhsLTEuMSAyLjloM3ptLTEuNy03LjdoMy42djMuNGwtMi41IDMuMmgtMWwxLjEtMi45aC0xLjJ2LTMuN3oiLz48cGF0aCBmaWxsPSIjMDAzODMxIiBkPSJNMzguNyAxOC41aDEuMWwyLjQtMy4ydi0zLjRoLTMuNnYzLjdoMS4yeiIvPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik02MS40IDI0LjFjLS45LTIuNi0zLjctNC40LTUuOC00LjgtMS4yLS4yLTMuNS0uNy0zLjgtMS40IDAgMC0uMS0uMiAwLS42LjEtLjIuNi0uNSAxLjUtLjUgMSAwIDIuNC40IDMuMSAxLjRsLjcgMS4xIDMuOC0zLjktLjUtLjdjLTEuNS0yLjEtNC4yLTMuNC03LjEtMy40LTIuNiAwLTQuOSAxLjEtNi4yIDMtMS41IDIuMS0xLjkgNC0xLjMgNS44IDEgMi43IDQuMyA0LjEgNyA0LjcgMS42LjQgMi41IDEgMi42IDEuMyAwIDAgLjEuMi0uMS41LS41LjctMy43LjMtNi4zLTIuMWwtMS0uNy0zLjIgNC4zLjUuNmMxLjQgMS43IDUuMSA0IDguNyA0IDIuNCAwIDQuNS0xIDYtMi45IDItMi4yIDEuOS00LjMgMS40LTUuN3ptLTIuMSA1LjFjLTQuMyA1LjMtMTEuMy45LTEzLjEtMS4xbDItMi43YzIuOSAyLjcgNi44IDMuNCA3LjkgMS45IDEuMi0xLjgtMS4yLTIuOS0zLjEtMy40LTQuNi0xLjItOC43LTMuOS01LjEtOC45IDIuNi0zLjcgOS0zLjIgMTEuNi41bC0yLjMgMi4zYy0xLjUtMi4zLTUuOC0yLjQtNi40LS42LS43IDIuMSAxLjcgMi43IDQuNiAzLjMgMi45LjQgNy42IDQuMyAzLjkgOC43eiIvPjxwYXRoIGZpbGw9IiMwMDM4MzEiIGQ9Ik01NS40IDIwLjNjLTIuOS0uNi01LjMtMS4yLTQuNi0zLjMuNi0xLjggNC45LTEuNiA2LjQuNmwyLjMtMi4zYy0yLjYtMy42LTktNC4xLTExLjYtLjUtMy42IDUgLjUgNy43IDUuMSA4LjkgMS45LjUgNC4zIDEuNiAzLjEgMy40LTEgMS42LTQuOS44LTcuOS0xLjlsLTIgMi43QzQ4IDMwIDU1IDM0LjMgNTkuMyAyOWMzLjctNC4yLTEtOC4xLTMuOS04Ljd6TTUxLjIgNDdsLS42IDEuNS0uNS0xLjVoLS45djIuM2guNXYtMS45bC43IDEuOWguNGwuNy0xLjl2MS45aC41VjQ3em0tNC4zLjRoLjd2MS45aC41di0xLjloLjdWNDdoLTEuOXoiLz48L3N2Zz4="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:40p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="6" data-pitcher-key="parker messick">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Parker%20Messick-k-log">Parker Messick</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="385">385</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="109">109</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.216">.216</td>
+<td class="group-pitcher cell-strong" data-sort-key="PA/GP" data-sort-value="23.5">23.5</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="9.25">9.2</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="26.5">26.5</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="25.768321513">25.77</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp K% vH" data-sort-value="23.5891647856">23.59</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="17.8403755869">17.84</td>
+<td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="17.3913043478">17.39</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="21.4407744875">21.44</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="19">19</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Miami%20Marlins-k-per-pa-log" title="Miami Marlins"><img alt="Miami Marlins logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzIuNjYgMjI3LjQzNiI+PHRpdGxlPk1pYW1pIE1hcmxpbnMgQ2FwIExvZ28gb24gRGFyazwvdGl0bGU+PHBhdGggZD0iTTEyNS4yNTkgMTI0LjkzM2M2LjMxLTguNTM4IDE0Ljk1Mi0yMC4yMyAyMy4wMDctMzAuNzE2bC4wNjEtLjA3NmMxNC40OTctMTcuMjY3IDIzLjczLTI1LjczNCAzNS4yODQtMzIuMzU0YTczLjIyNiA3My4yMjYgMCAwIDEgMTEuNTU3LTUuMTk2Yy01LjYyMSAxLjU0My0xMS41NTUgMy44Mi0xNy40ODkgNy4xNDJhOTYuOCA5Ni44IDAgMCAwLTMuNTI2IDIuMTIxYy0xMC43NjIgNi4zODctMTkuOTk5IDEzLjQ4NC0zMy44NTMgMzEuMTg2LS4xMTYuMTQ4LS4yNjcuMzQ1LS4zNzguNDk3YTUwOTIzLjY2IDUwOTIzLjY2IDAgMCAxLTE5LjY1MiAyNi43MjZsMS4yMTEgNS43NzVjMS4wOTQtMS40NzMgMi4zNjctMy4xOTUgMy43NzgtNS4xMDV6bS0zNS44NjUgMTkuMzUyYTk4Ljk5IDk4Ljk5IDAgMCAxIDMuODU2LTMuMDAybC00LjM1LTIwLjYyOC0yLjYzMiA4LjYxIDMuMTI2IDE1LjAyem03LjUwMSAxOC43NzRjLS42MjUuOTE0LS43ODIgMS4zNzItLjg0MSAxLjg4OGEyLjUyMyAyLjUyMyAwIDAgMC0uMDE1LjE3M2MtLjEwOCAxLjg0Ny0uMzg4IDQuMTc4LS45OTEgNS44MS0uMDIuMDU1LS4wNDcuMTE3LS4wNy4xNzRsLTEuNjItNy43NzkgOC40MTEgNDAuNDAxIDMuNjMyLTQuODQ0LTcuNzgxLTM2Ljg4NC0uNzI1IDEuMDYxem02NC41MTEtMzkuNTAxbC03LjUzMiAxMC4xMy0yNC41MDMgNzguMDIzIDQwLjcxNS4wMTIgNC40NS00LjQ0OC0zOS4wMzMuMDAxIDI1LjkwMy04My43MTh6TTQ2LjA0OCAyMTMuNjE5Yy0xMC42MTMgNC45NzQtMjEuNjg1IDUuNTg5LTI2LjUxMSA1LjkzMy0xLjk3MS4xNDItMy45MS4yMDEtNS44MzQuMjE2IDcuMjUyLTUuNjczIDEyLjk5Ni0xMS4yMTIgMTYuODE5LTE5LjA2NWE1My42NDkgNTMuNjQ5IDAgMCAwIDMuMDcyLTcuMTk1YzEuMzc2LTMuOTk1IDE1LjA2NC00OC4yNDUgMjQuODE1LTc5LjgyNGEzOC4zIDM4LjMgMCAwIDAtMi44MzQgMy42MDNjLTIuMjczIDMuMjk3LTQuNzc4IDYuODI2LTYuMjY0IDEwLjYxNWwtLjE4OS42MTNjLS4wMjkuMDc3LS4wNTUuMTYxLS4wODMuMjM5bC0uNzQxIDIuNDA2LS4wMDEuMDA0LS43ODIgMi41MzVjLTEuMjkgNC4xODItMi42MSA4LjQ1MS0zLjg5NiAxMi42MDNsLS42MzEgMi4wMzUtLjAzLS4wM2MtNy4xNTEgMjMuMDQyLTEzLjAyOSA0MS44ODItMTMuODUgNDQuMzc1LTQuODM4IDE0LjY5Ny0xNS40MjQgMjEuNjk3LTI4Ljc3NiAzMS43NjUgNC43NzUuMDg2IDkuOTE3LjE5NCAxNC44NDEtLjIgNi44MzMtLjU0MyAyNi4xOTEtMS43MjQgMzkuMDM1LTE1LjAxNy40OTktLjQ5NC45ODQtMS4wMDIgMS40NTUtMS41MjJhNDguMTkzIDQ4LjE5MyAwIDAgMCAzLjQ2NC00LjM1MWMtLjM5NC40OC0uNzk3Ljk1NS0xLjIxNCAxLjQxOC0zLjQ2OSAzLjg1NS03LjYwMiA2LjcxMi0xMS44NjUgOC44NDR6IiBmaWxsPSIjZWYzMzQwIi8+PHBhdGggZD0iTTkwLjU4OCAyMjEuNTQ1Yy0uMTItLjAyMy04LjUwNS0xLjcwOS0xMS43MDMtMjMuMTMzLTEuOTA1LTEyLjc2Ny0xLjc5Mi0xNi45NzQtMi4yNTgtMjAuNzUtLjE4Ny0xLjUxMi0uNTM2LTQuNzExLTIuNTY1LTguNDUybC43OC0yLjU1MS0uMDA0LS4wMDQgMTEuNDMtMzcuMzkgMi42MzItOC42MSA0LjM1MSAyMC42MjhhOTguOTkgOTguOTkgMCAwIDAtMy44NTYgMy4wMDJjLTIuNzY2IDIuMjYxLTQuODkxIDQuMjA4LTUuOTMxIDUuMDQzLTEuNzMgMS4zOS0yLjk1NCAyLjIwNS00LjEzNCAyLjY0bC0xLjE3NSAzLjg0NmMyLjMxOS0uNTUxIDQuNTQzLTEuOTgxIDcuMjA5LTQuNDI5IDIuNzAyLTIuNDgxIDMuNzA0LTMuMTMgNy4yMDctNi4xNjcgMS44ODItMS42MzIgMy42MjMtMi45NzMgNS4yMzItNC4wNzRsLTguMTA2LTM4LjQyOVM2Ny4xNzggMTc2LjQgNjcuMDczIDE3Ni43NjJjLTEuMTgyIDQuMDY3LTQuNzc4IDE2LjQ0NC0xMi40OTEgMjUuMDE0LTIuMzUzIDIuNjE1LTkuMDU3IDEwLjA2Mi0yNy44NzcgMTIuNjExIDMuNTE2LTMuOTQyIDcuOTc3LTEwLjI3MyAxMS4xMjgtMTkuNDIgMS41MjgtNC40MzUgMTcuMzk3LTU1Ljc3NSAyNy4xNDktODcuMzc1LTIuMzU2IDEuODItNC41ODUgMy44NC02LjU3MiA2LjA5LTkuNzUgMzEuNTc5LTIzLjQzOSA3NS44MjktMjQuODE1IDc5LjgyNGE1My42NDkgNTMuNjQ5IDAgMCAxLTMuMDcyIDcuMTk1Yy0zLjgyMyA3Ljg1My05LjU2OCAxMy4zOTItMTYuODE5IDE5LjA2NWE5MC4xNDQgOTAuMTQ0IDAgMCAwIDUuODM0LS4yMTZjNC44MjYtLjM0MyAxNS44OTgtLjk1OSAyNi41MTEtNS45MzMgNC4yNjMtMi4xMzIgOC4zOTYtNC45OSAxMS44NjUtOC44NDQuNDE3LS40NjMuODE5LS45MzcgMS4yMTQtMS40MTggNy41NTUtOS4xOTcgMTEuMDYtMjEuMjQ3IDEyLjI1LTI1LjM0NC4xLS4zNDMuMTg0LS42MzQuMjUyLS44NmwxLjAyOC0zLjM2M2MuNDM5IDEuMjc5LjY5IDIuNjY4LjgyOSA0LjI1NyAwIDAgLjgzMSA3Ljc4MSAyLjA0OSAxOC43MDIgMi45NDkgMjYuNDQ4IDE0LjgzMiAyNi45MzkgMTkuNjU4IDI4LjAxOS0uMDAyLjAwNC0yLjIzNy0uOTE1LTQuNjA2LTMuMjIxek0yMjEuNTIgNTIuMTYxYy02Ljg2NyAwLTE2LjI3Ljg5NS0yNi4zNTEgNC40MzJhNzMuMjI2IDczLjIyNiAwIDAgMC0xMS41NTcgNS4xOTZjLTExLjU1NCA2LjYyLTIwLjc4OCAxNS4wODYtMzUuMjg0IDMyLjM1NGwtLjA2MS4wNzZjLTguMDU1IDEwLjQ4NS0xNi42OTcgMjIuMTc4LTIzLjAwNyAzMC43MTYtMS40MTEgMS45MS0yLjY4NCAzLjYzMi0zLjc3OCA1LjEwNmwtMS4yMTEtNS43NzUtOC41MTctNDAuNjE3Yy0xLjQ0LjAxOC0yLjk1MS4xMDktNC41MjMuMjczbDExLjg5MSA1Ni43MDcgMi45Ny0zLjkxNmMxLjM4LTEuODE5IDMuNzU5LTUuMDM4IDYuNzcyLTkuMTE0IDYuMjkyLTguNTEzIDE0LjkwNS0yMC4xNjcgMjIuOTI3LTMwLjYxMSAxNC4xLTE2Ljc5MSAyMy4wMTMtMjQuOTg3IDM0LjAyOS0zMS4yOTkgMTIuNzEyLTcuMTE2IDI1LjQ5NC04Ljg4IDM0LjM4NC05LjAzMy05LjI2NiA4LjU4Ny0xNi4xMTQgMjAuMjI1LTIwLjg0OCAzNS4zODlsLTI5LjE2MSA5My45MThjLS45MTUgMy4xNDUtMS41NDUgNS41NjctMS44NiA3LjkyNC0uNDU1IDMuNDE2LS40NDYgNi4zMTguMDQyIDguOTA3bC0yNi43OTUuMDAxIDMxLjg0MS0xMDIuOTEyLTY1LjY4NyA4OC4zNTEtNi41NzMtMzEuMTYyYTEzMi45MDYgMTMyLjkwNiAwIDAgMC0zLjU0MSA0LjkzbDcuNzgxIDM2Ljg4NCA0OC40NzMtNjUuMTk2IDcuNTMyLTEwLjEzLTI1LjkwMyA4My43MTggMzkuMDM0LS4wMDFjLS44MDUtMi4wNS0uOTE0LTIuMzk4LTEuMTIzLTMuMDIyLS45NzMtMi42MTgtMS4xNzUtNS43MjQtLjYzNi05Ljc3NS4yNzctMi4wNzcuODY0LTQuMzIgMS43MDktNy4yMjVsMjkuMTQ5LTkzLjg3N2M1LjE5LTE2LjYyNCAxMi45ODUtMjguNzE5IDIzLjgzLTM2Ljk3NmExNTUuODU4IDE1NS44NTggMCAwIDEgNC41MTctMy40MTZjLS4wMDMtLjAwMi01LjM1MS0uNzYzLTEwLjQ2NS0uODI1eiIgZmlsbD0iIzAwYTNlMCIvPjxwYXRoIGQ9Ik05My4xMzQgMTYyLjIzNmE2Ljc1NiA2Ljc1NiAwIDAgMSAuNTAyLS44NTdsLjAwNy0uMDFjMS4wNTctMS41NDcgNC4wODgtNS45NjQgNi43NjgtOS4wNDdsLjkyOS0xLjA2OS4xNDMtLjE2NS4wNzItLjA4M2M1LjExOS01Ljg5NSA5LjUzMy0xMC45MzIgMTMuMDA3LTEyLjA5Ny0uMDUtLjAxNC0uMTAzLS4wMTctLjE1My0uMDI5LS42OTYtLjA4Ny0zLjE4LS4wNDItNy44MzYgMy41OTgtMi4yNTggMS45MzUtNS4wNjQgNC42NTgtOC40NjQgOC40OTYtMy43NTggNC4yNDItNS41MDUgNy4xNjYtNi44MDEgOC44NDMtLjk2OSAxLjI0Ny0xLjI2IDEuOTQtMS40NTIgMy4xMDUtLjAzNi4yMTYtLjEyMiAzLjU5NS0uNzU5IDUuMzE5LS40ODUgMS4zMTQtMi40NjggNC4xNzctMi41NzIgNC4zNTItLjkyOCAxLjU0Ny0uODE2IDIuMjk5LS43ODYgMy4xNTdzLS4xNDIgMTIuMjY1LjE4MiAyNC45NTUgNC42NzIgMjAuODQxIDQuNjcyIDIwLjg0MWwtLjAwNi0uMDAxdi4wMDFjMi4zNjggMi4zMDUgNC42MDQgMy4yMjQgNC42MDQgMy4yMjQtMi4yNzMtMy45NjUtNi4wNzMtMTUuMzgxLTYuMjk3LTI0LjE0Mi0uMjM0LTkuMTQ3LS4wMzktMTcuMTI5LS4xMjItMjEuODIyLS4wMTYtMS4wMy0uMDM2LTIuMDU5LS4wNjEtMy4wODlsLS4wMDgtLjI2OWMtLjAxOC0uNDMxLS4wMTktLjU1OC40MDYtMS4zNzUuMDQ4LS4wNzguMDg5LS4xMzkuMTU1LS4yMzggMS4wOTktMS42NTcgMi4xNzctMy4zNTggMi42MjMtNC41NjUuNjAzLTEuNjMzLjgwNS0zLjk2Mi45MTMtNS44MDguMDAzLS4wNDguMDA3LS4xMDcuMDE1LS4xNzQuMDU0LS4zMTcuMTItLjYzMy4zMTYtMS4wNTFoLjAwM3oiIGZpbGw9IiM0MTc0OGQiLz48cGF0aCBkPSJNNDMuNjE5IDE0Ni4zMDJjLTE0LjYwNy0xNi41NjktMTkuOTEzLTQwLjEyNy0xMi40NzQtNjAuNjg5LTEuMjk3LjA1MS0yLjU1NS4xMS0zLjc3MS4xNzgtMi4yMjUgNi42OTgtMy4yNjMgMTMuODU5LTMuMDQ0IDIxLjA2NSAwIC4wMzYuMDI1LjYwNi4wMjUuNjA2LjgxNSAxNi44MzQgOS4zNTkgMzEuNTE2IDE4LjYwMyA0MC44NDVsLjAyLjAyYy4yMTktLjY3My40MzMtMS4zNDguNjQxLTIuMDI1eiIgZmlsbD0iIzAwYTNlMCIvPjxwYXRoIGQ9Ik0xNjguMTc4IDQxLjM1NmwtMzQuODY1IDYuMjkxIDM0Ljk3Mi02LjI5OHMtMzUuMTE3IDEyLjg1Ni00Mi44NDMgMTUuNzc2Yy03LjcyNSAyLjkyLTcuNTQxIDEwLjE4OS03LjU0MSAxMC4xODlsMTUuMDg5LS45MTZjMTEuNjE0LS43MjkgMTUuNTEzIDIuNDM1IDE1LjUxMyAyLjQzNWwtMjcuMjQxIDIuOTE1LTguNjQ1IDguNDA0Yy0yMi4xMjEtLjE3NS02OS45NTggMTcuNzkyLTY1LjEwMyA1My41NDZsLjc4MS0yLjUzMy4wMDItLjAwNy43NDEtMi40MDZjLjAyOC0uMDc4LjA1NC0uMTYyLjA4My0uMjM5bC4xODktLjYxMyAxLTMuMjM5Yy4yNjgtLjg0Ny41MzctMS42ODMuNzgzLTIuNDI5YTQxLjExOCA0MS4xMTggMCAwIDEgMy4xMTEtNy44OTJjNS45MjctMTEuNDExIDE3Ljk1LTE4LjgyMSAyNi42NzMtMjIuODY0IDguNTY0LTMuOTcgMTguMjEyLTYuNzA3IDI2LjM1Mi03LjU1N2E0OS41MzcgNDkuNTM3IDAgMCAxIDQuNTIzLS4yNzNjLjE3OS0uMDAyLjM2NS0uMDExLjU0Mi0uMDExbDEuNzMyLjAxMiA5LjMzMi05LjEyNCAzMi45NDktMy41NDVjLTEuMjQ5LTEuMzY1LTcuNDY5LTcuNDItMTkuNzUtNy42NjUtMS4yMDItLjAyNC0yLjQ3Mi4wNDEtMy43NzQuMTIzbC0xMC4yNTguNjI3Yy41NzktMS43MTIgMi4wMzUtMy40MjIgNC4xNDctNC4yMiA3LjYyLTIuODgxIDQ4LjMwNC0xNy44NDIgNDguNjU1LTE3Ljk3MWwzLjI2My0zLjE4NS0xMC40MTIgMi42Njl6IiBmaWxsPSIjNDE3NDhkIi8+PHBhdGggZD0iTTM1LjExNiAxMDcuMjUzYTUzLjg1MyA1My44NTMgMCAwIDAgMS42NDMgMTAuOTgzYy0uOTkxLTEyLjkyNCAxLjI2LTIzLjgwOSA1LjkxLTMyLjc2MWEyMDEuMSAyMDEuMSAwIDAgMC0zLjY0My0uMDI1Yy0yLjkzNCA2LjgwMi00LjI1IDE0LjEzLTMuOTEgMjEuODAzem01OS42ODgtNTMuMzg1Yy0uMzQ5LjAwNy0uNy4wMTEtMS4wNDYuMDIyLTE1LjI5My40NzctMjkuNDU4IDQuNjA1LTM5LjYxMyAxMi4yNzJhNTEuNTA3IDUxLjUwNyAwIDAgMC00LjYzIDMuOTQ2IDUwLjc1NSA1MC43NTUgMCAwIDAtNC45MTQgNS42OTdjMS44MDYtLjMwNCAzLjU4LS41NjggNS4zMTgtLjc5NCAxMC43MjUtMTEuOTU3IDI2LjkwOS0xOC44NTcgNDQuODg1LTIxLjE0M3oiIGZpbGw9IiNlZjMzNDAiLz48cGF0aCBkPSJNMTMyLjk5MSA2Ni4zOTlsLTE1LjA4OS45MTZzLS4xODQtNy4yNjkgNy41NDEtMTAuMTg5YzcuNzI1LTIuOTIgNDIuODQzLTE1Ljc3NiA0Mi44NDMtMTUuNzc2bC0zNC45NzIgNi4yOTgtNy41NDEgMS4zNThjLTUuOTkzLS4yMi0xMC44My41NDEtMTAuODMuNTQxYTM0LjE5OCAzNC4xOTggMCAwIDAtOC40OTktMi44OTIgNDEuOTEyIDQxLjkxMiAwIDAgMC0yLjU4MS0uNTRjLTQuMDY1LTguNjUxLTEyLjA1LTIzLjM4OS0yNC42ODEtMzcuMTE3LTMuNDQ0IDEwLjE4NCAxLjQxMiAxNy4wMTItNS4zMDQgMzEuMDMzLS43NTMgMS41NzItMS40NCAyLjk5NC0yLjk1NiA0LjY2MS01LjgwOCA2LjM4OS05LjAyOSA3LjE0LTE0LjkyMSAxMS4xMDctOS43MDggNi4wNDItMTYuNzMxIDEzLjY1LTIxLjM0MiAyMi4wNDNhMTQxLjI4IDE0MS4yOCAwIDAgMSA5Ljk0LTIuMDM4IDUwLjg1OCA1MC44NTggMCAwIDEgNC45MTQtNS42OTcgNTEuNTA3IDUxLjUwNyAwIDAgMSA0LjYzLTMuOTQ2YzEwLjE1NC03LjY2NyAyNC4zMi0xMS43OTUgMzkuNjEzLTEyLjI3Mi4zNDctLjAxMS42OTctLjAxNSAxLjA0Ni0uMDIyLTE3Ljk3NiAyLjI4Ny0zNC4xNiA5LjE4Ni00NC44ODUgMjEuMTQyIDEyLjk2LTEuNjg2IDIzLjg4Ny0xLjMxNiAzMC4zOTMtLjM5OC00LjYzNyAxLjcwNC05LjM0MiAzLjg1Mi0xMy44MjggNi40NDlhNzQuNDk2IDc0LjQ5NiAwIDAgMC03LjkyNyA1LjI3NCAxOTkuMjg2IDE5OS4yODYgMCAwIDAtMTUuODg4LS44NTljLTQuNjUgOC45NTItNi45MDEgMTkuODM3LTUuOTEgMzIuNzYxYTUzLjkyMiA1My45MjIgMCAwIDEtMS42NDMtMTAuOTgzYy0uMzQtNy42NzQuOTc2LTE1LjAwMiAzLjkxLTIxLjgwMy0yLjc1Ni4wMDYtNS4zODcuMDY3LTcuODgxLjE2My03LjQzOSAyMC41NjItMi4xMzMgNDQuMTIgMTIuNDc0IDYwLjY4OSAxLjI4Ni00LjE1MiAyLjYwNi04LjQyMSAzLjg5Ni0xMi42MDMtNC44NTUtMzUuNzU0IDQyLjk4My01My43MjEgNjUuMTAzLTUzLjU0Nmw4LjY0NS04LjQwNCAyNy4yNDEtMi45MTVjLjAwMiAwLTMuODk3LTMuMTY0LTE1LjUxMS0yLjQzNXpNODIuNzI5IDIyLjMyNWMtLjAxMS0uMTYzLS4wMTEtLjU5Mi0uMDE4LTEuMDE4IDYuNTY5IDguOTA1IDExLjM3MSAxNy41NTcgMTQuMDI2IDIyLjc0Ni04LjI1OC4wNTQtMTUuNDY2IDIuMDU0LTIxLjE4NyA0LjQ4OSAzLjc1MS01LjA4IDguMDMxLTE0LjAxNiA3LjE3OS0yNi4yMTd6bTMxLjMyOSA0NS4yMjRsLTYuNTg0LjQwMnMxLjM2Ny01LjQ3MyAxMC4wNjItOC4zNjNjMCAuMDAxLTIuNzM0IDEuNTc1LTMuNDc4IDcuOTYxeiIvPjxwYXRoIGQ9Ik04Mi43MSAyMS4zMDdjLjAwOC40MjUuMDA3Ljg1NS4wMTggMS4wMTguODUyIDEyLjIwMS0zLjQyOCAyMS4xMzgtNy4xOCAyNi4yMTggNS43MjItMi40MzYgMTIuOTI5LTQuNDM2IDIxLjE4Ny00LjQ4OS0yLjY1NC01LjE4OS03LjQ1Ni0xMy44NDItMTQuMDI1LTIyLjc0N3oiIGZpbGw9IiMwMGEzZTAiLz48cGF0aCBkPSJNMTA3LjQ3NCA2Ny45NTJsNi41ODQtLjQwMmMuNzQ0LTYuMzg3IDMuNDc4LTcuOTYgMy40NzgtNy45Ni04LjY5NSAyLjg4OC0xMC4wNjIgOC4zNjItMTAuMDYyIDguMzYyek0zOS4wMjYgODUuNDVjMS4xOTItLjAwMyAyLjQwOS4wMDcgMy42NDMuMDI1IDUuMDA3LjA3NSAxMC4zNDIuMzMxIDE1Ljg4OC44NTlhNzQuNjQ5IDc0LjY0OSAwIDAgMSA3LjkyNy01LjI3NGMtMTYuNDQ0LS43MTctMzguNTUxLjEwNy01OS42NDYgNi45Ny41MjEtLjEgOC40NjctMS41NTkgMjAuNTM2LTIuMjM4IDEuMjE2LS4wNjggMi40NzUtLjEyOCAzLjc3MS0uMTc4IDIuNDk0LS4wOTcgNS4xMjUtLjE1OCA3Ljg4MS0uMTY0eiIgZmlsbD0iIzQxNzQ4ZCIvPjxwYXRoIGQ9Ik02Ni40ODQgODEuMDYxYzQuNDg1LTIuNTk3IDkuMTkxLTQuNzQ0IDEzLjgyOC02LjQ0OS02LjUwNy0uOTE5LTE3LjQzMy0xLjI4OS0zMC4zOTMuMzk4YTE0My4zNjIgMTQzLjM2MiAwIDAgMC0xNS4yNTggMi44MzJjNC42MTEtOC4zOTQgMTEuNjM0LTE2LjAwMiAyMS4zNDItMjIuMDQzIDUuODkyLTMuOTY3IDkuMTEzLTQuNzE4IDE0LjkyMS0xMS4xMDcgMS41MTYtMS42NjcgMi4yMDMtMy4wODkgMi45NTYtNC42NjEgNi43MTYtMTQuMDIxIDEuODU5LTIwLjg0OSA1LjMwNC0zMS4wMzMgMTIuNjMxIDEzLjcyOSAyMC42MTUgMjguNDY2IDI0LjY4MSAzNy4xMTcuODY2LjE1NCAxLjcyNi4zMzQgMi41ODEuNTRhMzQuMTk4IDM0LjE5OCAwIDAgMSA4LjQ5OSAyLjg5MnM0LjgzNi0uNzYxIDEwLjgzLS41NDFsNy41NDEtMS4zNTggMzQuODY1LTYuMjkxIDEwLjQxNS0yLjY2NyAzLjQyOC0zLjMwMS01Ni41MDYgMTAuMTIxYTY4LjkwOCA2OC45MDggMCAwIDAtMTAuMDEyLjQ0NSAzNy40ODYgMzcuNDg2IDAgMCAwLTguNTIzLTIuNzQ4Yy0uMjIzLS4wNDctLjQ0NS0uMS0uNjY3LS4xNTEtNC4zMS04LjkzNS0xMi4wOTgtMjIuNzkzLTI0LjM5NS0zNi4xNjQtMi4wNDEtMi4wNTUtMi43Ny0yLjY5Mi00LjUyNC00LjEyMi0uNzE2IDEuNTYzLTEuNzQyIDUuMzI4LTEuNzQyIDUuMzI4LTEuMTA2IDMuNzE5LTEuNDcyIDkuMTU4LTEuNTA4IDE0LjUwOC4wOTYgMy45OTItLjQxNiAxMC44Mi0zLjYxIDE2LjQzMi0yLjE4IDMuNjc1LTUuNDkzIDYuNzU2LTEwLjQ4NyAxMC4xMjktLjM5My4yNDUtLjc5MS41MDEtMS4yLjc3My0yLjUwNCAxLjQ4OS02LjcxMiAzLjg4LTkuOSA2LjMwNy04Ljg4NiA2LjM3NC0xNC40MzUgMTMuNTM5LTE4Ljg1MyAyMi43OTEtNy42MzYgMi4xMzYtMTUuNTE4IDUuMDU1LTIzLjI5MyA4Ljk5OGwuMDMyLS4wMDZjMjEuMDk3LTYuODYzIDQzLjIwNC03LjY4NyA1OS42NDgtNi45Njl6IiBmaWxsPSIjMDBhM2UwIi8+PHBhdGggZD0iTTk1LjA0OCAxNzAuOTMyYy42MDMtMS42MzMuODgzLTMuOTY0Ljk5MS01LjgxLjAwMy0uMDQ3LjAwNy0uMTA3LjAxNS0uMTczLjA1OS0uNTE3LjIxNi0uOTc0Ljg0MS0xLjg4OC4xODUtLjI3MS40MzMtLjYzNS43MjUtMS4wNmExMzIuOTA2IDEzMi45MDYgMCAwIDEgMy41NDEtNC45M2w2LjU3MyAzMS4xNjIgNjUuNjg3LTg4LjM1MS0zMS44NDEgMTAyLjkxMiAyNi43OTUtLjAwMWMtLjQ4OC0yLjU4OS0uNDk3LTUuNDkxLS4wNDItOC45MDcuMzE1LTIuMzU3Ljk0NS00Ljc3OSAxLjg2LTcuOTI0bDI5LjE2MS05My45MThjNC43MzQtMTUuMTY0IDExLjU4Mi0yNi44MDIgMjAuODQ4LTM1LjM4OS04Ljg4OS4xNTMtMjEuNjcxIDEuOTE3LTM0LjM4NCA5LjAzMy0xMS4wMTMgNi4zMTItMTkuOTI2IDE0LjUwOC0zNC4wMjcgMzEuMjk5LTguMDIyIDEwLjQ0My0xNi42MzUgMjIuMDk4LTIyLjkyNyAzMC42MTEtMy4wMTMgNC4wNzYtNS4zOTIgNy4yOTUtNi43NzIgOS4xMTRsLTIuOTcgMy45MTYtMTEuODkxLTU2LjcwN2MtOC4xNC44NS0xNy43ODggMy41ODctMjYuMzUyIDcuNTU3LTguNzIzIDQuMDQzLTIwLjc0NiAxMS40NTMtMjYuNjczIDIyLjg2NGE0MS4wNTMgNDEuMDUzIDAgMCAwLTMuMTExIDcuODkyYy0uMjQ3Ljc0Ni0uNTE2IDEuNTgzLS43ODMgMi40MjlsLTEgMy4yMzljMS40ODYtMy43ODkgMy45OTEtNy4zMTggNi4yNjQtMTAuNjE1YTM4LjMgMzguMyAwIDAgMSAyLjgzNC0zLjYwM2MxLjk4Ni0yLjI1IDQuMjE2LTQuMjcxIDYuNTcyLTYuMDktOS43NTIgMzEuNTk5LTI1LjYyMiA4Mi45NC0yNy4xNDkgODcuMzc1LTMuMTUxIDkuMTQ3LTcuNjEyIDE1LjQ3OC0xMS4xMjggMTkuNDIgMTguODItMi41NDkgMjUuNTI0LTkuOTk2IDI3Ljg3Ny0xMi42MTEgNy43MTMtOC41NyAxMS4zMDktMjAuOTQ3IDEyLjQ5MS0yNS4wMTQuMTA1LS4zNjIgMjIuNjI0LTc0LjA0NyAyMi42MjQtNzQuMDQ3bDguMTA2IDM4LjQyOWMtMS42MDkgMS4xMDEtMy4zNDkgMi40NDEtNS4yMzIgNC4wNzQtMy41MDMgMy4wMzctNC41MDQgMy42ODYtNy4yMDcgNi4xNjctMi42NjcgMi40NDgtNC44OTEgMy44NzktNy4yMDkgNC40MjlsLTMuMzEzIDEwLjg0NC0uNzggMi41NTFjMi4wMyAzLjc0MSAyLjM3OSA2Ljk0IDIuNTY1IDguNDUyLjQ2NyAzLjc3Ni4zNTMgNy45ODMgMi4yNTggMjAuNzUgMy4xOTggMjEuNDI0IDExLjU4MyAyMy4xMSAxMS43MDMgMjMuMTMzbC4wMDYuMDAxcy00LjM0OC04LjE1MS00LjY3Mi0yMC44NDFjLS4zMjUtMTIuNjktLjE1My0yNC4wOTctLjE4Mi0yNC45NTUtLjAzLS44NTctLjE0My0xLjYwOS43ODYtMy4xNTcuMTA1LS4xNzUgMi4wODctMy4wMzggMi41NzItNC4zNTIuNjM3LTEuNzI0LjcyMy01LjEwMy43NTktNS4zMTkuMTkyLTEuMTY1LjQ4My0xLjg1OCAxLjQ1Mi0zLjEwNSAxLjI5Ni0xLjY3NyAzLjA0Mi00LjYwMSA2LjgwMS04Ljg0MyAzLjQtMy44MzggNi4yMDYtNi41NjEgOC40NjQtOC40OTYgNC42NTUtMy42NCA3LjE0LTMuNjg1IDcuODM2LTMuNTk4LjA1MS4wMTIuMTAzLjAxNS4xNTMuMDI5LTMuNDc0IDEuMTY1LTcuODg4IDYuMjAyLTEzLjAwNyAxMi4wOTdsLS4wNzIuMDgzLS4xNDMuMTY1LS45MjkgMS4wNjljLTIuNjgxIDMuMDgzLTUuNzExIDcuNDk5LTYuNzY4IDkuMDQ3bC0uMDA3LjAxYTguNjI1IDguNjI1IDAgMCAwLS4zMTguNTA4Yy0uMDcuMTI0LS4xMzMuMjQxLS4xODQuMzQ5bC0uMDAyLjAwMy4yMjcgMS4wODggMS42MiA3Ljc3OWMuMDIxLS4wNi4wNDgtLjEyMS4wNjgtLjE3NnoiLz48cGF0aCBkPSJNMTgxLjc0MyAyMDIuMDI5aC0uMDE5bC0uODY1LTIuNzA5aC0xLjMyMXY0LjE0NGguNzYxdi0zLjMwMWguMDIxbDEuMDQ0IDMuMjk2aC43M2wxLjA4MS0zLjI5NmguMDE4djMuMjk2aC43NjF2LTQuMTM5aC0xLjMxMWwtLjkgMi43MDl6bS01Ljg5Ny0xLjk2OGgxLjEyMnYzLjQwM2guNzU5di0zLjQwM2gxLjEzMnYtLjc0MWgtMy4wMTN2Ljc0MXoiIGZpbGw9IiMwMGEzZTAiLz48L3N2Zz4="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:10p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-target" data-initial-index="7" data-pitcher-key="shota imanaga">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Shota%20Imanaga-k-log">Shota Imanaga</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="384">384</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="100">100</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.227">.227</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="23.0555555556">23.1</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.74">8.7</td>
+<td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="30.3">30.3</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="24.0963855422">24.10</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="27.7">27.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="65">65</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.3542435424">24.35</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="24.8648648649">24.86</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="25.7452574526">25.75</td>
+<td class="group-opponent cell-elite" data-sort-key="SO/PA" data-sort-value="24.9927515222">24.99</td>
+<td class="group-opponent cell-top-rank" data-sort-key="r" data-sort-value="2">2</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Cincinnati%20Reds-k-per-pa-log" title="Cincinnati Reds"><img alt="Cincinnati Reds logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNzEuNTcgMTkxLjMxNiI+PHRpdGxlPkNpbmNpbm5hdGkgUmVkcyBDYXAgTG9nbyBvbiBMaWdodDwvdGl0bGU+PHBhdGggZD0iTTE1NC40NjkgMzguNjM5YzM1LjEwMyAwIDYxLjU5NiAxNi4yMDggNzAuNDg3IDMwLjI2Nmg0NC4xOTVjLS44MS0xLjYxMS0yLjc5LTYuOTY1LTIuNzktNi45NjVoLTQyLjIwNmMtOC44OTYtMTQuMDU4LTM2LjYwMy0zMC4yNjItNzEuNzA3LTMwLjI2Mi01OS42OTEgMC04My4xMTcgMzkuNjY1LTgzLjExNyA1OC42NzYgMCAxMS4wMDEgMy4yMTMgMjAuNjg1IDguNjYgMjguOTIyLTMuNTY0LTYuNzExLTQuNDA2LTE2LjgwNC00LjQwNi0yMy4zMzcgMC0xOS4wMDEgMjIuNTM2LTU3LjMgODAuODg0LTU3LjMiLz48cGF0aCBkPSJNMTUwLjg3OSAxODQuNDg5Yy02MS4wMjYgMC04NS4wMTctMjYuMTg1LTExMy4yNzItNTYuMTg5QzI2LjAxNCAxMTUuOTkxIDE4Ljc2OSAxMDQuODc4LjAwMiA5MS4wMzhsMy44NjMgOC45MThjMTguMDQ2IDE0Ljc1NyAyNS40OTEgMjUuNDI0IDM3LjA4IDM3LjcyIDI4LjI1OSAzMC4wMjYgNTEuODQxIDUzLjYzOSAxMTIuODcxIDUzLjYzOSA1My40MjEgMCA5NC43ODYtMjYuNDA0IDExNC4yMjQtNTguODgxbC0yLjkxNS02LjgzNmMtMTkuNDU2IDMyLjQ4OC02MC44MDggNTguODkxLTExNC4yNDYgNTguODkxIi8+PHBhdGggZD0iTTE1Mi40NDggMzEuNjc3YzM1LjEwMyAwIDYyLjgxMSAxNi4yMDggNzEuNzA3IDMwLjI2Nmg0Mi4yMDZDMjQ2Ljc5MyAyMy4yODQgMTk2LjI2OSAwIDE0NS43NDEgMCA5Ni4xMjEgMCA1OC4xOTYgMjguNjI0IDM2LjQ0MyA1NC40IDE1LjMzNSA3OS4zNzkgNS42NDggODcuMzkgMS45MzYgODkuOTA4LjU3NCA5MC44MyAwIDkxLjAzOSAwIDkxLjAzOWMxOC43NzEgMTMuODQgMjYuMDE2IDI0Ljk1MiAzNy42MDUgMzcuMjYyIDI4LjI1OSAzMC4wMDQgNTIuMjUgNTYuMTg5IDExMy4yNzIgNTYuMTg5IDUzLjQzOSAwIDk0Ljc5LTI2LjQwMyAxMTQuMjQ3LTU4Ljg5NWgtNDEuNzNjLTE5LjUzNyAxNC44MzMtNDMuNDQ4IDI2Ljc4Ni03My44NDMgMjYuNzg2LTI4LjA3NyAwLTU3LjQwNC0xMS43MDktNzEuNTU2LTMzLjEwMS01LjQ1MS04LjI0Mi04LjY2NC0xNy45MjYtOC42NjQtMjguOTIyIDAtMTkuMDE2IDIzLjQyNi01OC42ODEgODMuMTE3LTU4LjY4MU0yNTcuNzY1IDE2My45NmgtMy4wNTd2OC4zMDRoLTIuMDU2di04LjMwNGgtMy4wNTN2LTEuODAyaDguMTY2djEuODAyem0xMy44MDUgOC4yOTFoLTIuMDUydi04LjAzM2gtLjA1M2wtMi45MjggOC4wMzNoLTEuOTk0bC0yLjgxNy04LjAzM2gtLjA0OXY4LjA0NmgtMi4wNTJ2LTEwLjEwNmgzLjU2OWwyLjM0MSA2LjYwOWguMDUzbDIuNDMtNi42MDloMy41NTF2MTAuMDkzeiIgZmlsbD0iI2M2MDExZiIvPjwvc3ZnPg=="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:10p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-initial-index="8" data-pitcher-key="sonny gray">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Sonny%20Gray-k-log">Sonny Gray</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="16">16</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="332">332</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="82">82</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.229">.229</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="22.4375">22.4</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.23">8.2</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="23.1">23.1</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.8412256267">22.84</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.2">20.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="89">89</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.8687872763">21.87</td>
+<td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="16.1904761905">16.19</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19">19.00</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="21.9323394495">21.93</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="16">16</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/New%20York%20Mets-k-per-pa-log" title="New York Mets"><img alt="New York Mets logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODkuMzc4IDIzOSI+PHRpdGxlPk5ldyBZb3JrIE1ldHMgaGF0IGRhcmsgbG9nbzwvdGl0bGU+PHBhdGggZD0iTTE2MC45NzIgMTU4LjQ3NmMwLTIuNzY2LS44NjQtNS40NzMtMi40MjQtNy43NjctMi40OTIgMy44NTItNi40NiA1LjY3LTEwLjk3OCA0LjU3LTQtLjk0Ni03LjE3LTMuODItNy4yMDgtNi40OFY4OC4wODRsLjg1LjMzN2M0LjUzIDEuODUgNy44MiA2LjE5MiA4Ljc5OCAxMS41OS4xOSAxLjA0LjI4MiAyLjExLjI4MiAzLjE2NSAwIDMuNjg0LTEuMzkgNi45NTYtMy42MDcgOS41ODYgNC4xNS0uODU2IDE2LjM3NS00LjU1NiAxNi4zNzUtMjAuMDEzIDAtMTQuMjUtMTEuNTA2LTIyLjk4LTIyLjIwOC0yNS4wNmwtLjQ4OC0uMDlWMjUuMTU1Yy4wMzgtMi42NiAzLjIxLTUuNTM0IDcuMjA4LTYuNDgzIDQuNTE4LTEuMTE2IDguNDg2LjczNCAxMC45NzggNC41NzIgMS41Ni0yLjI5NCAyLjQyNC01IDIuNDI0LTcuNzY3IDAtMy43My0xLjM5Mi03LjUzNy00LjA5LTEwLjUzMy01Ljk2My02LjU3NC0xNS44MS02LjU5LTI2LjM2LS4wNmwtLjMzNC4yMjgtLjMyLS4yM2MtMTAuNTYyLTYuNTMtMjAuNDE2LTYuNTEzLTI2LjM3LjA2LTIuNzE1IDIuOTk4LTQuMDgzIDYuODA0LTQuMDgzIDEwLjUzNCAwIDIuNzY4Ljg1IDUuNDczIDIuNDI0IDcuNzY3IDIuNDkzLTMuODM3IDYuNDY4LTUuNjg4IDEwLjk5NS00LjU3MiAzLjk4My45NSA3LjE1NSAzLjgyMyA3LjE5MiA2LjQ4M3Y0Ny40NDJsLS4zMzUuMTgzYy04LjI1IDQuMjgtMTUuNjM0IDEwLjMyLTIxLjk3MiAxNy45MzRsLS40NjcuNTY1LS40ODgtLjU4UzQyLjU1IDI0Ljk1NyA0Mi40MjggMjQuNDM4Yy41OTYtMi43ODIgNC4yMjctNS40MjggOC4yNTUtNi4wMSA0LjEwNS0uNTY0IDcuNTY4IDEuMyA5Ljg1NCA0LjgxNyAxLjU1My0yLjI5NCAyLjQxNi01IDIuNDE2LTcuNzY3IDAtMy43My0xLjM4Mi03LjUzNy00LjA5LTEwLjUzM0M1Mi45LTEuNjMgNDMuMDQtMS42NDUgMzIuNDkgNC44ODNsLS4zMjIuMjMtLjMyLS4yM2MtMTAuNTU3LTYuNTMtMjAuNDEtNi41MTMtMjYuMzY3LjA2LTIuNzEyIDIuOTk4LTQuMDk2IDYuODA0LTQuMDk2IDEwLjUzNCAwIDIuNzY4Ljg1NiA1LjQ3MyAyLjQyNCA3Ljc2NyAyLjUwOC0zLjgzNyA2LjQ3NS01LjY4OCAxMS00LjU3MiAzLjk4My45NSA3LjE2NCAzLjgyMyA3LjE5NCA2LjQ4M3Y0Mi41OGwtLjQ4OC4wOTJDMTAuODE4IDcwLjE5NyAwIDc4LjgyIDAgOTIuNzVjMCAxNS40NTYgMTIuMjc3IDE5LjE3IDE2LjQwNiAyMC4wMTItMi4xOTUtMi42MTUtMy42MS01LjkxNi0zLjYxLTkuNjMyIDAtLjg1Ni4wNy0xLjcxMy4yLTIuNTg1Ljc4LTUuMjkgMy44MTUtOS42OTMgOC4xMzMtMTEuNzcybC44Ny0uNDQ1djYwLjQ3Yy0uMDMgMi42Ni0zLjIxIDUuNTM0LTcuMTkzIDYuNDgyLTQuNTI1IDEuMS04LjQ5Mi0uNzItMTEtNC41NzItMS41NjcgMi4yOTQtMi40MjQgNS0yLjQyNCA3Ljc1IDAgMy43MzIgMS4zODQgNy41NTUgNC4wOTcgMTAuNTM2IDUuOTU2IDYuNTkgMTUuODEgNi42MDUgMjYuMzY2LjA5MmwuMzItLjIxNC4zMjIuMjE0YzEwLjU1NyA2LjUxMyAyMC40MSA2LjQ5NyAyNi4zNzQtLjA5MiAyLjcwNy0yLjk4IDQuMDktNi44MDQgNC4wOS0xMC41MzUgMC0yLjc1Mi0uODY0LTUuNDYtMi40MTctNy43NTItMi41MDcgMy44NTMtNi40ODIgNS42NzItMTEuMDE2IDQuNTcyLTMuOTg0LS45NDctNy4xNC0zLjgyMi03LjE5NS02LjQ4MlY5Mi43OTRsLjk3OC42NThjMTUuMDMgMTAuMjQ0IDI2LjYzNCAzMS4xOSAyOC4wMjYgNDQuNHY2OS4yOWMwIDcuMzg0LTQuOTk0IDEzLjAyNS05Ljc5NCAxNC4yNS0zLjM5NC44NC02LjM2LS42My04LjQyNC0zLjc0Ny0xLjUyOCAyLjI2Mi0yLjM4NCA0Ljg0Ny0yLjM4NCA3LjQ3NyAwIDMuMjg2IDEuMTkgNi41NzQgMy41NTQgOS4xNzMgNS44NSA2LjQ2NyAxNS45MDggNi4yNTMgMjYuODc4LS41NWwuMzM3LS4yMTQuMzM3LjIxNGMxMC45NyA2LjgwNCAyMS4wMjMgNy4wMiAyNi44NzguNTUgMi4zNjItMi41OTggMy41NTQtNS44ODYgMy41NTQtOS4xNzIgMC0yLjYzLS44NjMtNS4yMTUtMi4zOTItNy40NzctMS45OTUgMi45OC00LjgyNCA0LjM4OC04LjEyIDMuNTYzLTQuODg0LTEuMjM4LTEwLjA5Ny03LjE3Mi0xMC4wOTctMTQuMDY3di02OC4zNTZjLjMxMy00LjY5NCAyLjE0LTEwLjc4IDUuMTM4LTE3LjA5M2wuNDEyLS44ODUuNjM0Ljc2NHMyMi4wMjYgMjcuMDYgMjIuMTY0IDI3LjUyYy0uMjc2IDIuNzItMy42MzggNS40ODgtNy42NzYgNi4zLTIuMTEuNDEtNy4xNjMuNjU1LTEwLjU1LTQuNTczLTEuNTEzIDIuMjc4LTIuMzYgNC45MjItMi4zNiA3LjY3NSAwIDMuNzE1IDEuMzY3IDcuNTIzIDQuMDgyIDEwLjUwNCA1Ljk1NCA2LjU5IDE1LjgwOCA2LjYwNSAyNi4zNjYuMDkybC4zMi0uMjE0LjMzNi4yMTRjMTAuNTUgNi41MTMgMjAuMzk3IDYuNDk3IDI2LjM1OC0uMDkyIDIuNy0yLjk4MiA0LjA5Mi02LjgwNSA0LjA5Mi0xMC41MnptLTc5LjQ2NS0zOC45NGwtLjU0My0xLjQyM2MtMTAuMjA1LTI2LjkxLTI2LjQ1Ny0zOS43Mi0zOC4yOS00NS43M2wtLjM0NS0uMTUzVjUzLjM2M2w0NC4wNTUgNTQuMTI0LjIxNC4zMi01LjA5MyAxMS43Mjh6bTM4LjUyLS42MTNsLTEyLjA1Ni0xNC42My4zMzgtLjM4M2MzLjM4LTMuOTQ1IDcuMDAzLTcuMjc4IDEwLjc0LTkuOTM4bC45OC0uNzAzdjI1LjY1M3pNMTg2LjAzIDE0NC4wOWwtMi4yOTMgNi4yMmgtLjA2bC0yLjE5Ni02LjIyaC0zLjM3djkuNTFoMS45MzR2LTcuNTdoLjA1NGwyLjY1MyA3LjU3aDEuODhsMi43Ni03LjU3aC4wM3Y3LjU3aDEuOTU4di05LjUxTTE2OC43IDE0NS44aDIuODU4djcuOGgxLjk1di03LjhoMi44NnYtMS43MWgtNy42NyIgZmlsbD0iI0ZGNTkxMCIvPjwvc3ZnPg=="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:15p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="9" data-pitcher-key="tanner gordon">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Tanner%20Gordon-k-log">Tanner Gordon</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="11">11</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="190">190</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="46">46</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.326">.326</td>
+<td class="group-pitcher cell-weak" data-sort-key="PA/GP" data-sort-value="18.6363636364">18.6</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="9.13">9.1</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="24">24.0</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.4390243902">22.44</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.3">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="47">47</td>
+<td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.265914585">20.27</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.5602094241">23.56</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.4092140921">21.41</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="20.8357515961">20.84</td>
+<td class="group-opponent cell-low-rank" data-sort-key="r" data-sort-value="25">25</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/San%20Francisco%20Giants-k-per-pa-log" title="San Francisco Giants"><img alt="San Francisco Giants logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMzQgMTg2LjgyMSI+PHRpdGxlPlNhbiBGcmFuY2lzY28gR2lhbnRzIHByaW1hcnkgZGFyayBsb2dvPC90aXRsZT48cGF0aCBkPSJNNTYuMTgzIDgzLjE3NHYxOC44MDhzMjMuOTA0IDEuNTQgMzEuMjIzLTIuODkyYy0xLjMxIDQuMTU0LS44OTcgMTcuNzQgMCAyMC4wMDMtOS4yNS00Ljc0NS0zMS4yMjMtMi44NTQtMzEuMjIzLTIuODU0djE4LjkyNmgzNS40MTVsNy41NDMtOC43NzN2LTMyLjQzTDkwLjQgODMuODE2Yy01LjE5Ni0uNTc1LTIzLjc3Mi0uNjQyLTM0LjIxNS0uNjQyek0xLjM5IDE1LjlDOC43NDMgMTIuMzk3IDE2LjU3IDQuOTg0IDE5LjM0NiAwIDI2LjQzNCAzLjM0OCA5MS42IDIuODU0IDk5LjEzNCAwYzQuNTQ0IDYuNjQyIDkuNDI3IDEwLjM1NiAxNi4zMSAxMi42MDUtLjY0NCA2LjM3NC0uNDQ2IDguNjMgMS42MzIgMTMuNzRIOTkuMTM0TDkxLjYgMTcuOTMzSDI3LjdMMTkuMzMgMjUuM3YzMy44ODdsOC4zNDQgOC4wNzggMTAuNTY1LjQ0YzAtMTIuNTgyLjEzLTE0Ljk4OC05LjEyOC0xNy40NDcgMy4wODItNi4xNzIgMy43MDItNi44OTYgNC41MTMtMTQuNTkzIDcuOTI1IDIuNjYgODkuODEgMS4yMSA5My4zNy0uODMtLjU3IDguMDIgMy45NiAyMy4yNTUgNy4wMDUgMjguOTRoLTE3Ljk0NWMtLjkxMi02LjIzOC00Ljg1LTExLjA1OC0xMS4xMTUtMTIuMjNINTYuMTgzdjE2LjE2czM3LjkzNyAxLjAzMiA0Mi45NS0uNjg2YzIuNDkzIDYuNDc3IDExLjQ2NCAxNS45NzUgMTcuOTQyIDE4LjYwNS0yLjE3NSAxMy4yMTgtMS43NyAzNS44MjIgMCA0OS41MzMtNy4wNTggMy41MDQtMTQuMjY1IDEwLjctMTcuOTQgMTcuOTU2LTguOTIzLTIuNDU4LTQyLjk1Mi0xLjI0OC00Mi45NTItMS4yNDh2MTAuMTU1YzEuNzU2IDYuOTI3IDUuNDc4IDguNTk0IDEyLjAwOCA5LjE2MiAwIDAtNS4yNDUgOS44NjQtNS40NTggMTUuNjRIMzIuMDc1Yy0uMTM1LTUuNjM0LTUuNDY2LTE1LjY0LTUuNDY2LTE1LjY0IDUuODk1LS4yNzYgMTAuNzMzLTMuNzU4IDExLjYzLTkuMTZ2LTEwLjE1NnMtMTAuNzYtLjQwMy0xOC44OTQgMS4yNDhDMTYuODg0IDE0Ny41OTIgNy45MSAxMzcuNyAxLjM5IDEzNS4xNThjMS41MDYtMy45NjcuODA3LTI4Ljc0NS0xLjM5LTMzLjk2OGgxOS4zNDZsLS4wMTUgMjUuMjA0IDcuNTQgOC43NzNoMTEuMzdWODMuMThzLTkuOTUyLS40OTMtMTguODkzLjE4OGMtMi41Ny01LTEwLjI0Ni0xMy4wNTQtMTcuOTU3LTE2Ljg1NyAyLjQxLTkuMTUzIDIuNjItNDEuOTcgMC01MC42MXoiIGZpbGw9IiMyNDIxMjEiLz48cGF0aCBkPSJNNzUuODg1IDE3OS4yOTdoLTIuMTc4djUuOTI1aC0xLjQ3MnYtNS45MjVoLTIuMTY3di0xLjNoNS44MTh2MS4zem05Ljg3NCA1LjkyNWgtMS40NzN2LTUuNzRoLS4wNDVsLTIuMDc3IDUuNzRoLTEuNDI4bC0yLjAyLTUuNzRoLS4wNDZ2NS43NGgtMS40NnYtNy4yMjVoMi41NTJsMS42NyA0LjcxNWguMDM3bDEuNzUtNC43MTVoMi41Mzh2Ny4yMjV6IiBmaWxsPSIjMjQyMTIxIi8+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">10:15p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="10" data-pitcher-key="luinder avila">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Luinder%20Avila-k-log">Luinder Avila</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="17">17</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="189">189</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="47">47</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.27">.270</td>
+<td class="group-pitcher cell-weak" data-sort-key="PA/GP" data-sort-value="13.1764705882">13.2</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.19">8.2</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="23.9">23.9</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.9821428571">20.98</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp K% vH" data-sort-value="23.6094437775">23.61</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.5263157895">20.53</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.2">23.20</td>
+<td class="group-opponent cell-elite" data-sort-key="SO/PA" data-sort-value="24.0840670264">24.08</td>
+<td class="group-opponent cell-top-rank" data-sort-key="r" data-sort-value="4">4</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Baltimore%20Orioles-k-per-pa-log" title="Baltimore Orioles"><img alt="Baltimore Orioles logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODguMzgyIDE3OC4xMTkiPjx0aXRsZT5CYWx0aW1vcmUgT3Jpb2xlcyBoYXQgZGFyayBsb2dvPC90aXRsZT48cGF0aCBkPSJNMTM5LjE4NSAxNjEuMjNoLTIuMDZ2NS42MWgtMS40MDd2LTUuNjFoLTIuMDY1di0xLjIyNmg1LjUzMnYxLjIyNXptOS4zOTIgNS42MWgtMS40MXYtNS40NTJoLS4wMjdsLTEuOTkgNS40NTJoLTEuMzQzbC0xLjkyLTUuNDUyaC0uMDQ0djUuNDUyaC0xLjM5NnYtNi44MzZoMi40MjNsMS41OTcgNC40ODNoLjAzN2wxLjY2Mi00LjQ4M2gyLjQxdjYuODM2eiIgZmlsbD0iI0RGNDYwMSIvPjxwYXRoIGQ9Ik0xODYuMzkgMjAuMzM0Yy0xLjc2LTQuMjE3LTYtOC4wNS0xMi44MDQtOS4yNDQtMTAuNzUtMS4wODYtMjguODMgMy4zOTgtNDYuODkyIDcuMTQ2LTYuNDM3IDEuMzUyLTE5LjkzIDMuMTEtMTkuOTMgMy4xMS0xMC41NDItMTIuMjgtMjIuNTctMTUuNTYtMzAuMi0xNi41NS00LjMyOC0uNTg1LTYuNC0uMTQ4LTguMTgzLS43MzQtMS41ODctMS4wNTQtNi40MzctNS4xNjQtMTUuNDYtMy43OCAwIDAtOC4zNDUgMS4wNzUtMTQuODUgNy44MjYtMS4yOSAxLjMtMy42MSA0LjMyNC00LjY4NyA3LjQ3NS0xLjYzIDEuNDkyLTIuOTQgMS44MS02LjYzNCA1LjM5QzMuNTYgNDAuNjI4IDEzLjA1IDY2LjI1IDE2Ljc4NiA3NC43Ny00LjEzNyA5MS4wNzQuNDIgMTA5Ljk4Ny40MiAxMDkuOTg3bDYuNDUyLTEuMDQ0Yy0uNDczIDg0LjAyIDEyMS4yOSA5MC4wOSAxMzUuOTI4IDI1Ljg5OCA1LjMwOC0yMy4yOSA5LjU5NC0zMy43OTggMzAuNTQ1LTM5LjI4MyA0LjIzMy0xLjE2IDUuOTA1LTMuOTYgNS43NTYtNi4wNTgtLjkwNC04LjI1NS0xOC44NjQtMTcuMzM4LTQ1LjkxMi0xNC43Ni0xLjYwNy01LjM5LTEuNzQtNy40NjUtMS43NC03LjQ2NSAxMy42ODgtMy4wODggMzIuNDQtOS4xOCA0NS40Ni0xOS41ODMgMTAuMzc3LTguMzA3IDE0LjE4NS0xNi4xNjYgOS40ODMtMjcuMzU4TTE1NS40MzcgNDcuOThjLTEzLjA1IDUuOTUyLTI4LjI0IDkuNTA4LTMxLjk2OCAxMC41MS01LjkyIDEuNjE4LTUuNjk4IDMuMTcyLTQuNTQ3IDUuNzQgMi41OTQgNS43OSAzLjQxIDkuNDg3IDQuNDEgMjMuMTE3IDguNTU3LTIuNTU2IDIzLjk4LTIuMTgzIDM3LjczNSAxLjEwOC04LjU2MiAzLjQyOC0xNy41MDIgOS4zNC0yNS4wNTIgMTkuMzUtMjIuNjIzIDMwLjAwNy01OC41NDMgMjcuMjUtNzQuODAzIDExLjYzOC0zLjU0IDIuOTkyIDEuMDc2IDEzLjE0IDEuMDc2IDEzLjE0LS43MjQuNjgyLTIuNDU1LS4wMS0yLjQ1NS0uMDEtMTIuMDY1LTIwLjAyLjgyNi0yNS4yNyAxMC44ODQtMjUuODM1IDQuMjQ0LS43NzcgMy43MDYgMS43OC0uMTkyIDIuNTAzLTE2Ljc4NyAzLjgzNSA2LjM4IDIzLjEyIDM1LjA3MyAxNS42MDIgMjUuMzA3LTYuNjQ1IDIzLjc5LTIyLjc2NyA0Ni4zNy0zNS4yOC0xOC4wNy0zLjQyOC0zMC43MzMgMS4xMi0zNi4xMjYgMy45Mi0zLjU5IDEuODQtOS41MSAxLjk2LTEyLjE0NiAxLjA0My0zLjMyNyAxMC4xOS0xNC4yNDIgMTMuMDY2LTM1LjEwMyA3Ljk4Ni0xNC44MTctMy42MDgtMjYuNTY4IDEwLjk2LTIwLjA0NiAyOS42NiA2LjY3NyAxOS4xNzcgMzkuODMyIDM4LjM4OCA3Ni4wOTYgMTUuODMzLTIuOTYgMy43NS02LjY0NCA3LjA3LTEwLjk3MyA5LjgzLTkuMzkyIDUuOTgzLTIxLjUzNyA5LjMwNi0zNC4yMyA5LjMwNi0xOC4wODMtLjAyMy0zNC44OC02LjQ5Ny00Ni4wNjItMTcuODE3LTEwLjI0NC0xMC4zNzItMTUuMzQtMjQuMDc3LTE1LjEzNy00MC43MzIgMC0yLjkzOCAxLjAyOC05LjQzNCAyLjAzLTExLjQzNmwtNy4zMTIuNDlzMi4zMTYtMTAuNjE3IDE4LjExLTE5Ljc3NGgtLjA0M2wtLjY3LTEuMzUzYy0xNi4xOTMtMzAuODQtLjgxLTQzLjA4NCA1LjkyLTQ4LjYzMyA1LjQ3OC00LjU0NyA2Ljg4NC00LjM2NiA3Ljg4NS04LjI2My41ODYtMi4zIDIuOTI4LTQuNzI3IDUuODQ2LTYuMjkzIDMuNzMzLTIuMjU3IDguMjQzLTIuNTAzIDEwLjktLjU0MyAyLjUxOCAyLjUwMyA3LjQxIDMuMSAxMC4zODIgMy4xIDIzLjI3Mi44MDggMzAuMjY0IDE3LjgyNiAzMC4yNjQgMTcuODI2IDUuMjkyLTEuNjQgMTMuOTQtMS44MzIgMjguOC00LjgzNSAyOC41MDYtNi4zMjYgMzAuNjE1LTYuNDc1IDM1LjIzLTYuOSA1LjMzNy0uNDggOS43NzctLjE2IDExLjY1IDQuMjggMS44NyA0LjM0NS0zLjEzIDkuODA4LTQuNDI0IDExLjA4Ni0xLjcyMyAxLjcxNC04LjA3NCA2LjQtMTcuMzcgMTAuNjQiIGZpbGw9IiNERjQ2MDEiLz48cGF0aCBkPSJNNzkuOTA4IDQyLjkzYy43NjctLjE2IDEuMTkzLS40MzYgMS42NzctMS4xOC43ODMtMS4yMDUuOTM3LTMuMjA3LjkyLTQuNjc2LS4wMTUtMS44MS0uMzc3LTQuMTk2LS45MDQtNS44NDctMi41MyAxLjQzOC00LjY4NSAxLjQ2LTYuOTk1LjAxLS41MzMgMS44NDMtLjUxIDMuOTIuMDEgNS43NS43ODMgMi42OTYgMi43OTYgNi40MjMgNS4yOTMgNS45NDRNNzcuNzQ2IDMwLjMyMmMxLjEwOC40MzcgMi4yMS40NyAzLjUzNi0uMjAyLS44ODQtMy4wMjUtMi41NTYtNi42MjQtNC40NC02LjYxNC0uNzc4LjAxLTEuNDIyLjM0LTEuODMyLjk3LS41NDMuODItLjU4IDIuMDU0LS4xMDcgMy4xNzIuNSAxLjE3MyAxLjU3NiAyLjE5NiAyLjg0MyAyLjY3NE05MC43IDM1LjA3MmMtLjE0NC4yOTgtLjEwNi42NC4xLjg2My4yMTQuMjI0LjUyMy4yNzcuODI2LjE2LjMyLS4xMy41LS4zMi42MDctLjYwOC4xMDYtLjIzMy4xNi0uNjA2LS4wMjItMS4wNDQtLjAzLS4wNjMtLjA1OC0uMTQtLjEwNi0uMTkgMCAwLS4wNTgtLjA1NC0uMDk2LS4wNzYtLjY4NC4yMTQtMS4xMi41MS0xLjMwOC44OTUiLz48cGF0aCBkPSJNMTc3LjIyOCAyNi4yNTVjLTEuODgtNC40NC02LjMwNC00Ljc2LTExLjY1LTQuMjgtNC42MTYuNDI0LTYuNzI1LjU3NC0zNS4yMyA2LjktMTQuODYyIDMuMDAyLTIzLjUxIDMuMTk0LTI4Ljc5NiA0LjgzNCAwIDAtNi45OTYtMTcuMDE4LTMwLjI2LTE3LjgyOC0yLjk4NiAwLTcuODgtLjU5Ni0xMC4zOTItMy4wODgtMi42NTYtMS45Ny03LjE2Ni0xLjcyNS0xMC45LjU0My0yLjkxMiAxLjU1NS01LjI0OCAzLjk4Mi01Ljg0NSA2LjI4My0uOTk2IDMuODk3LTIuNCAzLjcxNi03Ljg5NiA4LjI2My02LjcxNiA1LjU0OC0yMi4xMDMgMTcuNzk0LTUuOTIyIDQ4LjY0NGwtMS41NDQtMy4wODhzMTEuODczLTEuMzc1IDI0LjI4LTcuMTlMMzEuMDU2IDc3Ljg3aC4wMTZjLTE1Ljc5OCA5LjE1OC0xOC4xMiAxOS43NzQtMTguMTIgMTkuNzc0bDcuMzEtLjQ2OGMtMSAxLjk4LTIuMDM0IDguNDY1LTIuMDM0IDExLjQwNS0uMTk3IDE2LjY2NiA0Ljg5OCAzMC4zNyAxNS4xNDIgNDAuNzQzIDExLjE4NyAxMS4zMiAyNy45OCAxNy43OTQgNDYuMDYgMTcuODE2IDEyLjcwNiAwIDI0Ljg0LTMuMzI0IDM0LjIzMi05LjI5OCA0LjMzLTIuNzcgOC4wMTMtNi4wOSAxMC45NzMtOS44NS0zNi4yNiAyMi41NTUtNjkuNDIgMy4zNTQtNzYuMDk2LTE1LjgyMy02LjUxNS0xOC43IDUuMjMtMzMuMjY4IDIwLjA1My0yOS42NiAyMC44NTYgNS4wNyAzMS43NyAyLjIwNiAzNS4wOTgtNy45ODUgMi42MzcuOTE2IDguNTUyLjc5OCAxMi4xNTItMS4wNTQgNS4zODgtMi43ODggMTguMDUtNy4zMzYgMzYuMTE1LTMuOTA3LTIyLjU4IDEyLjUxMy0yMS4wNTggMjguNjM1LTQ2LjM2NCAzNS4yOC0yOC42ODggNy41MTgtNTEuODYtMTEuNzY3LTM1LjA3My0xNS42IDMuODkzLS43MjUgNC40MzYtMy4yOC4xOTctMi41MDQtMTAuMDU4LjU1My0yMi45NiA1LjgxMy0xMC44OTQgMjUuODM0IDAgMCAxLjczLjY4MiAyLjQ2LjAxIDAgMC00LjYyMi0xMC4xNDgtMS4wNzYtMTMuMTQgMTYuMjYgMTUuNjEgNTIuMTkgMTguMzY4IDc0LjgwMy0xMS42NCA3LjU1LTEwLjAyIDE2LjQ5NS0xNS45MiAyNS4wNTItMTkuMzQ4LTEzLjc2LTMuMjktMjkuMTc4LTMuNjY0LTM3LjczNS0xLjA5Ny0xLjAwNi0xMy42NDItMS44Mi0xNy4zMzgtNC40MS0yMy4xMy0xLjE1LTIuNTY3LTEuMzczLTQuMTIgNC41NTQtNS43NCAzLjcxNy0xIDE4LjkxNC00LjU1NyAzMS45NjQtMTAuNTEgOS4zLTQuMjQgMTUuNjQ4LTguOTI0IDE3LjM3My0xMC42MzggMS4yOS0xLjI3IDYuMjktNi43NDMgNC40Mi0xMS4wODdtLTEyOS0zLjc4YzIuOTItMTAuODEgMTEuNDI4LTQuMjkzIDExLjQyOC00LjI5M2wtMTEuNDI3IDQuMjkyem00MC43IDEwLjg0Yy4wMjctLjcyNS4wOC0xLjU5OC4yNjItMi4xMWwxLjE5Ni0uODgzLjA5Ni0uMDUzLjAyMi4xMjdjLjA3NC4zMS4yMjQuNTk2LjQ2OC44MWwuMzczLjI5OCAxLjA0NC44ODRjLjQzLjQxNC42OC43MTIuNzUuOTM2bC4xMjguNDQ3LjA0My4xOTJjLjE4MiAxLjA0NC0uMzI0IDIuMDQ1LTEuMjc3IDIuNTY2LS40NDcuMjU3LS45Ni4yNDYtMS4yODMuMTMtLjI0NC0uMDk2LS41NTQtLjM2Mi0uNjc2LS43MjQtLjE4LS41NTQuMDg1LTEuNjMgMS41Ny0yLjE5NCAwIDAgLjA3LS4wMzIuMTQ0LS4wNTMtLjA2My0uMDU0LS4xMjItLjA4Ni0uMTIyLS4wODYtLjQ1OC0uMzItMS4yOS0xLTEuNjA4LTEuNTEybC0uMDgtLjEzOGMtLjAyNi4wNzUtLjA0OC4xNS0uMDQ4LjE1LS4wNy4yMjMtLjEyOC41LS4xNzYuODcybC0uMDggMS4yODgtLjAyNy4zNTItLjA3IDEuMjE0LS4xOTYgMS4zMmMtLjM1NiAxLjU5OC0uOTk1IDIuNTU3LTEuOTQyIDIuOTVsLS4xMjIuMDY1LjI0NC0xLjMzaC4wMjdjLjc2LS40OSAxLTEuNTY3IDEuMTUtMy4xNDNsLjE5LTIuMzc4em0tMS43Mi0zLjk0Yy4xOTMtLjQwNS4zMTUtLjU3NS40OC0uNjQuMDM4LS4wMi4wOTYtLjA1Mi4xNTUtLjA1Mi0uMTUuNTU0LS4xNS42MTgtLjE4Ni45Ny4zMzYtLjA0NC41MTcuMDMuNTg2LjIyMy4xMy4yNzcuMDI3LjgyLS4xOTYgMS4xNy0uMDk2LjE3LS4xOTcuMjQ2LS4zNTIuMzItLjQxNC4xNy0uNjM4LjE4LS43MDIuMDIyLS4xNzgtLjQwNS0uMDcyLTEuMzg1LjIxNi0yLjAxM20tMTQuOTI0LTEuNTEzYy0uNTU0LTEuNTMzLS4yNjctMy4yOS42MTctNC41NjguODQzLTEuMjI1IDIuMTU4LTEuOTA2IDMuNzA2LTEuOTggMi42NTctLjE0IDUuMTM0IDIuNDA2IDcuMDQgNy40MjIuNDItLjQ0Ny44NDYtMS4wMzMgMS4wOTYtMS42NGwxLjAyMy4zNzNjLS40MS45MTUtMS4wNjUgMS44NzMtMS43MDQgMi4zODQgMS4yNTMgMy40MyAxLjUzIDguNzMyLS4xMiAxMi4xNzMtLjc3MyAxLjU3Ni0xLjg5NiAyLjY0LTMuMzU1IDMuMTQtMS4xNy4zOTUtMi42NzMuMzEtMy44Ni0uMzgzLTIuMDM0LTEuMTctMy42NTMtMy40NS00LjY5LTYuNjAzLTEuMDE0LTMuMDQ1LTEuMTMtNi45NTMuMjUtMTAuMzE4bTE4LjkyNyA3MS41NWMtMy41NDYgMS4xNzItNy43Mi0xLjIzNC0xMC43Ny01LjY2NSAxLjgxNSAxLjM5NSAzLjg1NCAxLjg1MyA1LjQxLjk3IDIuNDY0LTEuMzY0IDIuOC01LjQ5Ni43My05LjIxMi0yLjA2Mi0zLjcyNy01Ljc0LTUuNjQ0LTguMi00LjI3LS45MDYuNDktMS41MyAxLjM3My0xLjgzNyAyLjQ2LS45Ny02LjUyOC45OS0xMi4yMTUgNS4wOTYtMTMuNTU2IDQuOTQyLTEuNjIgMTEuMDg2IDMuNjIgMTMuNzMzIDExLjcyMyAyLjYzOCA4LjA4Mi43ODUgMTUuOTQtNC4xNiAxNy41NW0xOS41ODctOC4wMWMtMy4zNDQuODg0LTcuMDQ0LTEuMy05Ljc5Ny01LjI4IDEuMzg0LjkwNCAyLjg4IDEuMTcgNC4xMS41NzQgMi4zNDItMS4xMTggMi44NjUtNC45MSAxLjE1LTguNDU1LTEuNzEtMy41MzUtNC45ODQtNS41MDUtNy4zMjctNC4zNjUtLjg0LjQwNS0xLjQzNyAxLjEzLTEuNzk1IDIuMDc2LS45NzMtNy4wMjggMS4zMjctMTMuMTUyIDUuNzQtMTQuMzIzIDUuMDE3LTEuMzUyIDEwLjg1NyA0LjI1IDEzLjA1IDEyLjQ3IDIuMTggOC4yMi0uMTA0IDE1Ljk2Mi01LjEzIDE3LjMwNE04Ni44MTQgNTkuNTMyYy0xMS42ODItMS41NzYtMTkuMjY0LTEuNDktMTEuNzQ2LTYuNDUzIDAgMCAxNy40NzUtMTMuNjEgMzcuMjM0LTE1Ljg2OCAxOC4zMjYtMi4yOSA0Ny40MjQtOC43NDIgNDcuNDI0LTguNzQyUzE0NS4zOTMgMzcuMTcgMTMxLjMxIDQ3QzExNS45IDU2LjIgMTA0LjY1IDU5LjkyNiA4Ni44MTMgNTkuNTNtNTQuOTQzLTEyLjkwN3MyOC41NzYtMTkuOTM0IDI5LjYyNS0xOC41MDdjMi41NyAzLjUyNS0xMS44NjMgMTIuNDgtMjkuNjI1IDE4LjUwNyIvPjxwYXRoIGQ9Ik00OC4yMzMgMjIuNDc0bDExLjQxNi00LjI5MnMtOC41MDQtNi41MTYtMTEuNDE3IDQuMjkyTTExMi4zMDIgMzcuMjEyYy0xOS43NiAyLjI1OC0zNy4yMzQgMTUuODQ2LTM3LjIzNCAxNS44NDYtNy41MTggNC45OTQuMDY0IDQuODg3IDExLjc0NiA2LjQ4NSAxNy44NDIuMzg0IDI5LjA4Mi0zLjMyMyA0NC40OS0xMi41NDQgMTQuMDktOS44MyAyOC40MjItMTguNTMgMjguNDIyLTE4LjUzcy0yOS4wOTggNi40NTMtNDcuNDI0IDguNzQyTTE0MS43NTcgNDYuNjI1YzE3Ljc2Mi02LjAyNyAzMi4xOTYtMTQuOTgzIDI5LjYyNS0xOC41MDctMS4wNS0xLjQyNy0yOS42MjUgMTguNTA3LTI5LjYyNSAxOC41MDciIGZpbGw9IiNERjQ2MDEiLz48cGF0aCBkPSJNMjguNzk0IDczLjQ0bDEuNTQ0IDMuMDg3LjY4NyAxLjM1Mi4wMzItLjAxIDIyLjAxNi0xMS42MmMtMTIuNDEgNS44MjYtMjQuMjggNy4xOS0yNC4yOCA3LjE5TTgxLjY0IDcwLjE0Yy00LjEgMS4zNC02LjA3IDcuMDI3LTUuMDk3IDEzLjU1NC4zMi0xLjA4Ni45My0xLjk3IDEuODM2LTIuNDYgMi40Ni0xLjM3MyA2LjEzOC41NDQgOC4yIDQuMjcgMi4wNzUgMy43MjggMS43MyA3Ljg1LS43MzYgOS4yMTItMS41NS44ODMtMy41OS40MjUtNS40MDQtLjk3IDMuMDUgNC40NCA3LjIyIDYuODI3IDEwLjc4MiA1LjY2NiA0LjkzNS0xLjYwNyA2Ljc4OC05LjQ2NiA0LjE0OC0xNy41NDgtMi42NDYtOC4xMDUtOC43OS0xMy4zNDUtMTMuNzMtMTEuNzI1TTEwMi44ODMgNjEuNjNjLTQuNDE0IDEuMTctNi43MTQgNy4yOTUtNS43MzUgMTQuMzIzLjM1OC0uOTQ4Ljk1My0xLjY4MyAxLjc5LTIuMDc2IDIuMzQtMS4xMyA1LjYxNi44MyA3LjMyNiA0LjM2NSAxLjcxNCAzLjU0NiAxLjE5MiA3LjMzOC0xLjE1IDguNDU1LTEuMjMuNTk2LTIuNzI2LjMzLTQuMTEtLjU3NSAyLjc1MiAzLjk4MiA2LjQ1MiA2LjE1NiA5Ljc5NyA1LjI4MiA1LjAyNy0xLjM0MiA3LjMxLTkuMDgzIDUuMTM0LTE3LjMwNC0yLjE5NS04LjIyLTguMDM1LTEzLjgxLTEzLjA1LTEyLjQ3IiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTc2LjcyIDQ0Ljc4NGMxLjE5Mi42OTIgMi42OTMuNzc4IDMuODY1LjM4MyAxLjQ2LS40OSAyLjU4Mi0xLjU2NSAzLjM2LTMuMTUgMS42NDUtMy40MyAxLjM3LTguNzMzLjExNy0xMi4xNjMuNjQ0LS41MiAxLjMwNS0xLjQ3IDEuNzA0LTIuMzg1bC0xLjAyMy0uMzc0Yy0uMjUuNjA3LS42ODIgMS4xOTMtMS4wOTYgMS42NC0xLjkwNi01LjAzNy00LjM4Mi03LjU2LTcuMDQtNy40MjMtMS41NDQuMDc1LTIuODY0Ljc2OC0zLjcwNSAxLjk4LS44OSAxLjI4LTEuMTcgMy4wMzYtLjYxNyA0LjU3LTEuMzggMy4zNjQtMS4yNTIgNy4yNzItLjI1IDEwLjMzIDEuMDQyIDMuMTQgMi42NTYgNS40MiA0LjY4NCA2LjU5bS0xLjcxNS0yMC4zMDdjLjQxNS0uNjI4IDEuMDYtLjk3IDEuODQyLS45NyAxLjg5LS4wMSAzLjU1MiAzLjU5IDQuNDQgNi42MjQtMS4zMzYuNjYtMi40NDQuNjQtMy41NC4xOTItMS4yNTctLjQ4LTIuMzUtMS41MDItMi44NDQtMi42NzMtLjQ3NC0xLjExOC0uNDM2LTIuMzQzLjEwMi0zLjE3NG0tLjQgNi43NjJjMi4zMSAxLjQ0OCA0LjQ2IDEuNDI3IDcgMCAuNTIzIDEuNjQuODg1IDQuMDI1LjkwNyA1LjgzNi4wMSAxLjQ3LS4xNDQgMy40Ny0uOTI3IDQuNjc1LS40ODQuNzQ0LS45MSAxLjAyLTEuNjc3IDEuMTgtMi40OTcuNDgtNC41MS0zLjIzNy01LjI5My01Ljk0Mi0uNTItMS44Mi0uNTQ4LTMuOTA4LS4wMS01Ljc1IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZmlsbD0iI0RGNDYwMSIvPjxwYXRoIGQ9Ik04Ny42OTIgMzEuMzY2Yy4xNTUtLjA4NS4yNTYtLjE1LjM1Mi0uMzIuMjI0LS4zNi4zMjUtLjg5My4xOTYtMS4xNy0uMDctLjE5Mi0uMjUtLjI2Ni0uNTg2LS4yMjQuMDM3LS4zNS4wMzctLjQxNS4xODYtLjk3LS4wNiAwLS4xMTcuMDM0LS4xNTQuMDU0LS4xNjYuMDUzLS4yODguMjM0LS40OC42NC0uMjg4LjYyNy0uMzk0IDEuNTk2LS4yMTggMi4wMTIuMDY2LjE2LjI5LjE0OC43MDQtLjAyMk04Ny41ODYgMzguODJsLS4wMjcuMDIyLS4yNDUgMS4zMi4xMjItLjA2M2MuOTUzLS4zOTUgMS41ODctMS4zNTMgMS45NDMtMi45NWwuMTkyLTEuMzMyLjA3NC0xLjIwMy4wMjctLjM1Mi4wOS0xLjI4OGMuMDM4LS4zNzMuMDk3LS42NS4xNjYtLjg3MyAwIDAgLjAyLS4wNzQuMDQ3LS4xMzguMDM3LjA1My4wOC4xMjguMDguMTI4LjMyLjUxIDEuMTU2IDEuMTkzIDEuNjA4IDEuNTAyIDAgMCAuMDYuMDQzLjEyMi4wOTYtLjA3NC4wMjItLjE0My4wNTMtLjE0My4wNTMtMS40ODYuNTY0LTEuNzUyIDEuNjMtMS41NyAyLjE5NC4xMi4zNjIuNDQuNjE3LjY3NS43MjQuMzI0LjExOC44MzUuMTQgMS4yODItLjEyOC45NTMtLjUyIDEuNDYtMS41MjIgMS4yNzgtMi41NjZsLS4wNDMtLjE5Mi0uMTI4LS40NDdjLS4wNy0uMjI0LS4zMi0uNTItLjc1Mi0uOTM3bC0xLjA0NC0uODg0LS4zNzMtLjI5OGMtLjI0My0uMjE0LS4zOTMtLjUtLjQ1Ny0uODFsLS4wMzItLjEyOC0uMDk1LjA2NC0xLjIwOC44NzNjLS4xNjYuNTEtLjIyNCAxLjM4NC0uMjUgMi4xMDhsLS4xOTIgMi4zNzVjLS4xNDggMS41NzUtLjM4OCAyLjY1LTEuMTUgMy4xM200LjUyLTQuNTY4Yy4wNS4wNTIuMDgyLjEyOC4xMDIuMTkuMTg2LjQzOC4xMzMuODEuMDM3IDEuMDQ1LS4xMTcuMjg4LS4yOTguNDgtLjYxNy42MDctLjMwMy4xMTgtLjYxMy4wNjQtLjgyNS0uMTYtLjIwNy0uMjMzLS4yNDUtLjU2NC0uMS0uODYyLjE4NS0uMzg0LjYxNy0uNjgyIDEuMzE0LS44OTUuMDMyLjAyMi4wOS4wNzUuMDkuMDc1IiBmaWxsPSIjREY0NjAxIi8+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">7:05p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="11" data-pitcher-key="jp sears">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/JP%20Sears-k-log">JP Sears</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="3">3</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="60">60</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="14">14</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.233">.233</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="22.3333333333">22.3</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.22">8.2</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.7">22.7</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.8955223881">20.90</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="14.8">14.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="61">61</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21">21.00</td>
+<td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="16.4772727273">16.48</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="18.6968838527">18.70</td>
+<td class="group-opponent cell-weak" data-sort-key="SO/PA" data-sort-value="19.7395079595">19.74</td>
+<td class="group-opponent cell-low-rank" data-sort-key="r" data-sort-value="28">28</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Toronto%20Blue%20Jays-k-per-pa-log" title="Toronto Blue Jays"><img alt="Toronto Blue Jays logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzMuMDE0IDIwMC44NzIiPjx0aXRsZT5Ub3JvbnRvIEJsdWUgSmF5cyBoYXQgZGFyayBsb2dvPC90aXRsZT48cGF0aCBmaWxsPSIjMTM0QThFIiBkPSJNMTg2Ljc1OCAxMjEuODk0aDEuNjl2NC42M2gxLjE0MnYtNC42M2gxLjd2LTEuMDEyaC00LjUzMk0xOTUuNjUgMTI0LjU3NWgtLjAyNGwtMS4zMTctMy42OTNoLTEuOTl2NS42NGgxLjE1di00LjQ3aC4wMjhsMS41NzYgNC40N2gxLjEybDEuNjE3LTQuNDdoLjAzdjQuNDdoMS4xNTN2LTUuNjRoLTEuOTgyTTcxLjA0IDcyLjMycy0xLjM2My0zLjQyMy4zNy02Ljg5Yy42ODctMS4zNzUgMS45OTQtMi42NDcgMy43MjgtMy42NSAxMi43ODgtOC41OTMgMzkuODkuMjAzIDM5Ljg5LjIwMy02LjQzNy0uNTc0LTExLjcwOC0uNDczLTE2LjE3My4xMjUgNy41NTcgMi4zNjUgMTUuNjUgNS41MyAyMS4xMjcgNi44NyA2Ljc0NSAxLjY0MyAxMS4yMjIgMi40NzYgMTcuOTIzIDIuODdsLS4yMS0yLjYzNSAzLjcyOC42NDIgOS45MzMgMS42ODggMS40Ny0zLjcwNSAxLjYxLTQuMTEgMy4xNTMgMy4wNzRjLjA4My4wNTcgNC45NTQgNC44MiA3LjUyNyA3LjMyLS40Ni00LjcwNy0xLjYwNC0xNi42MTItMS42Mi0xNi43NDZsLS40NjgtNC44MiA0LjQ4IDEuODI1IDQuODk0IDEuOTYgNy4zNDItMTEuOTk0IDIuNDk0LTQuMDk4IDIuNTA2IDQuMDk4IDUuOTIzIDkuNjg2YzIuMDY2LTguNDEyIDMuNTQ3LTE3LjMzMiA3Ljg3Mi0yMS40NTMtNC4zMy4xNTctNy4zODggMS4zODQtMTIuMTE4IDQuNzA2IDIuNjgtNy4yNjQgNi42NS0xMi42NDcgMTIuMDE2LTE4LjgwNy01LjIxLjc3Ni0xMC4xODYgMi4yODUtMTUuMDc0IDUuMDY3IDEuODY1LTQuNDI2IDEuOTk0LTkuOTMzIDEuOTk0LTkuOTMzQzE2Mi40NzcgNDAuMTcgOTguNjU4IDM5Ljg1NCA4Mi4xMzggNDUuMjZjLTEwLjg0IDMuNTQ4LTE2LjM5NyA5LjQ2LTIwLjI2IDE1LjI5My0uMzc3IDYuMDE0IDQuMDA0IDExLjc2OCA5LjE2IDExLjc2OHoiLz48cGF0aCBmaWxsPSIjMUQyRDVDIiBkPSJNMTYzLjM0IDExMC4zOTdsLTQuMjU4IDUuMTI0IDQuMjU3LTUuMTIzIi8+PHBhdGggZD0iTTE1Mi4zNiAxMTkuMDM0bDQuNDctNS4zNzIgMi40MTUtMi45MjgtOS4zNTItOC4wNjNjLTUuMDg0IDcuNzYtMTAuMDQ1IDE2LjE5NS0xMi40MSAyMi43MDRsMTAuMjk4LS4wMzNjLTUuMjkyIDYuNTQ0LTE1LjQ5IDE3LjM3Ny0yMi4zNDIgMjkuMzkzLTYuODY0LTE2Ljg0Ny0yMi45MjMtMzguNTE0LTUxLjkzMi01MC40MTgtOC40LTMuNDU3LTE2LjMzLTguMDE4LTE1LjMwNS0xNC42NzMtMTQuNTMtMi4wODQtMzAuNDItMy43NS00OC40NC00LjM0Ny0xLjM2OC0uMDIyLTIuNjQtLjA0NS0zLjc4NC0uMDU3LTEuMDQ3LS4wMS0xLjMxNy40MDYtLjE4IDEuMzMgNC45NDQgMy41NiAyMS43MDYgMTAuMDM0IDQyLjI2NCAxMy44ODUgOS44OSAxLjgzNiAxNC40MDQgNC41NSAyMS41MTYgOS41MTYgMTUuNDQgMTAuNzg3IDM2LjUxIDM5Ljc2MyA0OS4zNDggNzcuNDY2IDI0LjM1My00Ny4yODYgNTIuNjMtNjguNTE1IDU0Ljg2Ni03MC4xNThsLTE0LjQ4MyAxLjE4Mi02Ljk0OC41NzR6TTUuMzIzIDg0LjA2OGMxMC4zMTUtLjQ1IDI0Ljc5OC0uOTQ3IDUwLjA4LS4xMTMgMi4xNDUuMDMzIDQuMjUuMDY4IDYuMjk1LjExMyAxLjI2Ni0xLjY3OCAzLjU5OC0zLjE4NyA4LjAwNy0zLjE4N2gxLjMwNWM4LjIyMi4xMjYgOS43NDIgOC41NDggMTguNDcgOC41NDggOC42ODggMCAxMC4yMy04LjM2NyAxOC4zNzgtOC41MzYuMjItLjAxMi40Ni0uMDEyLjY4Mi0uMDEyaDMwLjEwN2wtLjQxLTVoLTMwLjE1NGMtOC4zNTYgMC05Ljg0Mi04LjU0Ny0xOC42Mi04LjU0Ny04LjY0MyAwLTEwLjIxIDguNDQ2LTE4LjI1NSA4LjUyNS04LjcxLS41Mi0xMi4xNjMtNy44MTYtMTIuODM4LTE0LjAxLTMuODA3IDEuNjItNS43NjYgMy41MTQtOC42MzcgOC4wNEMxOC42MSA3NS4wMzcgNy45NTMgODAuMDE0IDUuMTYgODMuMTIyYy0uNDE3LjU1My0uMjMuODIzLjE2My45NDh6bTgwLjgxMy0xMi44NjJjLS42MTQgMi40NzgtLjI2NCA0LjU4NC0uMTMgNS42NzZIODMuMDhjLS4wNjQtMi4xOTYgMS4yNS00LjQ2IDMuMDU2LTUuNjc2eiIgZmlsbD0iIzFEMkQ1QyIvPjxwYXRoIGQ9Ik04Ni4xMzYgNzEuMjA2Yy0xLjgwNyAxLjIxNy0zLjEyIDMuNDgtMy4wNTcgNS42NzZoMi45MjdjLS4xMzUtMS4wOTItLjQ4NS0zLjE5OC4xMy01LjY3NnoiIGZpbGw9IiNGRkYiLz48cGF0aCBkPSJNMjMzLjAxNCA4Ni43OGwtNC44Mi0xLjY2NS0yLjYzNS0uOS45NC0xMS4yNC4zLTMuNzYyLTMuNzMuNjQyLTkuOTM3IDEuNjg4LTEuNDY1LTMuNzA1LTEuNjEtNC4xMS0zLjE2NCAzLjA3NGMtLjA2OC4wNTctNC45NDQgNC44Mi03LjUzIDcuMzIuNDc1LTQuNzA3IDEuNjI0LTE2LjYxMiAxLjYzLTE2Ljc0NmwuNDYtNC44Mi00LjQ3IDEuODI1LTIuMDI4LjhjLjE5Ny0uOTU3LjM5NC0xLjkwMy41OC0yLjgzOCAxLjE5NC01LjkyNCA0LjE3Mi0xNi4yOTUgOS43OTctMjQuMjEyIDAgMC0zLjU5OC0uODY3LTkuMTA0LjczMi0xLjU2LjQ2Mi0uMTI2LjAzNC0uMTguMDU2IDEuODM0LTQuMzU4IDkuOTc2LTE1LjU0IDkuOTc2LTE1LjU0cy0xMS41MzItLjIwNC0xNS44OCAyLjQzMmMyLjY5Mi04Ljg5NS40NDYtMTUuODEuNDQ2LTE1LjgxbC04Ljk1OCAxMC4zOTRjLTE1LjQ2MyAxNy45NjItNTMuMTQzIDIyLjkxNy03OC4wNiAyNi4xODMtMTAuMDg1IDEuMzUtMTguMDU4IDIuMzg3LTIyLjk2OCA0LjAxLTExLjg3IDMuODk2LTE4LjA5IDEwLjUzLTIxLjc4NiAxNS43M2wtMi4zNyAxLjAwM2MtNC41MjcgMS45MTUtNy4xMTIgNC4zOTItOS42NCA4LjA3NUMyMS4xNiA2OS43NTUgNi4zMyA3NC40NzIgMS41MDQgNzkuODFsLS4zMi4zOTRDLjEwMiA4MS42OC0uMjUzIDgzLjQxNC4xNzQgODVjLS4xNjcgMS4zOTcuMTIgMy40NyAyLjU3IDUuNDJsLjE2Ny4xMjJjNS44NTYgNC4yNDYgMjMuMzU3IDEwLjg1NiA0NC4yNDYgMTQuNzUzIDkuMzcgMS43NDYgMTMuNDA3IDMuMTQyIDE5LjM3NiA4LjU0NyAyOS43MiAyNi45MTUgNDQuMzIgNjcuMzIyIDUwLjkzNiA4Ny4wM2w3LjQzOC0xMy42ODNjMjQuODI2LTQzLjU4MyA0OS4xNjItNjMuNzQyIDQ5LjQ1NS02NGw1LjEzNS00LjY5Ny4xNC4yOCAyLjYwMyA1IDIuNjAzLTUuMDIuOTg1LTEuODcgMTkuMzM2IDEuNTc2IDYuOTYuNTczLTQuNDY2LTUuMzcyLTIuNDE2LTIuOTI3IDIzLjkxLTIwLjYyIDMuODYyLTMuMzMyek04Mi4xMzggNDUuMjZjMTYuNTItNS40MDUgODAuMzQtNS4wOSAxMDMuMjIzLTMxLjY0NCAwIDAtLjEyOCA1LjUwNy0xLjk5MyA5LjkzMyA0Ljg4OC0yLjc4MyA5Ljg2NS00LjI5MiAxNS4wNzQtNS4wNy01LjM2NiA2LjE2LTkuMzM1IDExLjU0NC0xMi4wMTUgMTguODA4IDQuNzMtMy4zMjIgNy43ODctNC41NSAxMi4xMTgtNC43MDctNC4zMjQgNC4xMjMtNS44MDYgMTMuMDQyLTcuODczIDIxLjQ1NGwtNS45MjMtOS42ODYtMi41MDYtNC4wOTgtMi40OTMgNC4wOTgtNy4zNDIgMTEuOTk0LTQuODk0LTEuOTYtNC40OC0xLjgyMy40NjcgNC44MThjLjAxNy4xMzUgMS4xNiAxMi4wNCAxLjYyIDE2Ljc0Ni0yLjU3Mi0yLjUtNy40NDMtNy4yNjQtNy41MjctNy4zMmwtMy4xNTMtMy4wNzQtMS42MSA0LjExLTEuNDcgMy43MDUtOS45MzMtMS42ODgtMy43MjctLjY0Mi4yMSAyLjYzNWMtNi43MDItLjM5NC0xMS4xOC0xLjIyNy0xNy45MjQtMi44Ny01LjQ4LTEuMzQtMTMuNTctNC41MDUtMjEuMTI3LTYuODcgNC40NjUtLjU5NyA5LjczNi0uNyAxNi4xNzItLjEyNSAwIDAtMjcuMS04Ljc5NS0zOS44OS0uMjAyLTEuNzMzIDEuMDAyLTMuMDQgMi4yNzQtMy43MjcgMy42NS0xLjczMiAzLjQ2Ny0uMzcgNi44OS0uMzcgNi44OS01LjE1NyAwLTkuNTM4LTUuNzU0LTkuMTYtMTEuNzY4IDMuODYtNS44MzUgOS40Mi0xMS43NDcgMjAuMjU4LTE1LjI5NXpNNS4xNTggODMuMTJjMi43OTQtMy4xMDcgMTMuNDUzLTguMDg0IDQ0LjU3NS0xMy4yMyAyLjg3LTQuNTI4IDQuODMtNi40MiA4LjYzNy04LjA0Mi42NzYgNi4xOTQgNC4xMjcgMTMuNDkgMTIuODM4IDE0LjAxIDguMDQ2LS4wOCA5LjYxMi04LjUyNSAxOC4yNTUtOC41MjUgOC43NzggMCAxMC4yNjQgOC41NDcgMTguNjIgOC41NDdoMzAuMTUzbC40MSA1SDEwOC41NGMtLjIyIDAtLjQ2MiAwLS42ODIuMDEyLTguMTQ4LjE2OC05LjY5IDguNTM2LTE4LjM4IDguNTM2LTguNzI2IDAtMTAuMjQ2LTguNDIzLTE4LjQ2Ny04LjU0N2gtMS4zMDVjLTQuNDEgMC02Ljc0IDEuNTEtOC4wMDcgMy4xODgtMi4wNDUtLjA0NS00LjE1LS4wOC02LjI5NS0uMTEzLTI1LjI4Mi0uODM0LTM5Ljc2NS0uMzM4LTUwLjA4LjExMy0uMzk0LS4xMjUtLjU4LS4zOTUtLjE2NC0uOTQ3em0xMTMuNzY2IDEwNC4zMTZjLTEyLjgzOC0zNy43MDMtMzMuOTEtNjYuNjgtNDkuMzQ4LTc3LjQ2Ny03LjExMi00Ljk2OC0xMS42MjgtNy42OC0yMS41MTYtOS41MTdDMjcuNTAyIDk2LjYgMTAuNzQgOTAuMTI2IDUuNzk2IDg2LjU2OGMtMS4xMzctLjkyNC0uODY3LTEuMzQuMTgtMS4zMyAxLjE0My4wMTIgMi40MTYuMDM1IDMuNzg1LjA1NyAxOC4wMi41OTcgMzMuOTEgMi4yNjQgNDguNDQgNC4zNDctMS4wMjMgNi42NTUgNi45MDUgMTEuMjE2IDE1LjMwNiAxNC42NzMgMjkuMDEgMTEuOTA0IDQ1LjA3IDMzLjU3IDUxLjkzMiA1MC40MTggNi44NTItMTIuMDE2IDE3LjA1LTIyLjg1IDIyLjM0My0yOS4zOTJsLTEwLjI5OC4wMzRjMi4zNjUtNi41MSA3LjMyNi0xNC45NDQgMTIuNDEtMjIuNzAzbDkuMzUzIDguMDY0LTIuNDE1IDIuOTI4LTQuNDcgNS4zNzIgNi45NDctLjU3NCAxNC40ODMtMS4xODJjLTIuMjM2IDEuNjQzLTMwLjUxMyAyMi44NzItNTQuODY2IDcwLjE1OHptODIuMjItNzcuMDRsNC4yNyA1LjEyNS0yMS4yOS0xLjcyMi0uOTEzIDEuNzQ2LS45NjggMS44Ny0uNDk2LS45NDgtLjIzNi0uNDYtMS4xMzctMi4yMDgtMTEuMzkuOTI0aC0uMDE4bC04LjM4NC42ODYtMS40OTcuMTEzIDQuMjU2LTUuMTIzLTI2LjA4Mi0yMi41MTIgNC43NzUtMS42MzMtMS4wOTgtMTMuNTEzIDEyLjI4IDIuMTA1IDIuMzM2LTUuOTQ3czcuOTIzIDcuNzE1IDguOTgyIDguNzI4Yy42ODIuNjUzIDEuNDMgMS4wMDIgMi4wOSAxLjAwMiAxLjAyIDAgMS43ODUtLjkyNCAxLjU3Ni0zLjE2NGwtLjA5LS45NTdjLS4zOTQtNC4wNzYtMS42ODQtMTcuMzc3LTEuNjg0LTE3LjQxbDcuMTggMi44OTMgOC42MzctMTQuMTEgOC42MzggMTQuMTEgMy4zLTEuMzI4IDMuODk2LTEuNTY2Yy0uMDEuMDMzLTEuMjkgMTMuMzM0LTEuNjkgMTcuNDEtLjA0NC40MTctLjA3Mi43NjctLjEuOTU4LS4xOTYgMi4yNC41NjQgMy4xNjQgMS41OSAzLjE2NC42NDYgMCAxLjQxMi0uMzYgMi4wOTMtMS4wMDIgMS4wNDctMS4wMTQgOC45Ny04LjcyOCA4Ljk3LTguNzI4bDIuMzQyIDUuOTQ3IDEyLjI4NS0yLjEwNi0xLjExIDEzLjUxMiA0Ljc3NiAxLjYzMy0yNi4wODYgMjIuNTEyeiIgZmlsbD0iI0ZGRiIvPjxwYXRoIGQ9Ik0yMjMuNTY2IDcyLjc0bC0xMi4yODYgMi4xMDUtMi4zNDMtNS45NDdzLTcuOTIyIDcuNzE1LTguOTcgOC43MjhjLS42OC42NC0xLjQ0NiAxLjAwMi0yLjA5MyAxLjAwMi0xLjAyNSAwLTEuNzg1LS45MjQtMS41ODgtMy4xNjQuMDI4LS4xOS4wNTUtLjU0LjEtLjk1Ny40LTQuMDc2IDEuNjgtMTcuMzc3IDEuNjktMTcuNDFsLTMuODk4IDEuNTY1LTMuMyAxLjMyOC04LjYzNi0xNC4xMS04LjYzNyAxNC4xMS03LjE4LTIuODk0YzAgLjAzMyAxLjI5IDEzLjMzNCAxLjY4NCAxNy40MS4wMzguNDE3LjA3Mi43NjcuMDkuOTU4LjIwOCAyLjI0LS41NTggMy4xNjQtMS41NzcgMy4xNjQtLjY1OCAwLTEuNDA4LS4zNS0yLjA5LTEuMDAyLTEuMDYtMS4wMTQtOC45OC04LjcyOC04Ljk4LTguNzI4bC0yLjMzNyA1Ljk0Ny0xMi4yOC0yLjEwNiAxLjA5OCAxMy41MTItNC43NzUgMS42MzMgMjYuMDggMjIuNTEyLTQuMjU2IDUuMTI0IDEuNDk4LS4xMTIgOC4zODQtLjY4NiAxMS40MDgtLjkyNCAxLjEzNyAyLjIwNy4yMzcuNDYuNDk2Ljk0OC45Ny0xLjg3LjkxLTEuNzQ1IDIxLjI5IDEuNzIzLTQuMjY4LTUuMTIzIDI2LjA4OC0yMi41MTItNC43NzUtMS42MzMgMS4xMDgtMTMuNTEzeiIgZmlsbD0iI0U4MjkxQyIvPjwvc3ZnPg=="/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">9:40p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-initial-index="12" data-pitcher-key="zebby matthews">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Zebby%20Matthews-k-log">Zebby Matthews</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="10">10</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="230">230</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="51">51</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.239">.239</td>
+<td class="group-pitcher cell-elite" data-sort-key="PA/GP" data-sort-value="24.9">24.9</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.52">7.5</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="23.5">23.5</td>
+<td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.4819277108">20.48</td>
+<td class="group-opponent cell-low-confidence" data-sort-key="K%" data-sort-value="25">25.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="12">12</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.8532289628">24.85</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="26.9230769231">26.92</td>
+<td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.5014245014">24.50</td>
+<td class="group-opponent cell-elite" data-sort-key="SO/PA" data-sort-value="25.0142287991">25.01</td>
+<td class="group-opponent cell-top-rank" data-sort-key="r" data-sort-value="1">1</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Los%20Angeles%20Angels-k-per-pa-log" title="Los Angeles Angels"><img alt="Los Angeles Angels logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDIuNTcgMTkwLjIyOSI+PHRpdGxlPkxvcyBBbmdlbGVzIEFuZ2VscyBvZiBBbmFoZWltIGhhdCBkYXJrIGxvZ288L3RpdGxlPjxwYXRoIGQ9Ik03Ny45NiAxOTAuMjNoNTQuMjE1Yy01LjAxNS0zLjQxMi05LjQzNC05LjM3NS0xMS40MDgtMTYuMTc0bC0xNS4xNTMtNTIuMDE4Yy0xLjY0NS01LjU5NiAxLjAyNS0xMS4xOSA1LjI5NC0xNC45OC02LjA1LTEuODUtMTEuNDA4LTYuMDY0LTEzLjExMy0xMS44NDhsLTguNDc3LTI5LjExNGMxMi4wNjYtNC4wMjQgMTkuOTM1LTExLjE4IDE5LjkzNS0xOS40ODMgMC0xMC44NDUtMTMuNDM2LTE5LjczLTMyLjExMi0yMi4yN0w3MC4wNTQgMGgtNy45NDZsLTcuMDkgMjQuMzQzYy0xOC42ODUgMi41NC0zMi4xMzQgMTEuNDI1LTMyLjEzNCAyMi4yNyAwIDguMzAzIDcuODggMTUuNDU4IDE5Ljk1OCAxOS40ODNMMzQuMzU0IDk1LjIxYy0xLjY2NiA1Ljc4NC03LjA1IDkuOTk3LTEzLjA5NyAxMS44NDggNC4yNTMgMy43OSA2LjkzNCA5LjM4NCA1LjMwNiAxNC45OGwtMTUuMTY0IDUyLjAxOGMtMiA2LjgtNi40IDEyLjc2Mi0xMS4zOTggMTYuMTczaDU0LjIxYy00LjQzNi0zLjQxMi02Ljg1NS05LjM3NS00Ljg3LTE2LjE3NGwxLjMzLTQuNTQ4SDgxLjVsMS4zMjIgNC41NDhjMS45OSA2LjgtLjQzNiAxMi43NjItNC44NiAxNi4xNzN6TTYxLjQxNiAxMzIuNjhsNC42NzYtMTYuMDg0IDQuNjcgMTYuMDg0aC05LjM0NXoiIGZpbGw9IiNGRkYiLz48cGF0aCBkPSJNMTIzLjA0NyAxODYuNTRjLTIuNTc1LTMuMzktNC42NDItNy4zMjQtNS44NDYtMTEuNDQ4bC0xNS4wNDctNTEuNjVjLTIuMzk2LTguMjA0IDIuMDI0LTE0LjAyMyAyLjYwMy0xNC45NTgtNS4yMzMtMi44MzItOS4wNjItNy4xNDUtMTAuNTEtMTIuMjRsLTkuMTctMzEuNDQyYzEyLjkyNi0zLjQ0NSAyMS43My0xMC4yODggMjEuNzMtMTguMTkgMC05Ljk5OC0xNC4xNjctMTguMzQ3LTMyLjkwOC0yMC4xOTdMNjcuMjg0IDMuNjloLTIuMzk3bC02LjYxNSAyMi43MjZjLTE4Ljc2NCAxLjg1LTMyLjkzIDEwLjItMzIuOTMgMjAuMTk3IDAgNy45MDIgOC44MjIgMTQuNzQ1IDIxLjc0IDE4LjE5bC05LjE2MyAzMS40NDNjLTEuNDc4IDUuMDk0LTUuMjg0IDkuNDA3LTEwLjUzIDEyLjI0LjU5Mi45MzUgNS4wMTcgNi43NTQgMi42MiAxNC45NTZsLTE1LjA1MiA1MS42NWMtMS4yMDQgNC4xMjUtMy4yNjUgOC4wNi01Ljg1NyAxMS40NDhoMzcuNTM2Yy0zLjAzNy02LjctMS40MzgtMTEuNTctLjA4LTE2LjE2MmwxLjMzMy00LjU3aDM2LjM4bDEuMzUgNC41N2MxLjMzIDQuNTkzIDIuOTIgOS40NjMtLjEwNyAxNi4xNjJoMzcuNTM0ek01Ni40NCAxMzYuMzkzbDkuNjUtMzMuMDQ4IDkuNjIgMzMuMDQ4SDU2LjQ0eiIgZmlsbD0iIzAwMzI2MyIvPjxwYXRoIGQ9Ik03Ni4wNTUgNTQuNjk0bC00LjgyLTE2LjU5Ni45NDcgMy4zMWMtMS45NzMtLjEtNC4wMTMtLjE3OC02LjA5LS4xNzh2MTAuNzY2bDI4LjkwNiA5OS4xMSA2LjY1NCAyMi43NCAxMS40MiA2Ljg0M2MtLjgwMy0xLjc0LTEuNTEtMy41MTItMi4wNTItNS4zNGwtMTQuMzk1LTQ5LjI2NmMtMi4yNy03LjY5LTEuMDI2LTExLjAyMy42Mi0xNS42Ni00LjMyLTMuMzEtNy4yMDgtNy42MzUtOC42MDYtMTIuNTA1TDc3LjcyIDYwLjRsLS4wMTYuMDEtMS42NS01LjcxNnpNNjkuNDggMzIuMDQ1bC0zLjM5LTExLjYwM3YxMS41MzZjMS4xNDQgMCAyLjI1OC4wMjIgMy4zOS4wNjd6TTMwLjM0IDE3NC40NDdsOS4yMzQgNi4yNGMtLjQ4LTMuMTA4LS4wMjctNy4xODguODctMTAuMDk3bDMuMDUtMTAuNjEtNi4zNDMtOC44NzQtNi44MSAyMy4zNHoiIGZpbGw9IiNCQTAwMjEiLz48cGF0aCBmaWxsPSIjQkEwMDIxIiBkPSJNNDguNjU4IDE0Mi4yMjNsMTcuNDMzLTU5LjdWNTEuOTk3bC0yOC45NCA5OS4xMWg1Ny44NDhsLTExLjUyNS04Ljg4MyIvPjxwYXRoIGZpbGw9IiM4NjI2MzMiIGQ9Ik02Ni4wOSA4Mi41MjRsMTcuMzgzIDU5LjcgMTEuNTI1IDguODgyLTI4LjkwNy05OS4xMSIvPjxwYXRoIGQ9Ik0xMTMuMDcyIDE4MC42ODhsLTExLjQyLTYuODQ0TDk1IDE1MS4xMDZIMzcuMTVsMjguOTQtOTkuMTFWNDEuMjI4YzIuMDggMCA0LjEyLjA3NyA2LjA5Mi4xNzdsLS45NDctMy4zMWMtLjI1NyAwLS41MjQtLjAxLS43OC0uMDM0LTEuNDI4LS4wNjYtMi44NzctLjEyMi00LjM2NC0uMTIyLTEuNzU0IDAtMy40ODIuMDY4LTUuMTYuMTU3bC00LjgzNyAxNi41OTZoLjAxN2wtMS42NjYgNS43MTdoLS4wMTdMNDMuNDkyIDk3LjkxOGMtMS4zOTQgNC44Ny00LjI0IDkuMTk1LTguNTcyIDEyLjUwNiAxLjYyOCA0LjYzNiAyLjg3IDcuOTcuNjEzIDE1LjY2TDIxLjE0IDE3NS4zNWMtLjU0MiAxLjgyNy0xLjIzMyAzLjYtMi4wOCA1LjMzOGgyMC41MTVsLTkuMjM1LTYuMjQgNi44MS0yMy4zNDIgNi4zNDMgOC44NzNIODguNjRsMy4xMTUgMTAuNjFjLjgzNSAyLjkwOCAxLjMgNi45OS44MzUgMTAuMDk4aDIwLjQ4MnpNNjYuMDkgMjAuNDQyTDYyLjcxIDMyLjA0NWMxLjExNC0uMDQ1IDIuMjQ2LS4wNjcgMy4zODMtLjA2N1YyMC40NDJ6IiBmaWxsPSIjODYyNjMzIi8+PHBhdGggZD0iTTU2LjExIDU0LjY5NGgtLjAxN2MtMTAuNDcyLTEuMjM3LTE3LjkwNy00LjQwMy0xNy45MDctOC4wOCAwLTQuMjM3IDkuNzkzLTcuNzYgMjIuNzQ0LTguNTE3IDEuNjc4LS4wOSAzLjQwNi0uMTU2IDUuMTYtLjE1NiAxLjQ4OCAwIDIuOTM4LjA1NyA0LjM2NC4xMjMuMjU3LjAyMy41MjQuMDM0Ljc4LjAzNCAxMi45MzYuNzQ2IDIyLjc1NSA0LjI3IDIyLjc1NSA4LjUxNiAwIDMuNjc3LTcuNDYzIDYuODQ0LTE3LjkyNCA4LjA4aC0uMDFsMS42NSA1LjcxOC4wMTUtLjAxYzEzLjQ4My0yLjAwNiAyMy4xNzQtNy40MSAyMy4xNzQtMTMuNzg3IDAtNy41OS0xMy44MDUtMTMuODQzLTMxLjQxNi0xNC41NjgtMS4xMy0uMDQ1LTIuMjQ1LS4wNjctMy4zODgtLjA2Ny0xLjEzNyAwLTIuMjcuMDIzLTMuMzgzLjA2Ny0xNy42Ni43MjUtMzEuNDMyIDYuOTc3LTMxLjQzMiAxNC41NjggMCA2LjM3NiA5LjY2OCAxMS43OCAyMy4xNSAxMy43OThoLjAxN2wxLjY2OC01LjcxNnoiIGZpbGw9IiNDNENFRDQiLz48Zz48ZyBmaWxsPSIjMDAzMjYzIj48cGF0aCBkPSJNMTM5Ljk2NiAxODIuNjgzYzAtMS40MzctLjg0Ny0xLjY3Mi0yLjA3My0xLjY3MmgtMi42MDJ2NS4zNzRoMS4xMjZ2LTIuMTRoLjkyNGwxLjIyNyAyLjE0aDEuMjQ4bC0xLjI5OC0yLjE0Yy45NDgtLjA4IDEuNDUtLjYwMiAxLjQ1LTEuNTZ6bS0yLjA1LjYxM2gtMS41di0xLjMwM2gxLjIzMmMuNTI0IDAgMS4yMTQgMCAxLjIxNC41OCAwIC41NjctLjM0NC43MjMtLjk0Ny43MjN6Ii8+PHBhdGggZD0iTTEzNy40MzIgMTc4LjU0OGMtMi44NiAwLTUuMTE3IDIuMzA4LTUuMTE3IDUuMTgzIDAgMi44NDQgMi4yNTggNS4xMjggNS4xMTcgNS4xMjggMi44OCAwIDUuMTM4LTIuMjg0IDUuMTM4LTUuMTI3IDAtMi44NzUtMi4yNTgtNS4xODItNS4xMzgtNS4xODJ6bTAgOS4yMDdjLTIuMjA3IDAtMy45NzQtMS43MjgtMy45NzQtNC4wMjQgMC0yLjMwNiAxLjc2Ny00LjAzNCAzLjk3NC00LjAzNCAyLjIgMCA0LjAxMiAxLjcyOCA0LjAxMiA0LjAzNSAwIDIuMjk3LTEuODEyIDQuMDI1LTQuMDEyIDQuMDI1eiIvPjwvZz48L2c+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">8:10p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming row-caution" data-initial-index="13" data-pitcher-key="kyle leahy">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Kyle%20Leahy-k-log">Kyle Leahy</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="17">17</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="336">336</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="73">73</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.274">.274</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="22.2352941176">22.2</td>
+<td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.61">7.6</td>
+<td class="group-savant" data-sort-key="Whiff%" data-sort-value="22">22.0</td>
+<td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="19.3121693122">19.31</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="16.7">16.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="18">18</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.2569316081">21.26</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.4146341463">23.41</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.9638242894">21.96</td>
+<td class="group-opponent" data-sort-key="SO/PA" data-sort-value="21.2933294495">21.29</td>
+<td class="group-opponent" data-sort-key="r" data-sort-value="21">21</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/Atlanta%20Braves-k-per-pa-log" title="Atlanta Braves"><img alt="Atlanta Braves logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTQuODQ5IDE4Mi43MTYiPjx0aXRsZT5BdGxhbnRhIEJyYXZlcyBoYXQgZGFyayBsb2dvPC90aXRsZT48cGF0aCBkPSJNMTgwLjYxMyAxMTMuNzg1aC0xLjYwNXY0LjUxNGgtMS4wOTN2LTQuNTE1aC0xLjZ2LS45N2g0LjI5OHYuOTd6bTcuMjc4IDQuNTE0aC0xLjA3N3YtNC4zNzVoLS4wMzJsLTEuNTQgNC4zNzRoLTEuMDVsLTEuNDktNC4zNzVoLS4wMjN2NC4zNzRoLTEuMDg4di01LjQ4NWgxLjg4NGwxLjIyOCAzLjU2NmguMDM4bDEuMjkzLTMuNTY1aDEuODZ2NS40ODR6IiBmaWxsPSIjMTMyNzRGIi8+PHBhdGggZD0iTTE4OC4wMSAxMzAuMTA2Yy0yLjQxLTIuMzI3LTYuMzMtNi4xMi0xMS4xNjctMy43Ni0zLjYyNSAxLjc1Ni00LjI5MyA1LjUxNi00LjI5MyA4LjM1IDAgMS4wNjYuMTAzIDIuMDAzLjE2OCAyLjY2LjA5Mi45MjcuMTM1IDEuODIuMTM1IDIuNjgzIDAgOC4xMjItNC4wNTYgMTMuMDAyLTguNDkgMTMuNzM0LTMuMTI0LjEzLTE0LjU4LTkuNzA2LTIwLjA5Ni0zMS45OTYgMjEuMDYtNy45MjggMjguODMzLTIwLjIgMzEuNDM1LTI5LjUyOC45MTYtMy4yOTYgMS4yOTgtNi40OTYgMS4yOTgtOS40MjYgMC03LjAyNC0yLjE1LTEyLjY2LTQuMzY0LTE1LjExNC0xLjIyMi0xLjM1OC00Ljk1LTUuNDk1LTkuOS0zLjkxLTUuMDUyIDEuNjE1LTUuNzEgNy4zMjQtNS45NTMgOS40OS0uOTY0IDguNDEzLTUuODEgMTQuNjgzLTE1LjI1IDE5LjY4IDEuMDA4LTI0LjUwOCA5Ljc3My01MS4wMyAyNS43OTItNzcuMzggMS4yODItMi4xMDMgMy4yNzUtNS4zNzcgMy4yNzUtOC42MyAwLTEuNzAzLS41NS0zLjM5NC0yLjA0Mi00Ljg5LTQuMTk2LTQuMjQ2LTkuNjgtLjk2LTEyLjk2NSAxbC0uOTYuNTcyQzEwNy44NjQgMjcuOTY3IDg0LjI4OCA3NS4yNiA2Ny4wNiAxMDkuNzc3YzAgMC0uMzE4LjY0NS0uNjAzIDEuMjE3LTI2LjU2NiAxMC4xMDUtMzEuMjg0IDI4LjMtMzEuMzI3IDI4LjQ4My0uMTgzLjgzLS40OCAyLjEwMi0uNDggMy41NDQgMCAxLjkzLjU0IDQuMTI3IDIuNjIzIDUuNzg2IDEuMjEyLjk3IDIuNDkgMS4zMzYgMy43MzMgMS40NTUtMS41NS45NS0zLjA1NCAxLjU0LTQuNTIgMS42MTctMTMuOTI0LjY3OC0xOC4yMDUtMTEuMzk4LTE4LjI4Ny0xMS42NDYtLjI3LTcuMjQtNC41My04LjcwNC02LjQyNy04Ljk3My03LjA5NC0xLjAzNC05LjY4IDcuNzU2LTEwLjc3OCAxMS41MjctMi40NDYgOC4yOTYtLjMwOCAxOC4yNzIgNS41NjQgMjYuMDA3IDYuOTQ3IDkuMTU3IDE4LjA4NiAxNC4xMDMgMzEuMzc1IDEzLjkyIDIyLjY3OC0uMzEzIDM3LjI3NC0yNS4yMSA0OS4xMjUtNDkuNDYgNy4xMDUtMS43NzggMTMuMTctMi42MTggMTkuOTk1LTMuNTIzIDAgMCA2LjY3LTEuMDEzIDExLjk1OC0xLjgxIDYuMDA2IDI0LjU3NCAxNy4yMzcgNDIuNzM3IDMxLjQ0NiA1MC4xNyA4Ljc0NyA0LjU2OCAxOC4yIDQuOTEyIDI3LjMyLjk3IDguNTItMy42ODUgMTQuNTEtMTEuODYgMTYuNDQtMjIuNDQgMS45LTEwLjQyNy0uNi0yMS4wOC02LjIxLTI2LjUxem0tODcuMTc2LTI2LjAzOGM0LjI4LTguOTc0IDguODUtMTcuOTM3IDEzLjc2Mi0yNS42My0uMTEzIDIuNzktLjI5IDUuNjAyLS4yOSA4LjM0IDAgNS4wNjIuNDE0IDkuOTc1Ljc5IDE0Ljg5OC00LjMyLjg3My05LjA3IDEuNjgtMTQuMjYyIDIuMzkyeiIgZmlsbD0iIzEzMjc0RiIvPjxwYXRoIGQ9Ik0xODMuNjUgMTM0LjYyYy0yLjY1LTIuNTY0LTUuNDU1LTUuMzU0LTQuNzAyIDIuMSAxLjI5OCAxMi44LTUuMTYgMjEuODktMTMuNTg0IDIzLjI2LTguMTE4IDEuMzE0LTIzLjI5OC0xNC4zMDctMjguNTA1LTQyLjIyIDQxLjc4OC0xMi42MTYgMzQuNTMyLTQyLjA1OCAzMS4xMjItNDUuODUtMi45MTUtMy4yMi00LjM2OC0zLjE2Ny00Ljk2NiAyLjA5LTEuNTMgMTMuMzQ3LTEwLjc4NCAyMi40MDctMjcuODY1IDI4LjYzNS0xLjAxMi0yNC4yNCA1LjM3Ny01NS4wNSAyNi44MTUtOTAuM0MxNjguMzggMS44IDE1OS44NDMgNy45ODMgMTU3LjUyIDkuMiAxMTEuMTMyIDMzLjM0MyA4OC40OTIgODAuOTQgNzEuMDQ2IDExNS44NjUgNDcuODkgMTIzLjcxNyA0MS44MTggMTM4LjQgNDEuMjQyIDE0MC45Yy0uNzggMy4zODMtLjQ3NCA0LjA1IDMuNjU3IDIuMDkgNS44MTctMi43OCAxMC45NS01LjA0IDE1LjYxLTcuMDM1LTcuNTMgMTMuMDc4LTE0LjgyIDIxLjc1LTIzLjcxIDIyLjE5Mi0xNy43NS44NzMtMjQuODIyLTE0LjU3Ni0yNC44MjItMTcuMjQ4IDAtNC45NzctMi4zNjUtNS4yMjYtNC45NjYgMy42NTItMy41NDQgMTIuMDQ0IDUuNjcgMzIuMjIyIDMwLjgzOCAzMS44NzcgMTkuMDY4LS4yNiAzMi4zOTQtMjIuNjg4IDQ0Ljg3NS00OC41NTQgMTQuNTMyLTQuMDQgMjMuOTItMy44NTcgNDEuMDUtNy4wMjQgNy44NjMgMzkuMTI3IDI5LjA4IDYyLjE0OCA1MS41MTYgNTIuNDUzIDE1LjU2My02LjczMiAxNi4xOTgtMzEuMTEyIDguMzYtMzguNjg1em0tNjIuMDE0LTI3Ljk0NWMtOC45MDQgMi4xMS0xOS4wMjUgMy42OTYtMzAuNzUgNC45NTUtLjE5LjAxLS4zODQuMDQzLS41NjcuMDY1IDkuODA4LTIxLjA3MiAxOS43MjQtNDEuODIgMzIuMTk1LTUyLjg1Mi0yLjMzOCAxNy4xNC0yLjQ1MiAzMy4zLS44OCA0Ny44MzJ6IiBmaWxsPSIjQ0UxMTQxIi8+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">8:15p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-upcoming" data-initial-index="14" data-pitcher-key="zack littell">
+<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Zack%20Littell-k-log">Zack Littell</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="335">335</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="52">52</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.26">.260</td>
+<td class="group-pitcher" data-sort-key="PA/GP" data-sort-value="20.5">20.5</td>
+<td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="5.44">5.4</td>
+<td class="group-savant cell-weak" data-sort-key="Whiff%" data-sort-value="17.1">17.1</td>
+<td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="14.0921409214">14.09</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.1">22.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="95">95</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.1150442478">24.12</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="37.7906976744">37.79</td>
+<td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="33.7175792507">33.72</td>
+<td class="group-opponent cell-elite" data-sort-key="SO/PA" data-sort-value="24.2521057218">24.25</td>
+<td class="group-opponent cell-top-rank" data-sort-key="r" data-sort-value="3">3</td>
+<td class="group-pitcher" data-sort-key="Ks"></td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/New%20York%20Yankees-k-per-pa-log" title="New York Yankees"><img alt="New York Yankees logo" class="opp-logo" decoding="async" loading="lazy" referrerpolicy="no-referrer" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODguMTIxIDE5NiI+PHRpdGxlPk5ldyBZb3JrIFlhbmtlZXMgaGF0IGRhcmsgbG9nbzwvdGl0bGU+PGcgZmlsbD0iIzEzMjQ0OCI+PHBhdGggZD0iTTE3NS4zODcgMTY2Ljk1MkMxNzIuNjI1IDE3MC4yNyAxNTYuMyAxODYuMzM3IDE0Mi4yIDE5NmMtMi4zNDUtMzMuNy0xOC41NTItNTUuMzg3LTQ1LjEtNzMuODc4di4wMTJjLS44MyAxNy45OS0uOTIgMzMuNzcyLS4yOCA0NC44MTguNTU0IDkuNTU1IDUuMTI4IDE1LjM2NSAxMi41ODUgMjEuNDUtOS42OCAyLjIwNi0zOC4wNDMgMS43OS00Ny43MTItMS4yNCAxLjExLS44MjQgMTMuMDctNy40NTYgMTQuMTA3LTI5LjA1LjcyOC0xNS41Mi44MjMtMjYuOTg0LjI3NS00NS45MjhsLTEuMTI4LTQuODU1Yy0xMi45MjUtOS41Mi0yNC4yLTE5LjMxNS0zOC43MTYtMzQuOTkgMTMuMjg0IDM1LjE0My0zLjU5NiA3OC44NC01LjUyMyA5NC44ODctLjY1NiA1LjM5Mi0yLjM2IDE2LjMzLTEuODA3IDI3LjUzMy00LjE0LTIuNDkzLTIwLjg5LTEzLjQyLTI4LjktMjMuOTMgMjMuMzc2LTM5Ljk3NiA0MC4yNDUtNzkuMjQ3IDMuNTktMTE0Ljk0IDYuOTI2LTEwLjM4IDE3LjE1Ni0xOS42NDggMjUuMzEtMjMuNjU2IDguNTk1IDI0Ljc1NCAyNy4zOTUgNDQuNCA0MC45NiA1Mi45NjYtMTAuMzg2LTM4LjQ2LTIzLjY4LTUxLjAzNC0zMi4wOTctNTUuMzNDNDMuMjggMTYuOTE3IDYxLjU1IDMuNDQ4IDcxLjIzNyAwYy00LjQzMiAxNC4zNzUtNC44MDggMjMuNzg4LS40MjQgMzkuMTRDNzUuMjQgNTQuNjM3IDgyLjE2MyA3My40NSA4OS45IDg3LjU2MmM0LjE1OC03LjE5NCAxOC44MjQtMzcuNjI2IDIyLjY4NS01MC45MDMgMy44ODgtMTMuMjc4IDMuODg4LTI1LjE3IDIuMjE4LTMzLjc2MiA4LjQ0IDQuMjgzIDI2LjU2IDIxLjMwNyAzMC43MTMgMjkuNjEtOC44NTMgMS45Mi0xMy4wMDQgNi40NjYtMTguMjYgMTUuNDcyLTUuNDAzIDkuMjgtMTkuMDkyIDQ0LjI4Mi0yNi42OTYgNTkuMzUgOC4wMjggNi45MyAyMS45OTIgMTUuNjM4IDMzLjA1IDI4LjkyNy0xMi4xNjctNDcuODcyLjI4LTg0LjI1NyAxNi4zMzItOTUuMTYgNy40NjcgMi4xOTUgMTcuMDA0IDguMjggMjMuOTM1IDE1LjQ4NS0yNi4wMTggMTAuOTI3LTI0LjM0IDQ0LjEyNy0yNC40ODUgNDYuNTk2LTEuMTg2IDE5LjA0IDYuNDk2IDUyLjg3IDIwLjkwNyA2MS4xMTQgMy4xMyAxLjggMy40NDcgMS45MiA1LjA4NyAyLjY2QzE3Mi42MjUgMTcwLjI3IDE1Ni4zIDE4Ni4zMzcgMTQyLjIgMTk2Ii8+PHBhdGggZD0iTTE3NS43NjIgMTQ4Ljc5NmgtMi43MjV2Ny40MmgtMS44NXYtNy40MmgtMi43MTh2LTEuNjIyaDcuMjkzdjEuNjIyem0xMi4zNiA3LjQyaC0xLjgzN3YtNy4xODJoLS4wNDhsLTIuNjIgNy4xODJoLTEuNzgzbC0yLjUzLTcuMTgyaC0uMDUzdjcuMTgyaC0xLjgzdi05LjA0MmgzLjE5bDIuMSA1LjkwNWguMDVsMi4xODItNS45MDZoMy4xOHY5LjA0MnoiLz48L2c+PC9zdmc+"/></a></span><span class="opp-time opp-time-upcoming" title="Game status: Scheduled">6:45p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+</tbody>
+</table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="arsenal-card">
+        <div>
+          <h2 id="arsenal-name">Pitcher Arsenal Snapshot</h2>
+          <p class="arsenal-subtitle">Select a pitcher row above to inspect swing-and-miss profile and pitch mix.</p>
+        </div>
+        <div class="arsenal-metrics">
+          <div class="arsenal-metric metric-neutral" id="arsenal-whiff-box">
+            <span class="arsenal-metric-label">Whiff%</span>
+            <span class="arsenal-metric-value" id="arsenal-whiff">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-whiff-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-z-miss-box">
+            <span class="arsenal-metric-label">Z-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-z-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-z-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-oz-miss-box">
+            <span class="arsenal-metric-label">OZ-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-oz-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-oz-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-fastball-box">
+            <span class="arsenal-metric-label">Fastball%</span>
+            <span class="arsenal-metric-value" id="arsenal-fastball">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-fastball-avg"></span>
+          </div>
+        </div>
+        <div class="arsenal-pitches" id="arsenal-pitches"></div>
+        <div class="arsenal-empty" id="arsenal-empty">
+          Arsenal details are only available for pitchers returned by the Savant qualified leaderboard feed.
+        </div>
+        <div class="arsenal-future-slot">
+          Reserved for additional pitcher detail modules.
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const arsenalData = {"__league_averages__": {"whiff_percent": 24.758274398868455, "z_swing_miss_percent": 16.005657708628007, "oz_swing_miss_percent": 42.18252840909091}, "hunter greene": {"name": "Hunter Greene", "whiff_percent": 32.6, "z_swing_miss_percent": 18.2, "oz_swing_miss_percent": 69.2, "fastball_percent": 57.3, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 52.8}, {"code": "SL", "label": "Slider", "usage_percent": 40.4}, {"code": "SI", "label": "Sinker", "usage_percent": 4.5}, {"code": "FS", "label": "Splitter", "usage_percent": 2.2}]}, "nolan mclean": {"name": "Nolan McLean", "whiff_percent": 25.1, "z_swing_miss_percent": 16.2, "oz_swing_miss_percent": 43.1, "fastball_percent": 63.6, "arsenal": [{"code": "SI", "label": "Sinker", "usage_percent": 33.9}, {"code": "FF", "label": "Four-Seam", "usage_percent": 19.3}, {"code": "ST", "label": "Sweeper", "usage_percent": 16.8}, {"code": "CU", "label": "Curveball", "usage_percent": 12.8}, {"code": "FC", "label": "Cutter", "usage_percent": 10.3}, {"code": "CH", "label": "Changeup", "usage_percent": 6.5}, {"code": "SL", "label": "Slider", "usage_percent": 0.3}]}, "shohei ohtani": {"name": "Shohei Ohtani", "whiff_percent": 30.4, "z_swing_miss_percent": 19.3, "oz_swing_miss_percent": 54.8, "fastball_percent": 50.9, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 45.2}, {"code": "ST", "label": "Sweeper", "usage_percent": 29.4}, {"code": "CU", "label": "Curveball", "usage_percent": 10.0}, {"code": "FS", "label": "Splitter", "usage_percent": 8.5}, {"code": "SI", "label": "Sinker", "usage_percent": 5.1}, {"code": "SL", "label": "Slider", "usage_percent": 1.1}, {"code": "FC", "label": "Cutter", "usage_percent": 0.7}]}, "braxton ashcraft": {"name": "Braxton Ashcraft", "whiff_percent": 27.4, "z_swing_miss_percent": 15.7, "oz_swing_miss_percent": 49.2, "fastball_percent": 45.9, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 31.1}, {"code": "CU", "label": "Curveball", "usage_percent": 25.8}, {"code": "SL", "label": "Slider", "usage_percent": 23.2}, {"code": "SI", "label": "Sinker", "usage_percent": 14.7}, {"code": "FS", "label": "Splitter", "usage_percent": 5.1}]}, "hunter brown": {"name": "Hunter Brown", "whiff_percent": 25.0, "z_swing_miss_percent": 17.4, "oz_swing_miss_percent": 39.5, "fastball_percent": 62.4, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 34.7}, {"code": "SI", "label": "Sinker", "usage_percent": 27.7}, {"code": "CU", "label": "Curveball", "usage_percent": 19.6}, {"code": "CH", "label": "Changeup", "usage_percent": 9.6}, {"code": "SL", "label": "Slider", "usage_percent": 8.5}]}, "sean burke": {"name": "Sean Burke", "whiff_percent": 24.4, "z_swing_miss_percent": 15.9, "oz_swing_miss_percent": 40.9, "fastball_percent": 58.4, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 37.4}, {"code": "CU", "label": "Curveball", "usage_percent": 21.4}, {"code": "SL", "label": "Slider", "usage_percent": 17.5}, {"code": "SI", "label": "Sinker", "usage_percent": 15.0}, {"code": "FC", "label": "Cutter", "usage_percent": 6.0}, {"code": "CH", "label": "Changeup", "usage_percent": 2.7}]}, "parker messick": {"name": "Parker Messick", "whiff_percent": 26.5, "z_swing_miss_percent": 19.5, "oz_swing_miss_percent": 39.3, "fastball_percent": 58.4, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 33.9}, {"code": "CH", "label": "Changeup", "usage_percent": 23.8}, {"code": "SI", "label": "Sinker", "usage_percent": 17.2}, {"code": "CU", "label": "Curveball", "usage_percent": 11.4}, {"code": "FC", "label": "Cutter", "usage_percent": 7.3}, {"code": "SL", "label": "Slider", "usage_percent": 6.4}]}, "shota imanaga": {"name": "Shota Imanaga", "whiff_percent": 30.3, "z_swing_miss_percent": 20.1, "oz_swing_miss_percent": 46.5, "fastball_percent": 49.1, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 42.4}, {"code": "FS", "label": "Splitter", "usage_percent": 33.0}, {"code": "ST", "label": "Sweeper", "usage_percent": 13.9}, {"code": "SI", "label": "Sinker", "usage_percent": 6.7}, {"code": "CU", "label": "Curveball", "usage_percent": 2.8}, {"code": "SL", "label": "Slider", "usage_percent": 1.1}]}, "sonny gray": {"name": "Sonny Gray", "whiff_percent": 23.1, "z_swing_miss_percent": 8.5, "oz_swing_miss_percent": 47.4, "fastball_percent": 58.2, "arsenal": [{"code": "FC", "label": "Cutter", "usage_percent": 20.4}, {"code": "ST", "label": "Sweeper", "usage_percent": 20.1}, {"code": "FF", "label": "Four-Seam", "usage_percent": 19.3}, {"code": "SI", "label": "Sinker", "usage_percent": 18.4}, {"code": "CU", "label": "Curveball", "usage_percent": 16.8}, {"code": "CH", "label": "Changeup", "usage_percent": 4.8}, {"code": "SL", "label": "Slider", "usage_percent": 0.1}]}, "tanner gordon": {"name": "Tanner Gordon", "whiff_percent": 24.0, "z_swing_miss_percent": 18.6, "oz_swing_miss_percent": 39.8, "fastball_percent": 42.6, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 36.8}, {"code": "SL", "label": "Slider", "usage_percent": 27.4}, {"code": "CH", "label": "Changeup", "usage_percent": 20.7}, {"code": "CU", "label": "Curveball", "usage_percent": 9.3}, {"code": "SI", "label": "Sinker", "usage_percent": 5.8}]}, "luinder avila": {"name": "Luinder Avila", "whiff_percent": 23.9, "z_swing_miss_percent": 11.4, "oz_swing_miss_percent": 45.8, "fastball_percent": 52.9, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 27.3}, {"code": "SI", "label": "Sinker", "usage_percent": 25.6}, {"code": "SL", "label": "Slider", "usage_percent": 23.0}, {"code": "CU", "label": "Curveball", "usage_percent": 14.0}, {"code": "CH", "label": "Changeup", "usage_percent": 10.1}]}, "jp sears": {"name": "JP Sears", "whiff_percent": 22.7, "z_swing_miss_percent": 17.6, "oz_swing_miss_percent": 40.0, "fastball_percent": 48.4, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 38.5}, {"code": "CH", "label": "Changeup", "usage_percent": 22.2}, {"code": "ST", "label": "Sweeper", "usage_percent": 19.8}, {"code": "SL", "label": "Slider", "usage_percent": 9.5}, {"code": "SI", "label": "Sinker", "usage_percent": 6.7}, {"code": "FC", "label": "Cutter", "usage_percent": 3.2}]}, "zebby matthews": {"name": "Zebby Matthews", "whiff_percent": 23.5, "z_swing_miss_percent": 14.5, "oz_swing_miss_percent": 44.2, "fastball_percent": 53.3, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 36.2}, {"code": "SL", "label": "Slider", "usage_percent": 21.0}, {"code": "CU", "label": "Curveball", "usage_percent": 13.6}, {"code": "FC", "label": "Cutter", "usage_percent": 12.5}, {"code": "CH", "label": "Changeup", "usage_percent": 12.2}, {"code": "SI", "label": "Sinker", "usage_percent": 4.7}]}, "kyle leahy": {"name": "Kyle Leahy", "whiff_percent": 22.0, "z_swing_miss_percent": 11.2, "oz_swing_miss_percent": 47.4, "fastball_percent": 41.7, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 28.3}, {"code": "CU", "label": "Curveball", "usage_percent": 16.1}, {"code": "SL", "label": "Slider", "usage_percent": 16.0}, {"code": "SI", "label": "Sinker", "usage_percent": 13.4}, {"code": "CH", "label": "Changeup", "usage_percent": 13.3}, {"code": "ST", "label": "Sweeper", "usage_percent": 12.9}]}, "zack littell": {"name": "Zack Littell", "whiff_percent": 17.1, "z_swing_miss_percent": 11.2, "oz_swing_miss_percent": 31.5, "fastball_percent": 42.5, "arsenal": [{"code": "SL", "label": "Slider", "usage_percent": 29.3}, {"code": "FF", "label": "Four-Seam", "usage_percent": 28.2}, {"code": "FS", "label": "Splitter", "usage_percent": 19.0}, {"code": "SI", "label": "Sinker", "usage_percent": 14.3}, {"code": "ST", "label": "Sweeper", "usage_percent": 9.3}]}};
+    const leagueAverages = arsenalData["__league_averages__"] || {};
+    const tableBody = document.querySelector("table.pitchers-table tbody");
+    const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const sortableHeaders = Array.from(document.querySelectorAll("table.pitchers-table thead th.is-sortable"));
+    const showLiveToggle = document.getElementById("show-live-toggle");
+    const showFinalToggle = document.getElementById("show-final-toggle");
+    const nameEl = document.getElementById("arsenal-name");
+    const whiffBoxEl = document.getElementById("arsenal-whiff-box");
+    const whiffEl = document.getElementById("arsenal-whiff");
+    const whiffAvgEl = document.getElementById("arsenal-whiff-avg");
+    const zMissBoxEl = document.getElementById("arsenal-z-miss-box");
+    const zMissEl = document.getElementById("arsenal-z-miss");
+    const zMissAvgEl = document.getElementById("arsenal-z-miss-avg");
+    const ozMissBoxEl = document.getElementById("arsenal-oz-miss-box");
+    const ozMissEl = document.getElementById("arsenal-oz-miss");
+    const ozMissAvgEl = document.getElementById("arsenal-oz-miss-avg");
+    const fastballBoxEl = document.getElementById("arsenal-fastball-box");
+    const fastballEl = document.getElementById("arsenal-fastball");
+    const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
+    const pitchesEl = document.getElementById("arsenal-pitches");
+    const emptyEl = document.getElementById("arsenal-empty");
+    let selectedPitcherKey = null;
+    let sortState = { key: null, index: null, direction: null };
+
+    function toNumberOrNull(value) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function formatPercent(value) {
+      const numeric = toNumberOrNull(value);
+      if (numeric === null) {
+        return "-";
+      }
+      return `${numeric.toFixed(1)}%`;
+    }
+
+    function setMetricTile(boxEl, valueEl, avgEl, value, leagueAvg, useComparison = true) {
+      const numericValue = toNumberOrNull(value);
+      const numericLeagueAvg = toNumberOrNull(leagueAvg);
+
+      valueEl.textContent = formatPercent(numericValue);
+
+      if (avgEl) {
+        avgEl.textContent = useComparison ? `Lg Avg: ${formatPercent(numericLeagueAvg)}` : "";
+      }
+
+      boxEl.classList.remove("metric-above", "metric-below", "metric-neutral");
+      if (!useComparison || numericValue === null || numericLeagueAvg === null) {
+        boxEl.classList.add("metric-neutral");
+        return;
+      }
+
+      const delta = numericValue - numericLeagueAvg;
+      if (delta >= 1.0) {
+        boxEl.classList.add("metric-above");
+      } else if (delta <= -1.0) {
+        boxEl.classList.add("metric-below");
+      } else {
+        boxEl.classList.add("metric-neutral");
+      }
+    }
+
+    function resetArsenalPanel(label = "Pitcher Arsenal Snapshot") {
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      nameEl.textContent = label;
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+      clearPitches();
+      emptyEl.style.display = "block";
+    }
+
+    function clearPitches() {
+      while (pitchesEl.firstChild) {
+        pitchesEl.removeChild(pitchesEl.firstChild);
+      }
+    }
+
+    function renderPitchMix(arsenalList) {
+      clearPitches();
+      if (!Array.isArray(arsenalList) || arsenalList.length === 0) {
+        return false;
+      }
+
+      arsenalList.forEach((pitch) => {
+        const usage = Number(pitch.usage_percent);
+        if (Number.isNaN(usage)) {
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "arsenal-pitch-row";
+
+        const label = document.createElement("span");
+        label.className = "arsenal-pitch-label";
+        label.textContent = pitch.label || pitch.code || "Pitch";
+
+        const value = document.createElement("span");
+        value.className = "arsenal-pitch-value";
+        value.textContent = formatPercent(usage);
+
+        const track = document.createElement("div");
+        track.className = "arsenal-pitch-track";
+        const fill = document.createElement("div");
+        fill.className = "arsenal-pitch-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, usage))}%`;
+        track.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(value);
+        row.appendChild(track);
+        pitchesEl.appendChild(row);
+      });
+
+      return pitchesEl.children.length > 0;
+    }
+
+    function applyRowSelection() {
+      pitcherRows.forEach((row) => {
+        row.classList.toggle("row-selected", selectedPitcherKey !== null && row.dataset.pitcherKey === selectedPitcherKey);
+      });
+    }
+
+    function renderSelectedPitcher() {
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      if (!selectedPitcherKey || !selectedRow) {
+        resetArsenalPanel();
+        return;
+      }
+
+      const details = arsenalData[selectedPitcherKey];
+      const fallbackName = selectedRow.querySelector("td")?.innerText?.trim() || "Pitcher Arsenal Snapshot";
+
+      if (!details) {
+        nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
+        setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+        setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+        setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+        setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+        clearPitches();
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      nameEl.textContent = details.name || fallbackName || "Pitcher Arsenal Snapshot";
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, details.whiff_percent, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, details.z_swing_miss_percent, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, details.oz_swing_miss_percent, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, details.fastball_percent, null, false);
+
+      const hasPitches = renderPitchMix(details.arsenal);
+      emptyEl.style.display = hasPitches ? "none" : "block";
+    }
+
+    function selectPitcher(pitcherKey) {
+      selectedPitcherKey = pitcherKey || null;
+      applyRowSelection();
+      renderSelectedPitcher();
+    }
+
+    function visiblePitcherRows() {
+      return pitcherRows.filter((row) => !row.hidden);
+    }
+
+    function syncSelectedPitcher() {
+      const visibleRows = visiblePitcherRows();
+      if (selectedPitcherKey) {
+        const activeRow = visibleRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
+        if (activeRow) {
+          applyRowSelection();
+          renderSelectedPitcher();
+          return;
+        }
+      }
+
+      const preferredRow =
+        visibleRows.find((row) => Object.prototype.hasOwnProperty.call(arsenalData, row.dataset.pitcherKey))
+        || visibleRows[0];
+      if (preferredRow) {
+        selectPitcher(preferredRow.dataset.pitcherKey);
+        return;
+      }
+      selectPitcher(null);
+    }
+
+    function readCellSortValue(row, columnIndex) {
+      const cell = row.children[columnIndex];
+      if (!cell) {
+        return null;
+      }
+      const rawValue = cell.dataset.sortValue;
+      if (rawValue === undefined || rawValue === "") {
+        return null;
+      }
+      const numeric = Number(rawValue);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function compareRows(a, b) {
+      const columnIndex = sortState.index;
+      const aValue = readCellSortValue(a, columnIndex);
+      const bValue = readCellSortValue(b, columnIndex);
+      const aHasValue = aValue !== null;
+      const bHasValue = bValue !== null;
+      if (aHasValue !== bHasValue) {
+        return aHasValue ? -1 : 1;
+      }
+      if (aHasValue && bHasValue && aValue !== bValue) {
+        return sortState.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      return Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex);
+    }
+
+    function syncSortHeaders() {
+      sortableHeaders.forEach((header) => {
+        let direction = "default";
+        if (sortState.key === header.dataset.sortKey && sortState.direction) {
+          direction = sortState.direction;
+        }
+        header.dataset.sortDirection = direction;
+        header.setAttribute(
+          "aria-sort",
+          direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none",
+        );
+      });
+    }
+
+    function applySort() {
+      const rowsToRender = pitcherRows.slice();
+      if (sortState.key && sortState.direction && Number.isInteger(sortState.index)) {
+        rowsToRender.sort(compareRows);
+      } else {
+        rowsToRender.sort((a, b) => Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex));
+      }
+      rowsToRender.forEach((row) => tableBody.appendChild(row));
+      syncSortHeaders();
+    }
+
+    function applyVisibility() {
+      const showLive = Boolean(showLiveToggle?.checked);
+      const showFinal = Boolean(showFinalToggle?.checked);
+      pitcherRows.forEach((row) => {
+        const isLive = row.classList.contains("row-live");
+        const isFinal = row.classList.contains("row-final");
+        row.hidden = (!showLive && isLive) || (!showFinal && isFinal);
+      });
+    }
+
+    function applyTableState() {
+      applySort();
+      applyVisibility();
+      syncSelectedPitcher();
+    }
+
+    function cycleSort(header) {
+      const sortKey = header.dataset.sortKey || null;
+      const sortIndex = Number(header.dataset.sortIndex);
+      if (!sortKey || !Number.isInteger(sortIndex)) {
+        return;
+      }
+
+      if (sortState.key !== sortKey) {
+        sortState = { key: sortKey, index: sortIndex, direction: "desc" };
+      } else if (sortState.direction === "desc") {
+        sortState = { key: sortKey, index: sortIndex, direction: "asc" };
+      } else if (sortState.direction === "asc") {
+        sortState = { key: null, index: null, direction: null };
+      } else {
+        sortState = { key: sortKey, index: sortIndex, direction: "desc" };
+      }
+
+      applyTableState();
+    }
+
+    pitcherRows.forEach((row) => {
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("a")) {
+          return;
+        }
+        selectPitcher(row.dataset.pitcherKey);
+      });
+    });
+
+    sortableHeaders.forEach((header) => {
+      header.addEventListener("click", () => cycleSort(header));
+      header.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        cycleSort(header);
+      });
+    });
+
+    showLiveToggle?.addEventListener("change", applyTableState);
+    showFinalToggle?.addEventListener("change", applyTableState);
+
+    applyTableState();
+  </script>
+</body>
+</html>
