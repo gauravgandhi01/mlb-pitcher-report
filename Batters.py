@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sys
 from html import escape
 from pathlib import Path
@@ -15,6 +16,7 @@ from report_data import (
     compute_recent_metrics,
     extract_confirmed_espn_lineup,
     extract_espn_game_total,
+    fetch_game_batter_stat_lines,
     fetch_game_batter_vs_pitcher_stat_lines,
     extract_game_logs,
     fetch_espn_summary,
@@ -37,6 +39,8 @@ from site_nav import build_date_nav_html, build_report_tabs
 from team_logos import get_team_logo_src
 
 REPORTS_DIR = Path("reports")
+REPORT_STATE_DIR = Path("report_state")
+BATTER_LINEUP_LOCKS_FILE = REPORT_STATE_DIR / "batter-lineup-locks.json"
 ROOT_BATTERS_FILE = Path(__file__).resolve().parent / "batters.html"
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 SOURCE_ESPN = "ESPN Confirmed"
@@ -104,6 +108,7 @@ def build_candidate_rows(
     roster_entries: Sequence[Dict[str, Any]],
     people_by_id: Dict[int, Dict[str, Any]],
     report_date: dt.date,
+    current_game_batter_lines: Optional[Dict[int, Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for roster_entry in roster_entries:
@@ -128,10 +133,24 @@ def build_candidate_rows(
             and str(status or "").strip() not in NOT_STARTED_STATUSES
         ):
             same_day_vsp = fetch_game_batter_vs_pitcher_stat_lines(int(game_id), int(pitcher_id)).get(person_id)
-        vsp = parse_vs_pitcher_stats(indexed, report_date=report_date, same_day_line=same_day_vsp)
+        vsp = parse_vs_pitcher_stats(
+            indexed,
+            report_date=report_date,
+            same_day_line=same_day_vsp,
+            subtract_same_day_from_season_splits=False,
+        )
         hit_streak = compute_hit_streak(game_logs, report_date)
-        game_hit_result = _resolve_game_hit_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
-        game_home_run_result = _resolve_game_home_run_result(game_logs, game_id) if str(status or "").strip() == "Final" else ""
+        current_game_line = (current_game_batter_lines or {}).get(person_id)
+        game_hit_result = (
+            _resolve_game_hit_result(game_logs, game_id, current_game_line)
+            if str(status or "").strip() == "Final"
+            else ""
+        )
+        game_home_run_result = (
+            _resolve_game_home_run_result(game_logs, game_id, current_game_line)
+            if str(status or "").strip() == "Final"
+            else ""
+        )
 
         row = {
             "Batter": str(person_info.get("fullName") or person.get("fullName") or "").strip(),
@@ -229,6 +248,103 @@ def select_offense_rows(
         updated["Pool Rank"] = order
         selected_rows.append(updated)
     return selected_rows
+
+
+def load_batter_lineup_locks(path: Optional[Path] = None) -> Dict[str, Any]:
+    lock_path = path or BATTER_LINEUP_LOCKS_FILE
+    if not lock_path.exists():
+        return {}
+    try:
+        payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def save_batter_lineup_locks(locks: Dict[str, Any], path: Optional[Path] = None) -> None:
+    lock_path = path or BATTER_LINEUP_LOCKS_FILE
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.write_text(json.dumps(locks, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _coerce_player_ids(values: Any) -> List[int]:
+    if values is None or isinstance(values, (str, bytes)):
+        return []
+    try:
+        iterator = iter(values)
+    except TypeError:
+        return []
+    player_ids: List[int] = []
+    for value in iterator:
+        player_id = _to_int(value)
+        if player_id is None:
+            continue
+        player_ids.append(int(player_id))
+    return player_ids
+
+
+def _lineup_lock_key(game_id: Any, team_id: Any, pitcher_id: Any) -> Optional[str]:
+    game_id_value = _to_int(game_id)
+    team_id_value = _to_int(team_id)
+    pitcher_id_value = _to_int(pitcher_id)
+    if game_id_value is None or team_id_value is None or pitcher_id_value is None:
+        return None
+    return f"{game_id_value}:{team_id_value}:{pitcher_id_value}"
+
+
+def _utc_timestamp() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _resolve_lineup_ids_for_game_state(
+    *,
+    report_date: str,
+    game_id: Any,
+    team_id: Any,
+    pitcher_id: Any,
+    status: Any,
+    confirmed_lineup_player_ids: Sequence[int],
+    lineup_locks: Dict[str, Any],
+) -> tuple[List[int], bool]:
+    lock_key = _lineup_lock_key(game_id, team_id, pitcher_id)
+    confirmed_ids = _coerce_player_ids(confirmed_lineup_player_ids)[:9]
+    status_text = str(status or "").strip()
+
+    day_locks = lineup_locks.get(report_date)
+    if not isinstance(day_locks, dict):
+        day_locks = {}
+    existing_lock = day_locks.get(lock_key) if lock_key else None
+    locked_ids = _coerce_player_ids((existing_lock or {}).get("player_ids") if isinstance(existing_lock, dict) else None)[:9]
+
+    if status_text in NOT_STARTED_STATUSES:
+        if len(confirmed_ids) >= 9:
+            if not lock_key:
+                return confirmed_ids, False
+
+            if not isinstance(lineup_locks.get(report_date), dict):
+                lineup_locks[report_date] = {}
+            record = {
+                "source": SOURCE_ESPN,
+                "player_ids": confirmed_ids,
+                "updated_at": _utc_timestamp(),
+            }
+            current_record = lineup_locks[report_date].get(lock_key)
+            if (
+                isinstance(current_record, dict)
+                and _coerce_player_ids(current_record.get("player_ids"))[:9] == confirmed_ids
+                and current_record.get("source") == SOURCE_ESPN
+            ):
+                return confirmed_ids, False
+            lineup_locks[report_date][lock_key] = record
+            return confirmed_ids, True
+
+        if len(locked_ids) >= 9:
+            return locked_ids, False
+        return [], False
+
+    if len(locked_ids) >= 9:
+        return locked_ids, False
+    return [], False
 
 
 def _percentile_series(values: pd.Series, *, lower_is_better: bool = False) -> pd.Series:
@@ -627,7 +743,14 @@ def _format_total(value: Any) -> str:
     return f"{numeric:.1f}"
 
 
-def _resolve_game_hit_result(game_logs: Sequence[Dict[str, Any]], game_id: Optional[int]) -> str:
+def _resolve_game_hit_result(
+    game_logs: Sequence[Dict[str, Any]],
+    game_id: Optional[int],
+    current_game_line: Optional[Dict[str, Any]] = None,
+) -> str:
+    if current_game_line is not None:
+        return "hit" if (_to_int(current_game_line.get("H") or current_game_line.get("hits")) or 0) >= 1 else "no-hit"
+
     target_game_id = _to_int(game_id)
     if target_game_id is None:
         return ""
@@ -638,7 +761,18 @@ def _resolve_game_hit_result(game_logs: Sequence[Dict[str, Any]], game_id: Optio
     return "no-hit"
 
 
-def _resolve_game_home_run_result(game_logs: Sequence[Dict[str, Any]], game_id: Optional[int]) -> str:
+def _resolve_game_home_run_result(
+    game_logs: Sequence[Dict[str, Any]],
+    game_id: Optional[int],
+    current_game_line: Optional[Dict[str, Any]] = None,
+) -> str:
+    if current_game_line is not None:
+        return (
+            "home-run"
+            if (_to_int(current_game_line.get("HR") or current_game_line.get("homeRuns")) or 0) >= 1
+            else "no-home-run"
+        )
+
     target_game_id = _to_int(game_id)
     if target_game_id is None:
         return ""
@@ -1627,6 +1761,9 @@ def write_html(
 def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> List[Dict[str, Any]]:
     report_date_obj = dt.datetime.strptime(report_date, "%m/%d/%Y").date()
     report_year = report_date_obj.year
+    stats_end_date = report_date_obj - dt.timedelta(days=1)
+    lineup_locks = load_batter_lineup_locks()
+    lineup_locks_changed = False
     espn_event_snapshots = build_espn_event_snapshot_lookup(report_date)
     team_ids = {
         int(game[side])
@@ -1647,6 +1784,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
 
         start_time = _format_local_start_time(game.get("game_datetime"))
         status = str(game.get("status") or "").strip()
+        game_id = _to_int(game.get("game_id"))
         event_snapshot = espn_event_snapshots.get((_normalize_team_name(away_team), _normalize_team_name(home_team))) or {}
         event_id = str(event_snapshot.get("event_id") or "").strip()
         espn_summary = fetch_espn_summary(event_id) if event_id else None
@@ -1655,6 +1793,11 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
         home_score = _to_int(event_snapshot.get("home_score"))
         total_result = _final_total_result(status, game_total, away_score, home_score)
         final_total_runs = (away_score + home_score) if away_score is not None and home_score is not None else None
+        current_game_batter_lines = (
+            fetch_game_batter_stat_lines(int(game_id))
+            if status == "Final" and game_id is not None
+            else {}
+        )
         offense_configs = [
             {
                 "team_id": away_team_id,
@@ -1708,6 +1851,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 season=report_year,
                 pitch_hand=pitcher_context.get("hand"),
                 pitcher_id=int(pitcher_context["id"]),
+                stats_end_date=stats_end_date,
             )
             candidate_rows = build_candidate_rows(
                 team_id=team_id,
@@ -1722,7 +1866,7 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 pitcher_id=int(pitcher_context["id"]),
                 start_time=start_time,
                 status=status,
-                game_id=_to_int(game.get("game_id")),
+                game_id=game_id,
                 team_score=_to_int(offense.get("team_score")),
                 opponent_score=_to_int(offense.get("opponent_score")),
                 team_result=_final_team_result(status, offense.get("team_score"), offense.get("opponent_score")),
@@ -1731,14 +1875,28 @@ def build_report_rows(schedule: Sequence[Dict[str, Any]], report_date: str) -> L
                 roster_entries=roster_entries,
                 people_by_id=people_by_id,
                 report_date=report_date_obj,
+                current_game_batter_lines=current_game_batter_lines,
             )
             if not candidate_rows:
                 continue
 
             lineup_entries = extract_confirmed_espn_lineup(espn_summary, team_abbrev) if espn_summary and team_abbrev else []
             lineup_player_ids = resolve_lineup_player_ids(lineup_entries, roster_entries, team_id) if lineup_entries else []
+            lineup_player_ids, changed = _resolve_lineup_ids_for_game_state(
+                report_date=report_date,
+                game_id=game_id,
+                team_id=team_id,
+                pitcher_id=int(pitcher_context["id"]),
+                status=status,
+                confirmed_lineup_player_ids=lineup_player_ids,
+                lineup_locks=lineup_locks,
+            )
+            lineup_locks_changed = lineup_locks_changed or changed
             selected_rows = select_offense_rows(candidate_rows, lineup_player_ids)
             rows.extend(selected_rows)
+
+    if lineup_locks_changed:
+        save_batter_lineup_locks(lineup_locks)
 
     return rows
 

@@ -25,6 +25,7 @@ TEAM_HAND_RANK_CACHE: Dict[Tuple[int, str], Dict[int, Dict[str, int]]] = {}
 PITCHER_SEASON_RANK_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, int]]] = {}
 PARK_WEATHER_CACHE: Dict[Tuple[int, str], Optional[Dict[str, Any]]] = {}
 GAME_BVP_LINE_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, Any]]] = {}
+GAME_BATTER_LINE_CACHE: Dict[int, Dict[int, Dict[str, Any]]] = {}
 
 MLB_PARK_METADATA: Dict[int, Dict[str, Any]] = {
     1: {"name": "Angel Stadium", "lat": 33.8003, "lon": -117.8827, "roof_type": "open"},
@@ -611,6 +612,7 @@ def fetch_people_stats_map(
     season: int,
     pitch_hand: Optional[str],
     pitcher_id: Optional[int],
+    stats_end_date: Optional[dt.date] = None,
 ) -> Dict[int, Dict[str, Any]]:
     if not person_ids:
         return {}
@@ -623,6 +625,8 @@ def fetch_people_stats_map(
 
     hydrate_parts = ["season", "gameLog", "statSplits"]
     hydrate_tail = f",season={season}"
+    if stats_end_date is not None:
+        hydrate_tail = f"{hydrate_tail},endDate={stats_end_date.strftime('%Y-%m-%d')}"
     if sit_code:
         hydrate_tail = f",sitCodes=[{sit_code}]{hydrate_tail}"
     if pitcher_id:
@@ -943,11 +947,48 @@ def fetch_game_batter_vs_pitcher_stat_lines(game_id: int, pitcher_id: int) -> Di
     return stat_lines
 
 
+def extract_game_batter_stat_lines_from_boxscore(boxscore_data: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
+    stat_lines: Dict[int, Dict[str, Any]] = {}
+    for side in ("away", "home"):
+        team_block = boxscore_data.get(side) or {}
+        players = team_block.get("players") or {}
+        for raw_player_id in team_block.get("batters") or []:
+            player_id = to_int(raw_player_id)
+            if player_id is None:
+                continue
+            batting = ((players.get(f"ID{player_id}") or {}).get("stats") or {}).get("batting") or {}
+            if not batting:
+                continue
+            stat_lines[int(player_id)] = {
+                "AB": to_int(batting.get("atBats")) or 0,
+                "H": to_int(batting.get("hits")) or 0,
+                "HR": to_int(batting.get("homeRuns")) or 0,
+            }
+    return stat_lines
+
+
+def fetch_game_batter_stat_lines(game_id: int) -> Dict[int, Dict[str, Any]]:
+    game_id = int(game_id)
+    cached = GAME_BATTER_LINE_CACHE.get(game_id)
+    if cached is not None:
+        return cached
+
+    try:
+        boxscore_data = statsapi.boxscore_data(game_id)
+    except Exception:
+        boxscore_data = {}
+
+    stat_lines = extract_game_batter_stat_lines_from_boxscore(boxscore_data)
+    GAME_BATTER_LINE_CACHE[game_id] = stat_lines
+    return stat_lines
+
+
 def parse_vs_pitcher_stats(
     indexed_blocks: Dict[str, List[Dict[str, Any]]],
     *,
     report_date: Optional[dt.date] = None,
     same_day_line: Optional[Dict[str, Any]] = None,
+    subtract_same_day_from_season_splits: bool = True,
 ) -> Dict[str, Any]:
     report_year = report_date.year if report_date is not None else None
     season_splits = []
@@ -960,7 +1001,11 @@ def parse_vs_pitcher_stats(
             if report_year is not None and season_value is not None and season_value > report_year:
                 continue
             line = _stat_line_from_split_stat(split.get("stat") or {})
-            if report_year is not None and season_value == report_year:
+            if (
+                subtract_same_day_from_season_splits
+                and report_year is not None
+                and season_value == report_year
+            ):
                 line = _subtract_stat_line(line, same_day_line)
             rows.append(line)
         return aggregate_stat_lines(rows)

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from report_data import (
     extract_batter_vs_pitcher_stat_lines_from_plays,
+    fetch_people_stats_map,
     parse_vs_pitcher_stats,
     resolve_effective_report_date_and_schedule,
 )
@@ -84,6 +85,58 @@ class ReportDataDateResolutionTests(unittest.TestCase):
         self.assertEqual(stats["HR"], 1)
         self.assertEqual(stats["RBI"], 1)
         self.assertAlmostEqual(stats["AVG"], 1 / 3, places=6)
+
+    def test_fetch_people_stats_map_includes_end_date_in_hydrate(self) -> None:
+        with patch("report_data.statsapi.get", return_value={"people": [{"id": 123}]}) as get_mock:
+            fetch_people_stats_map(
+                [123],
+                season=2026,
+                pitch_hand="R",
+                pitcher_id=456,
+                stats_end_date=dt.date(2026, 7, 10),
+            )
+
+        params = get_mock.call_args.args[1]
+        self.assertIn("endDate=2026-07-10", params["hydrate"])
+        self.assertIn("sitCodes=[vr]", params["hydrate"])
+        self.assertIn("opposingPlayerId=456", params["hydrate"])
+
+    def test_parse_vs_pitcher_stats_can_skip_same_day_subtraction_for_dated_splits(self) -> None:
+        indexed_blocks = {
+            "vsPlayer": [
+                {
+                    "splits": [
+                        {
+                            "season": "2026",
+                            "stat": {
+                                "plateAppearances": 4,
+                                "atBats": 4,
+                                "hits": 2,
+                                "baseOnBalls": 0,
+                                "hitByPitch": 0,
+                                "sacFlies": 0,
+                                "totalBases": 2,
+                                "strikeOuts": 1,
+                                "homeRuns": 0,
+                                "rbi": 1,
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+
+        stats = parse_vs_pitcher_stats(
+            indexed_blocks,
+            report_date=dt.date(2026, 7, 11),
+            same_day_line={"PA": 1, "AB": 1, "H": 1, "BB": 0, "HBP": 0, "SF": 0, "TB": 1, "K": 0, "HR": 0, "RBI": 0},
+            subtract_same_day_from_season_splits=False,
+        )
+
+        self.assertEqual(stats["PA"], 4)
+        self.assertEqual(stats["AB"], 4)
+        self.assertEqual(stats["H"], 2)
+        self.assertAlmostEqual(stats["AVG"], 0.5, places=6)
 
     def test_extract_batter_vs_pitcher_stat_lines_from_plays_tracks_only_target_pitcher(self) -> None:
         plays = [

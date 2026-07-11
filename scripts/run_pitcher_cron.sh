@@ -53,6 +53,7 @@ python3 Batters.py "$REPORT_DATE"
 python3 Matchups.py "$REPORT_DATE"
 
 ROOT_FILES=(index.html batters.html matchups.html matchups-detail.html)
+LINEUP_LOCK_FILE="report_state/batter-lineup-locks.json"
 ARCHIVE_FILES=()
 for ARCHIVE_DATE in "${ARCHIVE_DATES[@]}"; do
   REPORT_KEY="${ARCHIVE_DATE//\//}"
@@ -96,6 +97,9 @@ fi
 # Publish the root entrypoints and the rolling 3-day archive window.
 git add "${ROOT_FILES[@]}"
 git add -f "${ARCHIVE_FILES[@]}"
+if [[ -f "$LINEUP_LOCK_FILE" ]]; then
+  git add -f "$LINEUP_LOCK_FILE"
+fi
 if git diff --cached --quiet; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] No GH Pages root HTML change to commit."
   exit 0

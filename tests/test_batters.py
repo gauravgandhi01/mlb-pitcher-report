@@ -296,6 +296,239 @@ class BattersLogicTests(unittest.TestCase):
         sorted_df = sort_batters_for_report(scored)
         self.assertEqual(list(sorted_df["Batter"]), ["Pregame Bat", "Final Bat", "Live Bat"])
 
+    def test_current_day_game_log_does_not_qualify_hot_streaks(self) -> None:
+        report_date = dt.date(2026, 7, 11)
+        people_by_id = {
+            1: {
+                "id": 1,
+                "fullName": "Today Hot",
+                "stats": [
+                    {
+                        "type": {"displayName": "gameLog"},
+                        "splits": [
+                            {
+                                "date": "2026-07-11",
+                                "game": {"gamePk": 99},
+                                "stat": {
+                                    "atBats": 4,
+                                    "hits": 1,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "plateAppearances": 4,
+                                    "totalBases": 1,
+                                    "strikeOuts": 1,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            },
+                            {
+                                "date": "2026-07-10",
+                                "game": {"gamePk": 98},
+                                "stat": {
+                                    "atBats": 4,
+                                    "hits": 1,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "plateAppearances": 4,
+                                    "totalBases": 1,
+                                    "strikeOuts": 1,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            },
+                            {
+                                "date": "2026-07-09",
+                                "game": {"gamePk": 97},
+                                "stat": {
+                                    "atBats": 4,
+                                    "hits": 1,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "plateAppearances": 4,
+                                    "totalBases": 1,
+                                    "strikeOuts": 1,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            },
+                            {
+                                "date": "2026-07-08",
+                                "game": {"gamePk": 96},
+                                "stat": {
+                                    "atBats": 4,
+                                    "hits": 0,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "plateAppearances": 4,
+                                    "totalBases": 0,
+                                    "strikeOuts": 1,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        "type": {"displayName": "vsPlayer"},
+                        "splits": [
+                            {
+                                "season": "2026",
+                                "stat": {
+                                    "plateAppearances": 4,
+                                    "atBats": 4,
+                                    "hits": 2,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "totalBases": 2,
+                                    "strikeOuts": 0,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            }
+                        ],
+                    },
+                ],
+            }
+        }
+
+        rows = batters_module.build_candidate_rows(
+            team_id=1,
+            team_name="Team A",
+            team_abbrev="TMA",
+            opponent_id=2,
+            opponent_name="Team B",
+            opponent_abbrev="TMB",
+            pitcher_name="Pitcher",
+            game_total=8.5,
+            pitch_hand="R",
+            pitcher_id=None,
+            start_time="7:05p",
+            status="Scheduled",
+            game_id=99,
+            team_score=None,
+            opponent_score=None,
+            team_result="",
+            total_result="",
+            final_total_runs=None,
+            roster_entries=[{"person": {"id": 1, "fullName": "Today Hot"}}],
+            people_by_id=people_by_id,
+            report_date=report_date,
+        )
+
+        self.assertEqual(rows[0]["Hit Stk"], 2)
+        hot = build_hot_streak_matchup_section(apply_hot_scores(rows))
+        self.assertTrue(hot.empty)
+
+    def test_final_game_markers_use_current_game_result_lines(self) -> None:
+        report_date = dt.date(2026, 7, 11)
+        people_by_id = {
+            1: {
+                "id": 1,
+                "fullName": "Final Marker",
+                "stats": [
+                    {
+                        "type": {"displayName": "gameLog"},
+                        "splits": [
+                            {
+                                "date": "2026-07-10",
+                                "game": {"gamePk": 98},
+                                "stat": {
+                                    "atBats": 4,
+                                    "hits": 1,
+                                    "baseOnBalls": 0,
+                                    "hitByPitch": 0,
+                                    "sacFlies": 0,
+                                    "plateAppearances": 4,
+                                    "totalBases": 1,
+                                    "strikeOuts": 1,
+                                    "homeRuns": 0,
+                                    "rbi": 0,
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        }
+
+        rows = batters_module.build_candidate_rows(
+            team_id=1,
+            team_name="Team A",
+            team_abbrev="TMA",
+            opponent_id=2,
+            opponent_name="Team B",
+            opponent_abbrev="TMB",
+            pitcher_name="Pitcher",
+            game_total=8.5,
+            pitch_hand="R",
+            pitcher_id=None,
+            start_time="7:05p",
+            status="Final",
+            game_id=99,
+            team_score=5,
+            opponent_score=3,
+            team_result="win",
+            total_result="under",
+            final_total_runs=8,
+            roster_entries=[{"person": {"id": 1, "fullName": "Final Marker"}}],
+            people_by_id=people_by_id,
+            report_date=report_date,
+            current_game_batter_lines={1: {"H": 1, "HR": 1}},
+        )
+
+        self.assertEqual(rows[0]["Game Hit Result"], "hit")
+        self.assertEqual(rows[0]["Game Home Run Result"], "home-run")
+
+    def test_lineup_lock_reuses_pregame_ids_after_final(self) -> None:
+        locks = {}
+        pregame_ids = list(range(10, 19))
+
+        selected_ids, changed = batters_module._resolve_lineup_ids_for_game_state(
+            report_date="07/11/2026",
+            game_id=100,
+            team_id=200,
+            pitcher_id=300,
+            status="Pre-Game",
+            confirmed_lineup_player_ids=pregame_ids,
+            lineup_locks=locks,
+        )
+        self.assertTrue(changed)
+        self.assertEqual(selected_ids, pregame_ids)
+
+        selected_ids, changed = batters_module._resolve_lineup_ids_for_game_state(
+            report_date="07/11/2026",
+            game_id=100,
+            team_id=200,
+            pitcher_id=300,
+            status="Final",
+            confirmed_lineup_player_ids=list(range(90, 99)),
+            lineup_locks=locks,
+        )
+        self.assertFalse(changed)
+        self.assertEqual(selected_ids, pregame_ids)
+
+    def test_late_final_lineup_is_ignored_without_pregame_lock(self) -> None:
+        locks = {}
+
+        selected_ids, changed = batters_module._resolve_lineup_ids_for_game_state(
+            report_date="07/11/2026",
+            game_id=100,
+            team_id=200,
+            pitcher_id=300,
+            status="Final",
+            confirmed_lineup_player_ids=list(range(90, 99)),
+            lineup_locks=locks,
+        )
+
+        self.assertFalse(changed)
+        self.assertEqual(selected_ids, [])
+        self.assertEqual(locks, {})
+
     def test_build_active_hit_streak_section_filters_and_sorts_live_games_last(self) -> None:
         df = pd.DataFrame(
             [
