@@ -2795,26 +2795,6 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     report_df = report_df[ordered_columns + remaining_columns]
     return report_df.fillna("-")
 
-
-def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str, matchup_href: str) -> str:
-    tabs = [
-        ("pitchers", "Pitchers", pitcher_href),
-        ("batters", "Batters", batter_href),
-        ("matchups", "Matchups", matchup_href),
-    ]
-    links: List[str] = []
-    for tab_key, label, href in tabs:
-        classes = ["report-tab"]
-        if tab_key == active_tab:
-            classes.append("active")
-        links.append(
-            '<a class="' + " ".join(classes) + '" href="' + escape(href, quote=True) + '">'
-            + escape(label)
-            + "</a>"
-        )
-    return '<nav class="report-tabs" aria-label="Report pages">' + "".join(links) + "</nav>"
-
-
 def write_to_html(
     final_df: pd.DataFrame,
     report_key: str,

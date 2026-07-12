@@ -1181,26 +1181,6 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame, *, fo
 
     return str(table)
 
-
-def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str, matchup_href: str) -> str:
-    tabs = [
-        ("pitchers", "Pitchers", pitcher_href),
-        ("batters", "Batters", batter_href),
-        ("matchups", "Matchups", matchup_href),
-    ]
-    links: List[str] = []
-    for tab_key, label, href in tabs:
-        classes = ["report-tab"]
-        if tab_key == active_tab:
-            classes.append("active")
-        links.append(
-            '<a class="' + " ".join(classes) + '" href="' + escape(href, quote=True) + '">'
-            + escape(label)
-            + "</a>"
-        )
-    return '<nav class="report-tabs" aria-label="Report pages">' + "".join(links) + "</nav>"
-
-
 def write_html(
     streak_df: pd.DataFrame,
     hot_df: pd.DataFrame,

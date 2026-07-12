@@ -17,7 +17,6 @@ from mlb_pitcher_report.shared.report_data import (
     extract_espn_odds,
     fetch_game_batter_vs_pitcher_stat_lines,
     extract_game_logs,
-    extract_last_game_lineup_player_ids_from_boxscore,
     fetch_last_game_lineup_player_ids,
     fetch_park_context,
     fetch_people_stats_map,
@@ -33,7 +32,6 @@ from mlb_pitcher_report.shared.report_data import (
     format_local_start_time,
     index_stat_blocks,
     parse_date,
-    parse_team_split_stats,
     parse_vs_pitcher_stats,
     resolve_date_input,
     resolve_effective_report_date_and_schedule,
@@ -378,26 +376,6 @@ def _pitcher_chip_label(name: str, hand: Optional[str]) -> str:
         return "TBD"
     hand_text = f" ({hand})" if str(hand or "").strip() else ""
     return f"{last_name}{hand_text}"
-
-
-def _build_report_tabs(active_tab: str, pitcher_href: str, batter_href: str, matchup_href: str) -> str:
-    tabs = [
-        ("pitchers", "Pitchers", pitcher_href),
-        ("batters", "Batters", batter_href),
-        ("matchups", "Matchups", matchup_href),
-    ]
-    links: List[str] = []
-    for tab_key, label, href in tabs:
-        classes = ["report-tab"]
-        if tab_key == active_tab:
-            classes.append("active")
-        links.append(
-            '<a class="' + " ".join(classes) + '" href="' + escape(href, quote=True) + '">'
-            + escape(label)
-            + "</a>"
-        )
-    return '<nav class="report-tabs" aria-label="Report pages">' + "".join(links) + "</nav>"
-
 
 def _build_matchup_view_tabs(active_view: str, summary_href: str, detail_href: str) -> str:
     tabs = [
