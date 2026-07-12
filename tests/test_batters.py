@@ -900,11 +900,8 @@ class BattersLogicTests(unittest.TestCase):
             list(formatted.columns),
             [
                 "Batter",
-                "Team",
                 "Opponent",
                 "Pitcher",
-                "Total",
-                "Status",
                 "Hit Stk",
                 f"Last {RECENT_GAMES} AVG",
                 f"Last {RECENT_WINDOW_DAYS} AVG",
@@ -916,8 +913,11 @@ class BattersLogicTests(unittest.TestCase):
         self.assertEqual(formatted.iloc[0][f"Last {RECENT_WINDOW_DAYS} AVG"], "0.301")
         self.assertNotIn(f"Last {RECENT_GAMES} H-AB", formatted.columns)
         self.assertNotIn("Season H-AB", formatted.columns)
-        self.assertIn('team-result team-result-win', formatted.iloc[0]["Team"])
-        self.assertIn('total-result total-result-over', formatted.iloc[0]["Total"])
+        self.assertIn("batter-team-badge", formatted.iloc[0]["Batter"])
+        self.assertIn("total-badge total-badge-strong", formatted.iloc[0]["Opponent"])
+        self.assertIn("status-pill status-final", formatted.iloc[0]["Opponent"])
+        self.assertNotIn("team-result", formatted.iloc[0]["Batter"])
+        self.assertNotIn("total-result", formatted.iloc[0]["Opponent"])
 
 
 class BattersRenderTests(unittest.TestCase):
@@ -971,6 +971,13 @@ class BattersRenderTests(unittest.TestCase):
 
             self.assertIn('class="date-nav"', archive_html)
             self.assertIn("hero-nav-row", archive_html)
+            self.assertIn('class="featured-tables"', archive_html)
+            self.assertEqual(archive_html.count('class="featured-tables"'), 2)
+            self.assertIn("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);", archive_html)
+            self.assertIn(".featured-tables table.pitchers-table {", archive_html)
+            self.assertIn("min-width: 0;", archive_html)
+            self.assertIn("<h2>Active Hit Streaks 6+ Games</h2>", archive_html)
+            self.assertIn("<h2>Home Run History vs Scheduled Pitcher</h2>", archive_html)
             self.assertIn(".date-pill-label {", archive_html)
             self.assertIn("display: none;", archive_html)
             self.assertIn("justify-content: flex-end;", archive_html)

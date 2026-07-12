@@ -60,11 +60,8 @@ HOME_RUN_MIN_HR = 1
 HOME_RUN_SECTION_LIMIT = 20
 REPORT_COLUMNS = [
     "Batter",
-    "Team",
     "Opponent",
     "Pitcher",
-    "Total",
-    "Status",
     "Hit Stk",
     f"Last {RECENT_GAMES} AVG",
     f"Last {RECENT_WINDOW_DAYS} AVG",
@@ -74,11 +71,8 @@ REPORT_COLUMNS = [
 ]
 HOME_RUN_REPORT_COLUMNS = [
     "Batter",
-    "Team",
     "Opponent",
     "Pitcher",
-    "Total",
-    "Status",
     "VsP HR",
     "VsP PA",
     "VsP HR/PA",
@@ -594,44 +588,54 @@ def _final_total_result(status: Any, total: Any, away_score: Any, home_score: An
 
 
 def _render_team_result_badge(result: Any) -> str:
-    result_text = str(result or "").strip().lower()
-    if result_text == "win":
-        return '<span class="team-result team-result-win" title="Won">W</span>'
-    if result_text == "loss":
-        return '<span class="team-result team-result-loss" title="Lost">L</span>'
     return ""
 
 
 def _render_total_cell(total: Any, result: Any = "", final_runs: Any = None) -> str:
+    return _format_total(total)
+
+
+def _render_total_badge(total: Any) -> str:
     total_text = _format_total(total)
-    result_text = str(result or "").strip().lower()
     if not total_text:
         return ""
-    if result_text not in {"over", "under", "push"}:
-        return total_text
-
-    label_map = {"over": "O", "under": "U", "push": "P"}
-    title_map = {
-        "over": f"Final total {final_runs} went over {total_text}",
-        "under": f"Final total {final_runs} stayed under {total_text}",
-        "push": f"Final total {final_runs} pushed {total_text}",
-    }
+    total_class = _classify_total_cell(total)
+    class_suffix = {
+        "cell-elite": "total-badge-elite",
+        "cell-strong": "total-badge-strong",
+        "cell-weak": "total-badge-weak",
+    }.get(total_class, "total-badge-neutral")
     return (
-        f'<span class="total-cell" title="{escape(title_map[result_text], quote=True)}">'
-        f'<span class="total-value">{escape(total_text)}</span>'
-        f'<span class="total-result total-result-{escape(result_text, quote=True)}">{label_map[result_text]}</span>'
+        f'<span class="total-badge {escape(class_suffix, quote=True)}" '
+        f'title="Game total {escape(total_text, quote=True)}">'
+        f"{escape(total_text)}"
         "</span>"
     )
 
 
 def _status_badge(status: Any) -> str:
-    status_text = str(status or "").strip() or "Unknown"
+    status_text = str(status or "").strip()
+    if not status_text:
+        return ""
     status_slug = (
         status_text.lower()
         .replace(" ", "-")
         .replace("/", "-")
     )
-    return f'<span class="status-pill status-{escape(status_slug, quote=True)}">{escape(status_text)}</span>'
+    label_map = {
+        "Pre-Game": "Pre",
+        "Scheduled": "Sched",
+        "Warmup": "Warm",
+        "In Progress": "Live",
+        "Final": "Final",
+    }
+    label = label_map.get(status_text, status_text)
+    title = f"Game status: {status_text}"
+    return (
+        f'<span class="status-pill status-{escape(status_slug, quote=True)}" '
+        f'title="{escape(title, quote=True)}" aria-label="{escape(title, quote=True)}">'
+        f"{escape(label)}</span>"
+    )
 
 
 def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any, result: Any = "") -> str:
@@ -647,10 +651,9 @@ def _render_team_cell(team_name: Any, team_abbrev: Any, team_id: Any, result: An
         + logo_url
         + '" alt="'
         + title
-        + ' logo"></span><span class="team-abbrev">'
-        + escape(abbrev_text)
+        + ' logo"></span>'
         + result_html
-        + "</span></span>"
+        + "</span>"
     )
 
 
@@ -659,6 +662,8 @@ def _render_opponent_cell(
     opponent_abbrev: Any,
     opponent_id: Any,
     start_time: Any,
+    status: Any = "",
+    total: Any = None,
 ) -> str:
     name_text = str(opponent_name or "").strip()
     abbrev_text = str(opponent_abbrev or "").strip() or name_text[:3].upper()
@@ -670,6 +675,17 @@ def _render_opponent_cell(
         if time_text
         else ""
     )
+    status_html = _status_badge(status)
+    total_html = _render_total_badge(total)
+    meta_html = (
+        '<span class="opp-meta">'
+        + time_html
+        + status_html
+        + total_html
+        + "</span>"
+        if time_html or status_html or total_html
+        else ""
+    )
     return (
         '<span class="opp-cell" title="'
         + title
@@ -677,10 +693,8 @@ def _render_opponent_cell(
         + logo_url
         + '" alt="'
         + title
-        + ' logo"></span><span class="team-abbrev">'
-        + escape(abbrev_text)
-        + "</span></span>"
-        + time_html
+        + ' logo"></span></span>'
+        + meta_html
         + "</span>"
     )
 
@@ -783,9 +797,35 @@ def _resolve_game_home_run_result(
     return "no-home-run"
 
 
-def _render_batter_name(name: Any, game_result: Any = "", *, marker_context: str = "hit") -> str:
+def _render_batter_name(
+    name: Any,
+    game_result: Any = "",
+    *,
+    marker_context: str = "hit",
+    team_name: Any = "",
+    team_abbrev: Any = "",
+    team_id: Any = None,
+) -> str:
     name_text = str(name or "").strip()
     result_text = str(game_result or "").strip().lower()
+    team_name_text = str(team_name or "").strip()
+    team_abbrev_text = str(team_abbrev or "").strip() or team_name_text[:3].upper()
+    team_logo = ""
+    if team_name_text or team_abbrev_text or team_id is not None:
+        logo_url = escape(
+            get_team_logo_src(team_id=team_id, team_abbrev=team_abbrev_text, team_name=team_name_text),
+            quote=True,
+        )
+        team_title = escape(team_name_text or team_abbrev_text, quote=True)
+        team_logo = (
+            '<span class="team-badge batter-team-badge" title="'
+            + team_title
+            + '"><img class="team-logo" src="'
+            + logo_url
+            + '" alt="'
+            + team_title
+            + ' logo"></span>'
+        )
     badge = ""
     if marker_context == "home_run":
         if result_text == "home-run":
@@ -799,7 +839,10 @@ def _render_batter_name(name: Any, game_result: Any = "", *, marker_context: str
             badge = '<span class="batter-game-mark batter-game-mark-no-hit" title="No hit in this final game">X</span>'
     return (
         '<span class="batter-name">'
+        + team_logo
+        + '<span class="batter-name-text">'
         + escape(name_text)
+        + "</span>"
         + badge
         + "</span>"
     )
@@ -827,31 +870,44 @@ def format_report_dataframe(
         if column_name not in formatted.columns:
             formatted[column_name] = default_value
     formatted["Batter"] = [
-        _render_batter_name(batter_name, game_result, marker_context=marker_context)
-        for batter_name, game_result in zip(
+        _render_batter_name(
+            batter_name,
+            game_result,
+            marker_context=marker_context,
+            team_name=team_name,
+            team_abbrev=team_abbrev,
+            team_id=team_id,
+        )
+        for batter_name, game_result, team_name, team_abbrev, team_id in zip(
             formatted["Batter"],
             formatted.get(game_result_column, pd.Series("", index=formatted.index)),
+            formatted.get("Team", pd.Series("", index=formatted.index)),
+            formatted.get("Team Abbrev", pd.Series("", index=formatted.index)),
+            formatted.get("Team Id", pd.Series(pd.NA, index=formatted.index)),
         )
     ]
     formatted["Pitcher"] = formatted["Pitcher"].apply(
         lambda value: '<span class="pitcher-name">' + escape(_format_pitcher_last_name(value)) + "</span>"
     )
-    formatted["Team"] = [
-        _render_team_cell(team_name, team_abbrev, team_id, team_result)
-        for team_name, team_abbrev, team_id, team_result in zip(
-            formatted["Team"],
-            formatted["Team Abbrev"],
-            formatted["Team Id"],
-            formatted["Team Result"],
-        )
-    ]
+    if "Team" in formatted.columns:
+        formatted["Team"] = [
+            _render_team_cell(team_name, team_abbrev, team_id, team_result)
+            for team_name, team_abbrev, team_id, team_result in zip(
+                formatted["Team"],
+                formatted.get("Team Abbrev", pd.Series("", index=formatted.index)),
+                formatted.get("Team Id", pd.Series(pd.NA, index=formatted.index)),
+                formatted.get("Team Result", pd.Series("", index=formatted.index)),
+            )
+        ]
     formatted["Opponent"] = [
-        _render_opponent_cell(opponent_name, opponent_abbrev, opponent_id, start_time)
-        for opponent_name, opponent_abbrev, opponent_id, start_time in zip(
+        _render_opponent_cell(opponent_name, opponent_abbrev, opponent_id, start_time, status, total)
+        for opponent_name, opponent_abbrev, opponent_id, start_time, status, total in zip(
             formatted["Opponent"],
             formatted["Opponent Abbrev"],
             formatted["Opponent Id"],
             formatted["Start"],
+            formatted["Status"],
+            formatted.get("Total", pd.Series(pd.NA, index=formatted.index)),
         )
     ]
     formatted["Status"] = formatted["Status"].apply(_status_badge)
@@ -945,10 +1001,22 @@ def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame, *, fo
         return table_html
 
     header_cells = thead.find_all("th")
+    compact_header_labels = {
+        "Opponent": "Opp",
+        "Pitcher": "P",
+        "Total": "Tot",
+        f"Last {RECENT_GAMES} AVG": f"L{RECENT_GAMES} AVG",
+        f"Last {RECENT_WINDOW_DAYS} AVG": f"L{RECENT_WINDOW_DAYS} AVG",
+        "Season AVG": "Season",
+        "VsP AVG": "VsP",
+        "VsP HR/PA": "HR/PA",
+    }
     for col_name, col_index in column_map.items():
         if col_index >= len(header_cells):
             continue
         header_cell = header_cells[col_index]
+        if col_name in compact_header_labels:
+            header_cell.string = compact_header_labels[col_name]
         group_class = header_group_map.get(col_name)
         if group_class:
             _add_tag_class(header_cell, group_class)
@@ -1104,7 +1172,7 @@ def write_html(
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      padding: 18px;
+      padding: 12px;
       background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
       color: var(--text);
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -1113,50 +1181,50 @@ def write_html(
       max-width: 1560px;
       margin: 0 auto;
       display: grid;
-      gap: 18px;
+      gap: 10px;
     }}
     .hero {{
       background: linear-gradient(135deg, #0f766e 0%, #0369a1 100%);
       color: #ffffff;
-      border-radius: 14px;
-      padding: 22px 24px;
+      border-radius: 10px;
+      padding: 14px 16px;
       box-shadow: 0 10px 35px rgba(3, 105, 161, 0.20);
     }}
     .hero h1 {{
-      margin: 0 0 8px;
-      font-size: 28px;
-      letter-spacing: 0.2px;
+      margin: 0 0 4px;
+      font-size: 22px;
+      letter-spacing: 0;
     }}
     .hero p {{
       margin: 0;
       opacity: 0.95;
-      font-size: 13px;
+      font-size: 11px;
     }}
     .hero-nav-row {{
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 10px 14px;
-      margin-top: 14px;
+      gap: 8px 10px;
+      margin-top: 10px;
     }}
     .report-tabs {{
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
       margin-top: 0;
     }}
     .report-tab {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 8px 14px;
+      padding: 6px 11px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1187,13 +1255,13 @@ def write_html(
       display: inline-flex;
       align-items: center;
       gap: 0;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.12);
       color: #ffffff;
       text-decoration: none;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.01em;
       transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -1215,25 +1283,25 @@ def write_html(
     }}
     .date-pill-date {{
       opacity: 0.94;
-      font-size: 11px;
+      font-size: 10px;
       font-variant-numeric: tabular-nums;
     }}
     .panel {{
       background: var(--panel);
-      border-radius: 14px;
+      border-radius: 10px;
       border: 1px solid var(--line);
       box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
       overflow: hidden;
     }}
     .panel-legend {{
-      padding: 10px 14px;
+      padding: 7px 10px;
     }}
     .panel-header {{
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 14px 16px 10px;
+      gap: 8px;
+      padding: 8px 11px 7px;
       border-bottom: 1px solid var(--line);
       background: #fbfdff;
     }}
@@ -1255,25 +1323,34 @@ def write_html(
     }}
     .panel-header h2 {{
       margin: 0;
-      font-size: 18px;
+      font-size: 15px;
     }}
     .panel-header .note {{
       color: var(--muted);
-      font-size: 12px;
+      font-size: 10px;
       text-align: right;
     }}
     .table-wrap {{
       overflow-y: auto;
       overflow-x: auto;
-      max-height: 78vh;
+      max-height: 82vh;
+    }}
+    .featured-tables {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+    }}
+    .featured-tables .table-wrap {{
+      max-height: min(58vh, 460px);
     }}
     .table-legend {{
       display: flex;
       flex-wrap: wrap;
-      gap: 10px 14px;
+      gap: 6px 10px;
       align-items: center;
-      padding: 8px 12px 0;
-      font-size: 11px;
+      padding: 5px 8px 0;
+      font-size: 10px;
       color: #334155;
     }}
     .page-legend {{
@@ -1282,7 +1359,7 @@ def write_html(
     .legend-item {{
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       font-weight: 600;
     }}
     .legend-swatch {{
@@ -1306,15 +1383,19 @@ def write_html(
     }}
     .legend-note {{
       color: #475569;
-      font-size: 11px;
+      font-size: 10px;
     }}
     table.pitchers-table {{
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      font-size: 11px;
+      font-size: 10px;
       table-layout: auto;
-      min-width: 980px;
+      min-width: 680px;
+    }}
+    .featured-tables table.pitchers-table {{
+      min-width: 0;
+      font-size: 9px;
     }}
     table.pitchers-table thead th {{
       position: sticky;
@@ -1323,29 +1404,29 @@ def write_html(
       background: var(--header);
       border-bottom: 1px solid var(--line);
       color: #0b2540;
-      padding: 6px 4px;
+      padding: 4px 3px;
       text-align: center;
       white-space: nowrap;
-      line-height: 1.15;
+      line-height: 1.05;
     }}
     table.pitchers-table thead th.group-context {{
-      border-top: 4px solid var(--group-context);
+      border-top: 3px solid var(--group-context);
       background: color-mix(in srgb, var(--group-context) 10%, var(--header));
     }}
     table.pitchers-table thead th.group-batter {{
-      border-top: 4px solid var(--group-batter);
+      border-top: 3px solid var(--group-batter);
       background: color-mix(in srgb, var(--group-batter) 10%, var(--header));
     }}
     table.pitchers-table thead th.group-matchup {{
-      border-top: 4px solid var(--group-matchup);
+      border-top: 3px solid var(--group-matchup);
       background: color-mix(in srgb, var(--group-matchup) 11%, var(--header));
     }}
     table.pitchers-table tbody td {{
       border-bottom: 1px solid var(--line);
-      padding: 6px 5px;
+      padding: 3px 4px;
       text-align: center;
       white-space: nowrap;
-      line-height: 1.12;
+      line-height: 1.05;
       vertical-align: middle;
     }}
     table.pitchers-table tbody td.group-context {{
@@ -1394,41 +1475,51 @@ def write_html(
     table.pitchers-table tbody tr.row-final td .status-pill {{
       filter: saturate(0.8) brightness(0.96);
     }}
+    .featured-tables table.pitchers-table thead th {{
+      padding: 3px 2px;
+    }}
+    .featured-tables table.pitchers-table tbody td {{
+      padding: 2px 2px;
+    }}
     table.pitchers-table th.column-name,
     table.pitchers-table td.column-name {{
-      min-width: 136px;
-      text-align: center;
-      white-space: normal;
-      overflow-wrap: anywhere;
+      width: 1%;
+      min-width: 0;
+      text-align: left;
+      white-space: nowrap;
+      overflow-wrap: normal;
     }}
     table.pitchers-table th.column-team,
     table.pitchers-table td.column-team {{
-      min-width: 68px;
+      min-width: 36px;
+      max-width: 42px;
     }}
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {{
-      min-width: 84px;
+      min-width: 108px;
+      max-width: 126px;
     }}
     table.pitchers-table th.column-pitcher,
     table.pitchers-table td.column-pitcher {{
-      min-width: 76px;
-      max-width: 84px;
-      padding-left: 3px;
-      padding-right: 3px;
+      width: 1%;
+      min-width: 0;
+      max-width: none;
+      padding-left: 2px;
+      padding-right: 2px;
       text-align: center;
       white-space: nowrap;
       overflow-wrap: normal;
     }}
     table.pitchers-table th.column-total,
     table.pitchers-table td.column-total {{
-      min-width: 64px;
-      max-width: 74px;
-      padding-left: 3px;
-      padding-right: 3px;
+      min-width: 50px;
+      max-width: 58px;
+      padding-left: 2px;
+      padding-right: 2px;
     }}
     table.pitchers-table th.column-status,
     table.pitchers-table td.column-status {{
-      min-width: 78px;
+      display: none;
     }}
     table.pitchers-table tbody tr:nth-child(even) {{
       background: #f8fbff;
@@ -1468,19 +1559,24 @@ def write_html(
     .batter-name {{
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      text-align: center;
-      width: 100%;
+      justify-content: flex-start;
+      gap: 4px;
+      text-align: left;
+      width: auto;
+      white-space: nowrap;
+    }}
+    .batter-name-text {{
+      min-width: 0;
+      white-space: nowrap;
     }}
     .batter-game-mark {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 16px;
-      height: 16px;
+      min-width: 14px;
+      height: 14px;
       border-radius: 999px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 800;
       line-height: 1;
       border: 1px solid transparent;
@@ -1496,16 +1592,16 @@ def write_html(
       color: #991b1b;
     }}
     .pitcher-name {{
-      font-size: 12px;
-      letter-spacing: -0.01em;
+      font-size: 9px;
+      letter-spacing: 0;
     }}
     .team-cell,
     .opp-cell {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      line-height: 1.08;
+      gap: 3px;
+      line-height: 1;
       text-align: center;
     }}
     .opp-cell {{
@@ -1515,18 +1611,26 @@ def write_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
-      border-radius: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
       background: #ffffff;
       box-shadow: inset 0 0 0 1px #e2e8f0;
       flex: 0 0 auto;
     }}
+    .batter-team-badge {{
+      width: 22px;
+      height: 22px;
+    }}
     .team-logo {{
       display: block;
-      width: 26px;
-      height: 26px;
+      width: 21px;
+      height: 21px;
       object-fit: contain;
+    }}
+    .batter-team-badge .team-logo {{
+      width: 19px;
+      height: 19px;
     }}
     .team-abbrev {{
       display: inline-flex;
@@ -1537,89 +1641,75 @@ def write_html(
       letter-spacing: 0.03em;
       color: #0f172a;
     }}
-    .team-result {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 16px;
-      height: 16px;
-      border-radius: 999px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      border: 1px solid transparent;
-      line-height: 1;
-    }}
-    .team-result.team-result-win {{
-      background: rgba(22, 163, 74, 0.12);
-      border-color: rgba(22, 163, 74, 0.22);
-      color: #166534;
-    }}
-    .team-result.team-result-loss {{
-      background: rgba(220, 38, 38, 0.10);
-      border-color: rgba(220, 38, 38, 0.18);
-      color: #991b1b;
-    }}
     .opp-team {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: 3px;
+    }}
+    .opp-meta {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-width: 0;
     }}
     .opp-time {{
       display: inline-block;
-      padding: 1px 6px;
+      padding: 1px 4px;
       border-radius: 999px;
       background: #f1f5f9;
       color: #334155;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
       letter-spacing: 0.01em;
     }}
-    .total-cell {{
+    .total-badge {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-    }}
-    .total-value {{
-      display: inline-block;
-    }}
-    .total-result {{
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 16px;
-      height: 16px;
+      min-width: 25px;
+      height: 14px;
+      padding: 0 5px;
       border-radius: 999px;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 800;
-      letter-spacing: 0.02em;
       border: 1px solid transparent;
       line-height: 1;
+      font-variant-numeric: tabular-nums;
     }}
-    .total-result.total-result-over {{
-      background: rgba(190, 24, 93, 0.10);
-      border-color: rgba(190, 24, 93, 0.18);
-      color: #9d174d;
+    .total-badge.total-badge-elite {{
+      background: #dcfce7;
+      border-color: rgba(22, 163, 74, 0.26);
+      color: #14532d;
     }}
-    .total-result.total-result-under {{
-      background: rgba(14, 116, 144, 0.10);
-      border-color: rgba(14, 116, 144, 0.18);
-      color: #155e75;
+    .total-badge.total-badge-strong {{
+      background: #fef9c3;
+      border-color: rgba(202, 138, 4, 0.26);
+      color: #713f12;
     }}
-    .total-result.total-result-push {{
-      background: rgba(71, 85, 105, 0.10);
-      border-color: rgba(71, 85, 105, 0.18);
-      color: #475569;
+    .total-badge.total-badge-weak {{
+      background: #fee2e2;
+      border-color: rgba(220, 38, 38, 0.24);
+      color: #7f1d1d;
+    }}
+    .total-badge.total-badge-neutral {{
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
     }}
     .status-pill {{
-      display: inline-block;
-      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 14px;
+      padding: 0 4px;
       border-radius: 999px;
-      font-weight: 600;
-      font-size: 12px;
+      font-weight: 800;
+      font-size: 8px;
       border: 1px solid transparent;
+      line-height: 1;
     }}
     .status-pill.status-pre-game,
     .status-pill.status-scheduled,
@@ -1649,10 +1739,10 @@ def write_html(
         padding: 12px;
       }}
       .hero {{
-        padding: 18px;
+        padding: 12px;
       }}
       .hero h1 {{
-        font-size: 23px;
+        font-size: 20px;
       }}
       .hero-nav-row {{
         align-items: stretch;
@@ -1670,8 +1760,17 @@ def write_html(
       .panel-header .note {{
         text-align: left;
       }}
+      .featured-tables {{
+        grid-template-columns: 1fr;
+      }}
+      .featured-tables .table-wrap {{
+        max-height: 72vh;
+      }}
       table.pitchers-table {{
-        min-width: 860px;
+        min-width: 640px;
+      }}
+      .featured-tables table.pitchers-table {{
+        min-width: 640px;
       }}
     }}
   </style>
@@ -1692,49 +1791,53 @@ def write_html(
         <span class="legend-item legend-context"><span class="legend-swatch"></span>Context</span>
         <span class="legend-item legend-batter"><span class="legend-swatch"></span>Form</span>
         <span class="legend-item legend-matchup"><span class="legend-swatch"></span>Matchup</span>
-        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Green/yellow/red = stronger to weaker totals or AVG. Final rows add subtle W/L and O/U markers.</span>
+        <span class="legend-note">Gray rail = fallback pool. Orange/gray rows = started or final. Opponent chips show time, status, and game total. Green/yellow/red = stronger to weaker totals or AVG.</span>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header section-hot">
-        <h2>Hot Streaks With Pitcher History</h2>
-        <div class="note">{STREAK_SECTION_MIN}+ hit streak, {MATCHUP_MIN_PA}+ PA vs pitcher.</div>
-      </div>
-      <div class="table-wrap">
-        {hot_table}
-      </div>
-    </section>
+    <div class="featured-tables">
+      <section class="panel">
+        <div class="panel-header section-hot">
+          <h2>Hot Streaks With Pitcher History</h2>
+          <div class="note">{STREAK_SECTION_MIN}+ hit streak, {MATCHUP_MIN_PA}+ PA vs pitcher.</div>
+        </div>
+        <div class="table-wrap">
+          {hot_table}
+        </div>
+      </section>
 
-    <section class="panel">
-      <div class="panel-header section-matchup">
-        <h2>Good Historical Matchups</h2>
-        <div class="note">Best direct AVG vs scheduled pitcher.</div>
-      </div>
-      <div class="table-wrap">
-        {matchup_table}
-      </div>
-    </section>
+      <section class="panel">
+        <div class="panel-header section-matchup">
+          <h2>Good Historical Matchups</h2>
+          <div class="note">Best direct AVG vs scheduled pitcher.</div>
+        </div>
+        <div class="table-wrap">
+          {matchup_table}
+        </div>
+      </section>
+    </div>
 
-    <section class="panel">
-      <div class="panel-header section-streak">
-        <h2>Active Hit Streaks 6+ Games</h2>
-        <div class="note">{ACTIVE_STREAK_SECTION_MIN}+ active hit streak.</div>
-      </div>
-      <div class="table-wrap">
-        {streak_table}
-      </div>
-    </section>
+    <div class="featured-tables">
+      <section class="panel">
+        <div class="panel-header section-streak">
+          <h2>Active Hit Streaks 6+ Games</h2>
+          <div class="note">{ACTIVE_STREAK_SECTION_MIN}+ active hit streak.</div>
+        </div>
+        <div class="table-wrap">
+          {streak_table}
+        </div>
+      </section>
 
-    <section class="panel">
-      <div class="panel-header section-homer">
-        <h2>Home Run History vs Scheduled Pitcher</h2>
-        <div class="note">{HOME_RUN_MIN_HR}+ HR and {MATCHUP_MIN_PA}+ PA vs pitcher, sorted by VsP HR/PA.</div>
-      </div>
-      <div class="table-wrap">
-        {home_run_table}
-      </div>
-    </section>
+      <section class="panel">
+        <div class="panel-header section-homer">
+          <h2>Home Run History vs Scheduled Pitcher</h2>
+          <div class="note">{HOME_RUN_MIN_HR}+ HR and {MATCHUP_MIN_PA}+ PA vs pitcher, sorted by VsP HR/PA.</div>
+        </div>
+        <div class="table-wrap">
+          {home_run_table}
+        </div>
+      </section>
+    </div>
   </div>
 </body>
 </html>
