@@ -525,6 +525,58 @@
       color: #166534;
       border-color: #86efac;
     }
+    .matchup-k-cell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .matchup-k-cell.matchup-k-has-lines {
+      cursor: help;
+    }
+    .matchup-k-popup {
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }
+    .matchup-k-popup::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }
+    .matchup-k-cell.matchup-k-has-lines:hover .matchup-k-popup,
+    .matchup-k-cell.matchup-k-has-lines:focus-within .matchup-k-popup {
+      visibility: visible;
+      opacity: 1;
+    }
+    .matchup-k-line {
+      display: block;
+      white-space: nowrap;
+    }
     .pitcher-name-cell {
       display: inline-flex;
       align-items: center;
@@ -940,7 +992,7 @@
   <div class="layout">
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - 07/13/2026</h1>
-      <p class="updated-at">Last updated: 2026-07-12 01:04:27 EDT</p>
+      <p class="updated-at">Last updated: 2026-07-12 01:24:24 EDT</p>
       <div class="hero-nav-row">
         <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/13/2026">Pitchers</span><a class="report-tab" href="./batters-report-07132026.html" title="Batters report for 07/13/2026">Batters</a><a class="report-tab" href="./matchups-report-07132026.html" title="Matchups report for 07/13/2026">Matchups</a></nav>
         <nav class="date-nav" aria-label="Archive dates"><a class="date-pill" href="./report-07112026.html" title="Yesterday archive (07/11/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/11</span></a><a class="date-pill" href="./report-07122026.html" title="Today archive (07/12/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/12</span></a><span class="date-pill active" title="Tomorrow archive (07/13/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/13</span></span></nav>

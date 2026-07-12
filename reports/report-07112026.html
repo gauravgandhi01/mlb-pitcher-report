@@ -525,6 +525,58 @@
       color: #166534;
       border-color: #86efac;
     }
+    .matchup-k-cell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .matchup-k-cell.matchup-k-has-lines {
+      cursor: help;
+    }
+    .matchup-k-popup {
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }
+    .matchup-k-popup::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }
+    .matchup-k-cell.matchup-k-has-lines:hover .matchup-k-popup,
+    .matchup-k-cell.matchup-k-has-lines:focus-within .matchup-k-popup {
+      visibility: visible;
+      opacity: 1;
+    }
+    .matchup-k-line {
+      display: block;
+      white-space: nowrap;
+    }
     .pitcher-name-cell {
       display: inline-flex;
       align-items: center;
@@ -940,7 +992,7 @@
   <div class="layout">
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - 07/11/2026</h1>
-      <p class="updated-at">Last updated: 2026-07-12 01:00:43 EDT</p>
+      <p class="updated-at">Last updated: 2026-07-12 01:20:49 EDT</p>
       <div class="hero-nav-row">
         <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/11/2026">Pitchers</span><a class="report-tab" href="./batters-report-07112026.html" title="Batters report for 07/11/2026">Batters</a><a class="report-tab" href="./matchups-report-07112026.html" title="Matchups report for 07/11/2026">Matchups</a></nav>
         <nav class="date-nav" aria-label="Archive dates"><span class="date-pill active" title="Yesterday archive (07/11/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/11</span></span><a class="date-pill" href="./report-07122026.html" title="Today archive (07/12/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/12</span></a><a class="date-pill" href="./report-07132026.html" title="Tomorrow archive (07/13/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/13</span></a></nav>
@@ -952,7 +1004,7 @@
           <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
           <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
           <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup, S = Savant fallback. Hover headers for definitions.</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback. Hover headers for definitions.</span>
         </div>
         <div class="table-controls" aria-label="Pitcher table controls">
           <span class="table-controls-label">Show</span>
@@ -979,8 +1031,8 @@
 <th aria-label="K/9: Strikeouts per 9 innings pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="6" data-sort-key="K/9" role="button" tabindex="0" title="Strikeouts per 9 innings pitched.">K/9</th>
 <th aria-label="Whiff%: Statcast whiff rate (swing-and-miss rate) from Baseball Savant." aria-sort="none" class="group-savant stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="7" data-sort-key="Whiff%" role="button" tabindex="0" title="Statcast whiff rate (swing-and-miss rate) from Baseball Savant.">Whiff%</th>
 <th aria-label="K/PA: Strikeout rate: strikeouts divided by batters faced, shown as a percent." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="8" data-sort-key="K/PA" role="button" tabindex="0" title="Strikeout rate: strikeouts divided by batters faced, shown as a percent.">K/PA</th>
-<th aria-label="K%: Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses those hitters versus the starter's hand; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses those hitters versus the starter's hand; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.">K%</th>
-<th aria-label="PA: Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup and Savant sources = PA. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup and Savant sources = PA. Coloring reflects confidence for the K% matchup sample.">PA</th>
+<th aria-label="K%: Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.">K%</th>
+<th aria-label="PA: Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample.">PA</th>
 <th aria-label="Opp K% vH: Opponent team strikeout percent versus the pitcher's handedness." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="11" data-sort-key="Opp K% vH" role="button" tabindex="0" title="Opponent team strikeout percent versus the pitcher's handedness.">Opp K% vH</th>
 <th aria-label="Opp l5 K%: Opponent team strikeout percent over its last 5 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="12" data-sort-key="Opp l5 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 5 completed games before the report date.">Opp l5 K%</th>
 <th aria-label="Opp l10 K%: Opponent team strikeout percent over its last 10 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="13" data-sort-key="Opp l10 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 10 completed games before the report date.">Opp l10 K%</th>
@@ -1002,8 +1054,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.39">10.4</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="27.6">27.6</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="29.21108742">29.21</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="18.2519280206">18.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1945">1945</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="40"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">40.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Wood 1-3 2K</span><span class="matchup-k-line">Mead 0-1 0K</span><span class="matchup-k-line">Crews 0-2 2K</span><span class="matchup-k-line">Abrams 1-2 0K</span><span class="matchup-k-line">Young 0-1 1K</span><span class="matchup-k-line">Lile 0-1 1K</span><span class="matchup-k-line">Vivas 0-2 0K</span><span class="matchup-k-line">García 1-3 2K</span><span class="matchup-k-line">Ruiz 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="20">20</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.5323193916">20.53</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="16.9154228856">16.92</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.298245614">19.30</td>
@@ -1023,8 +1075,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.44">10.4</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26.5">26.5</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="28.4444444444">28.44</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="25.5154639175">25.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1552">1552</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="35.1351351351"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">35.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Neto 4-8 2K</span><span class="matchup-k-line">Schanuel 1-3 0K</span><span class="matchup-k-line">Guzman 0-3 3K</span><span class="matchup-k-line">Soler 2-3 1K</span><span class="matchup-k-line">Lowe 2-10 2K</span><span class="matchup-k-line">Adell 1-5 3K</span><span class="matchup-k-line">Peraza 0-5 2K</span><span class="matchup-k-line">Siri 0-0 0K</span><span class="matchup-k-line">Heineman 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="37">37</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.8030018762">24.80</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="27.5510204082">27.55</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="25.9668508287">25.97</td>
@@ -1044,8 +1096,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.16">10.2</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="27.4">27.4</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.7657266811">27.77</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.4115684093">20.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1798">1798</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="19.0476190476"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">19.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Mitchell 0-2 2K</span><span class="matchup-k-line">Chourio 0-1 0K</span><span class="matchup-k-line">Turang 0-2 1K</span><span class="matchup-k-line">Contreras 1-4 1K</span><span class="matchup-k-line">Bauers 1-2 0K</span><span class="matchup-k-line">Vaughn 0-0 0K</span><span class="matchup-k-line">Frelick 1-4 0K</span><span class="matchup-k-line">Pratt 1-2 0K</span><span class="matchup-k-line">Ortiz 0-3 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="21">21</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.9689922481">20.97</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.5929648241">18.59</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.4810126582">18.48</td>
@@ -1065,8 +1117,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.18">10.2</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="32.3">32.3</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.4285714286">27.43</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="19.7701149425">19.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="435">435</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="37.5"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">37.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">McGonigle 1-4 1K</span><span class="matchup-k-line">Keith 0-0 0K</span><span class="matchup-k-line">Malgeri 0-0 0K</span><span class="matchup-k-line">Torkelson 2-3 1K</span><span class="matchup-k-line">Vierling 0-4 2K</span><span class="matchup-k-line">Valencia 0-0 0K</span><span class="matchup-k-line">McKinstry 0-3 0K</span><span class="matchup-k-line">Outman 0-2 2K</span><span class="matchup-k-line">Rogers 0-0 0K</span></span></span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="16">16</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.5352112676">22.54</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="25.1336898396">25.13</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.1025641026">24.10</td>
@@ -1086,8 +1138,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="9.98">10.0</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.7">28.7</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.2206303725">27.22</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.8384710234">20.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1622">1622</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="31.5789473684"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">31.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Bazzana 1-3 0K</span><span class="matchup-k-line">Rocchio 1-5 2K</span><span class="matchup-k-line">DeLauter 0-0 0K</span><span class="matchup-k-line">Manzardo 0-1 1K</span><span class="matchup-k-line">Hoskins 0-0 0K</span><span class="matchup-k-line">Watson 0-0 0K</span><span class="matchup-k-line">Schneemann 0-2 1K</span><span class="matchup-k-line">Hedges 0-2 2K</span><span class="matchup-k-line">Kwan 2-5 0K</span></span></span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="19">19</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.1220811143">22.12</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="28.9617486339">28.96</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="28.4153005464">28.42</td>
@@ -1107,8 +1159,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.39">9.4</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="30.1">30.1</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="26.5033407572">26.50</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="18.9583333333">19.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1920">1920</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="23.3333333333"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">23.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Díaz 3-10 1K</span><span class="matchup-k-line">Aranda 3-4 1K</span><span class="matchup-k-line">Caminero 1-3 2K</span><span class="matchup-k-line">Mullins 0-2 0K</span><span class="matchup-k-line">Simpson 0-0 0K</span><span class="matchup-k-line">Mesa 0-0 0K</span><span class="matchup-k-line">Walls 1-5 3K</span><span class="matchup-k-line">Palacios 0-3 0K</span><span class="matchup-k-line">Feduccia 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="30">30</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="19.1368078176">19.14</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.9039548023">20.90</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.3296398892">21.33</td>
@@ -1128,8 +1180,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.96">9.0</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.7">28.7</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="25.3289473684">25.33</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2996515679">22.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1722">1722</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="33.3333333333"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">33.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Turner 1-4 0K</span><span class="matchup-k-line">Schwarber 0-5 2K</span><span class="matchup-k-line">Harper 2-3 1K</span><span class="matchup-k-line">Marsh 1-4 3K</span><span class="matchup-k-line">Bohm 2-6 3K</span><span class="matchup-k-line">Stott 1-2 0K</span><span class="matchup-k-line">Rincones 0-2 1K</span><span class="matchup-k-line">Hill 1-2 0K</span><span class="matchup-k-line">Marchán 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="30">30</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="23.0769230769">23.08</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.3958333333">22.40</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.2984293194">23.30</td>
@@ -1149,8 +1201,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.71">7.7</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="42.1">42.1</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="25">25.00</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.3880597015">22.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="536">536</td>
+<td class="group-opponent cell-low-confidence" data-sort-key="K%" data-sort-value="25"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">25.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Ewing 0-0 0K</span><span class="matchup-k-line">Soto 0-0 0K</span><span class="matchup-k-line">Lindor 0-2 0K</span><span class="matchup-k-line">Benge 0-0 0K</span><span class="matchup-k-line">Polanco 1-2 1K</span><span class="matchup-k-line">Young 0-0 0K</span><span class="matchup-k-line">Alvarez 0-0 0K</span><span class="matchup-k-line">Baty 0-0 0K</span><span class="matchup-k-line">Taylor 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="4">4</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.8781218781">21.88</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="14.4278606965">14.43</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.0661577608">18.07</td>
@@ -1170,8 +1222,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.62">8.6</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.2">28.2</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.9411764706">24.94</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="18.0145008366">18.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1793">1793</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="24.1758241758"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">24.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Marte 5-18 3K</span><span class="matchup-k-line">Perdomo 4-15 3K</span><span class="matchup-k-line">Carroll 2-20 6K</span><span class="matchup-k-line">Moreno 2-12 4K</span><span class="matchup-k-line">Gurriel 1-11 2K</span><span class="matchup-k-line">Vargas 0-2 1K</span><span class="matchup-k-line">Arenado 0-4 1K</span><span class="matchup-k-line">Barrosa 0-0 0K</span><span class="matchup-k-line">Tawa 1-3 2K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="91">91</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.6233166603">20.62</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.7513227513">22.75</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1081794195">21.11</td>
@@ -1191,8 +1243,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.13">9.1</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="31.5">31.5</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.7386759582">24.74</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.3251670379">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1796">1796</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.2765957447"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Crawford 4-12 1K</span><span class="matchup-k-line">Arozarena 3-6 1K</span><span class="matchup-k-line">Canzone 1-4 2K</span><span class="matchup-k-line">Raleigh 3-5 2K</span><span class="matchup-k-line">Naylor 1-5 1K</span><span class="matchup-k-line">Raley 0-3 3K</span><span class="matchup-k-line">Young 2-2 0K</span><span class="matchup-k-line">Robles 0-2 0K</span><span class="matchup-k-line">Kennedy 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="47">47</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.9343629344">22.93</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.7777777778">22.78</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="26.4788732394">26.48</td>
@@ -1212,8 +1264,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.55">9.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.7159090909">24.72</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.552116235">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1583">1583</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">20.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Mangum 0-1 0K</span><span class="matchup-k-line">Lowe 0-2 1K</span><span class="matchup-k-line">Reynolds 0-1 1K</span><span class="matchup-k-line">Valdez 2-2 0K</span><span class="matchup-k-line">O'Hearn 0-1 1K</span><span class="matchup-k-line">Gonzales 0-1 0K</span><span class="matchup-k-line">Callihan 0-2 0K</span><span class="matchup-k-line">Flores 0-0 0K</span><span class="matchup-k-line">Triolo 0-1 0K</span></span></span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.8862973761">22.89</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.0980392157">20.10</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.9130434783">23.91</td>
@@ -1233,8 +1285,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.88">8.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="23.5294117647">23.53</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="24.1502683363">24.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="559">559</td>
+<td class="group-opponent cell-low-confidence" data-sort-key="K%" data-sort-value="30.7692307692"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">30.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Antonacci 0-0 0K</span><span class="matchup-k-line">Perez 0-2 1K</span><span class="matchup-k-line">Vargas 0-3 0K</span><span class="matchup-k-line">Montgomery 0-2 2K</span><span class="matchup-k-line">Montgomery 0-2 1K</span><span class="matchup-k-line">Meidroth 2-3 0K</span><span class="matchup-k-line">Benintendi 0-0 0K</span><span class="matchup-k-line">Teel 0-0 0K</span><span class="matchup-k-line">Peters 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="13">13</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.7353224254">24.74</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.652173913">20.65</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.6">21.60</td>
@@ -1254,8 +1306,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.89">8.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="23.3480176211">23.35</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.4525043178">22.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1737">1737</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="23.6842105263"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">23.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Jensen 1-3 0K</span><span class="matchup-k-line">Witt 1-6 2K</span><span class="matchup-k-line">Caglianone 1-2 1K</span><span class="matchup-k-line">Thomas 0-5 1K</span><span class="matchup-k-line">Massey 1-6 1K</span><span class="matchup-k-line">Perez 2-5 2K</span><span class="matchup-k-line">Rojas 1-1 0K</span><span class="matchup-k-line">Loftin 0-2 0K</span><span class="matchup-k-line">Collins 2-5 2K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="38">38</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.6161616162">21.62</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.4834123223">18.48</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.7513227513">22.75</td>
@@ -1275,8 +1327,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.61">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26.8">26.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.9452054795">22.95</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.5589225589">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="594">594</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="13.6363636364"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">13.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Mangum 0-0 0K</span><span class="matchup-k-line">Lowe 1-5 2K</span><span class="matchup-k-line">Reynolds 2-4 1K</span><span class="matchup-k-line">Valdez 0-0 0K</span><span class="matchup-k-line">O'Hearn 2-4 0K</span><span class="matchup-k-line">Gonzales 0-2 0K</span><span class="matchup-k-line">Callihan 0-0 0K</span><span class="matchup-k-line">Flores 1-3 0K</span><span class="matchup-k-line">Triolo 0-2 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="22">22</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="26.0406582769">26.04</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.0980392157">20.10</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.9130434783">23.91</td>
@@ -1296,8 +1348,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.48">8.5</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.8813559322">22.88</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2941176471">22.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1700">1700</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="29.4117647059"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">29.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Díaz 1-2 0K</span><span class="matchup-k-line">Langford 1-3 0K</span><span class="matchup-k-line">Jung 1-5 2K</span><span class="matchup-k-line">Nimmo 0-7 3K</span><span class="matchup-k-line">Burger 1-5 2K</span><span class="matchup-k-line">Duran 2-4 0K</span><span class="matchup-k-line">Carter 0-3 2K</span><span class="matchup-k-line">Foscue 0-2 0K</span><span class="matchup-k-line">Higashioka 0-2 1K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="34">34</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.452389774">21.45</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.7569060773">23.76</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="20.054200542">20.05</td>
@@ -1317,8 +1369,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.56">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="24">24.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.4137931034">22.41</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="23.5">23.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="400">400</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="0"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Butler 1-1 0K</span><span class="matchup-k-line">Cortes 1-1 0K</span><span class="matchup-k-line">Thomas 0-0 0K</span><span class="matchup-k-line">Heim 0-0 0K</span><span class="matchup-k-line">Williams 0-0 0K</span><span class="matchup-k-line">Meneses 0-0 0K</span><span class="matchup-k-line">Kuroda-Grauer 0-0 0K</span><span class="matchup-k-line">Bolte 0-0 0K</span><span class="matchup-k-line">McNeil 0-1 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="5">5</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.8">24.80</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="31.8181818182">31.82</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="27.5482093664">27.55</td>
@@ -1338,8 +1390,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.97">9.0</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26">26.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.3175965665">22.32</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.3009292352">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1399">1399</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="25"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">25.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Seigler 0-0 0K</span><span class="matchup-k-line">Rafaela 2-2 0K</span><span class="matchup-k-line">Abreu 0-5 3K</span><span class="matchup-k-line">Gonzalez 0-0 0K</span><span class="matchup-k-line">Yoshida 0-4 2K</span><span class="matchup-k-line">Durbin 1-1 0K</span><span class="matchup-k-line">Duran 3-5 0K</span><span class="matchup-k-line">Wong 1-2 0K</span><span class="matchup-k-line">Cheng 0-1 1K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="24">24</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.590714007">22.59</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.5490196078">22.55</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.7621483376">22.76</td>
@@ -1359,8 +1411,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.28">8.3</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="29.3">29.3</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.1864951768">22.19</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.0010319917">21.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1938">1938</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="0"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Tatis 0-0 0K</span><span class="matchup-k-line">Merrill 0-0 0K</span><span class="matchup-k-line">Bogaerts 0-0 0K</span><span class="matchup-k-line">Machado 1-2 0K</span><span class="matchup-k-line">Sheets 0-0 0K</span><span class="matchup-k-line">France 0-0 0K</span><span class="matchup-k-line">Cronenworth 0-1 0K</span><span class="matchup-k-line">Rengifo 0-0 0K</span><span class="matchup-k-line">Campusano 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="4">4</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.8987672768">22.90</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.9039548023">20.90</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.1192411924">24.12</td>
@@ -1380,8 +1432,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.42">8.4</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="21.9">21.9</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.6617210682">21.66</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.5419501134">21.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1764">1764</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="33.3333333333"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">33.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">McCarthy 1-3 2K</span><span class="matchup-k-line">Karros 0-2 1K</span><span class="matchup-k-line">Carrigg 0-0 0K</span><span class="matchup-k-line">Goodman 4-6 1K</span><span class="matchup-k-line">Julien 2-7 1K</span><span class="matchup-k-line">Freeman 0-0 0K</span><span class="matchup-k-line">Castro 2-5 2K</span><span class="matchup-k-line">Moniak 2-9 5K</span><span class="matchup-k-line">Johnston 1-3 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="36">36</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.4615384615">21.46</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.2323232323">23.23</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.7969543147">19.80</td>
@@ -1401,8 +1453,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.56">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="23.8">23.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.5130023641">21.51</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="24.3807040417">24.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="767">767</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="33.3333333333"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">33.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Henderson 0-0 0K</span><span class="matchup-k-line">Rutschman 0-0 0K</span><span class="matchup-k-line">Ward 1-3 1K</span><span class="matchup-k-line">Alonso 2-4 1K</span><span class="matchup-k-line">Basallo 0-0 0K</span><span class="matchup-k-line">O'Neill 0-3 2K</span><span class="matchup-k-line">Cowser 0-0 0K</span><span class="matchup-k-line">Alexander 0-0 0K</span><span class="matchup-k-line">Holliday 0-2 1K</span></span></span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="25.2077562327">25.21</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="19.0217391304">19.02</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.1621621622">22.16</td>
@@ -1422,8 +1474,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.46">8.5</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.359223301">21.36</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="19.6307094266">19.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1029">1029</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="30"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">30.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Harris 1-5 0K</span><span class="matchup-k-line">Albies 0-6 1K</span><span class="matchup-k-line">Olson 2-11 6K</span><span class="matchup-k-line">Baldwin 2-5 2K</span><span class="matchup-k-line">Dubón 0-1 0K</span><span class="matchup-k-line">White 0-2 2K</span><span class="matchup-k-line">Riley 2-8 3K</span><span class="matchup-k-line">Smith 0-0 0K</span><span class="matchup-k-line">Mateo 1-4 1K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="50">50</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.4121258634">21.41</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="24.8730964467">24.87</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.3650385604">22.37</td>
@@ -1443,8 +1495,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.19">8.2</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="20.8">20.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.8762886598">20.88</td>
-<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.7645788337">17.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1852">1852</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="10.2564102564"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">10.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Clement 0-4 0K</span><span class="matchup-k-line">Guerrero 1-2 0K</span><span class="matchup-k-line">Okamoto 0-0 0K</span><span class="matchup-k-line">Springer 1-8 0K</span><span class="matchup-k-line">Kirk 1-1 0K</span><span class="matchup-k-line">Varsho 3-10 2K</span><span class="matchup-k-line">Giménez 1-5 2K</span><span class="matchup-k-line">Straw 0-0 0K</span><span class="matchup-k-line">Lukes 1-5 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="39">39</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="19.2396313364">19.24</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="14.0540540541">14.05</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="17.6966292135">17.70</td>
@@ -1464,8 +1516,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.88">7.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22">22.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.7692307692">20.77</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.0674536256">20.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1779">1779</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="28.125"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">28.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Wetherholt 0-4 0K</span><span class="matchup-k-line">Herrera 1-3 1K</span><span class="matchup-k-line">Walker 1-2 1K</span><span class="matchup-k-line">Nootbaar 1-3 2K</span><span class="matchup-k-line">Burleson 0-4 0K</span><span class="matchup-k-line">Winn 0-6 3K</span><span class="matchup-k-line">Church 0-2 0K</span><span class="matchup-k-line">Jordan 0-2 1K</span><span class="matchup-k-line">Crooks 0-2 1K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="32">32</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.8042071197">21.80</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="26.0606060606">26.06</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1382113821">21.14</td>
@@ -1485,8 +1537,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8">8.0</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.5">25.5</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.5128205128">20.51</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.9105346744">20.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1889">1889</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="27.2727272727"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">27.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Peña 1-2 0K</span><span class="matchup-k-line">Alvarez 1-2 0K</span><span class="matchup-k-line">Paredes 0-3 0K</span><span class="matchup-k-line">Walker 0-5 4K</span><span class="matchup-k-line">Altuve 1-3 0K</span><span class="matchup-k-line">Dezenzo 0-1 1K</span><span class="matchup-k-line">Smith 0-2 1K</span><span class="matchup-k-line">Diaz 0-0 0K</span><span class="matchup-k-line">Matthews 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="22">22</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.9847881202">21.98</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.1111111111">21.11</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1111111111">21.11</td>
@@ -1506,8 +1558,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.11">8.1</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.190023753">20.19</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.4115684093">20.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1798">1798</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="16.6666666667"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">16.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Mitchell 1-2 0K</span><span class="matchup-k-line">Chourio 1-3 1K</span><span class="matchup-k-line">Turang 2-3 1K</span><span class="matchup-k-line">Contreras 0-1 1K</span><span class="matchup-k-line">Bauers 1-1 0K</span><span class="matchup-k-line">Vaughn 2-2 0K</span><span class="matchup-k-line">Frelick 0-0 0K</span><span class="matchup-k-line">Pratt 0-0 0K</span><span class="matchup-k-line">Ortiz 2-4 0K</span></span></span></td>
+<td class="group-opponent" data-sort-key="PA" data-sort-value="18">18</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.9689922481">20.97</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.5929648241">18.59</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.4810126582">18.48</td>
@@ -1527,8 +1579,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.08">8.1</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.5">22.5</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="19.6517412935">19.65</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.2030075188">21.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="665">665</td>
+<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="28.0701754386"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">28.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">McCray 0-0 0K</span><span class="matchup-k-line">Arraez 1-3 0K</span><span class="matchup-k-line">Schmitt 3-8 3K</span><span class="matchup-k-line">Devers 2-10 3K</span><span class="matchup-k-line">Adames 3-24 7K</span><span class="matchup-k-line">Eldridge 0-0 0K</span><span class="matchup-k-line">Lee 1-6 2K</span><span class="matchup-k-line">Gilbert 0-2 1K</span><span class="matchup-k-line">Haase 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="57">57</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.6034308779">22.60</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="19.5767195767">19.58</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.8952879581">19.90</td>
@@ -1548,8 +1600,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.93">6.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.3">25.3</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="19.0371991247">19.04</td>
-<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.0050761421">17.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1970">1970</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="15.3846153846"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">15.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Lopez 1-5 1K</span><span class="matchup-k-line">Hernandez 1-3 1K</span><span class="matchup-k-line">Edwards 1-3 0K</span><span class="matchup-k-line">Sanoja 0-3 0K</span><span class="matchup-k-line">Stowers 1-4 1K</span><span class="matchup-k-line">Hicks 2-5 1K</span><span class="matchup-k-line">Conine 1-3 0K</span><span class="matchup-k-line">Marsee 0-5 2K</span><span class="matchup-k-line">Mack 1-3 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="39">39</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.4277286136">20.43</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="13.1313131313">13.13</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="15.5339805825">15.53</td>
@@ -1569,8 +1621,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="7.18">7.2</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="20.8">20.8</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="17.9211469534">17.92</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.5231788079">21.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="906">906</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.8487394958"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">21.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Crow-Armstrong 4-9 3K</span><span class="matchup-k-line">Bregman 0-0 0K</span><span class="matchup-k-line">Busch 3-4 0K</span><span class="matchup-k-line">Suzuki 6-18 3K</span><span class="matchup-k-line">Happ 8-23 6K</span><span class="matchup-k-line">Hoerner 7-19 1K</span><span class="matchup-k-line">Conforto 1-4 2K</span><span class="matchup-k-line">Kelly 4-10 1K</span><span class="matchup-k-line">Swanson 3-18 10K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="119">119</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.3006597549">21.30</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.3114754098">21.31</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.038961039">21.04</td>
@@ -1590,8 +1642,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.88">6.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="23">23.0</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="17.7489177489">17.75</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.5905936777">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1297">1297</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="25.3731343284"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">25.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Ohtani 5-21 5K</span><span class="matchup-k-line">Pages 1-11 3K</span><span class="matchup-k-line">Call 0-2 0K</span><span class="matchup-k-line">Freeland 2-3 1K</span><span class="matchup-k-line">Edman 3-9 2K</span><span class="matchup-k-line">Alfonzo 0-0 0K</span><span class="matchup-k-line">Hernández 4-12 3K</span><span class="matchup-k-line">Rojas 2-4 1K</span><span class="matchup-k-line">Rushing 0-2 2K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="67">67</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.2728306177">20.27</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.164021164">21.16</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.3727034121">18.37</td>
@@ -1611,8 +1663,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.75">6.8</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="24.5">24.5</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="16.7785234899">16.78</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="18.9462480043">18.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1879">1879</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="16.6666666667"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">16.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Larnach 0-1 1K</span><span class="matchup-k-line">Jeffers 0-0 0K</span><span class="matchup-k-line">Clemens 0-1 1K</span><span class="matchup-k-line">Bell 0-2 0K</span><span class="matchup-k-line">Lewis 1-2 0K</span><span class="matchup-k-line">Lee 0-1 0K</span><span class="matchup-k-line">Martin 0-0 0K</span><span class="matchup-k-line">Caratini 0-1 0K</span><span class="matchup-k-line">Keaschall 0-1 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="12">12</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.3955281419">21.40</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.9387755102">21.94</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.5524296675">24.55</td>
@@ -1632,8 +1684,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.14">6.1</td>
 <td class="group-savant cell-weak" data-sort-key="Whiff%" data-sort-value="16.3">16.3</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="16.339869281">16.34</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="24.161849711">24.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="865">865</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2222222222"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">22.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">Volpe 0-1 0K</span><span class="matchup-k-line">Rice 1-1 0K</span><span class="matchup-k-line">Grisham 1-1 0K</span><span class="matchup-k-line">Goldschmidt 0-1 1K</span><span class="matchup-k-line">Bellinger 1-1 0K</span><span class="matchup-k-line">Domínguez 0-1 1K</span><span class="matchup-k-line">Chisholm 0-0 0K</span><span class="matchup-k-line">Caballero 0-1 0K</span><span class="matchup-k-line">Wells 0-0 0K</span></span></span></td>
+<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="9">9</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.6732026144">24.67</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="33.8709677419">33.87</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="30.2197802198">30.22</td>
@@ -1653,8 +1705,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="5.43">5.4</td>
 <td class="group-savant cell-weak" data-sort-key="Whiff%" data-sort-value="13.1">13.1</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="15.1639344262">15.16</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="24.7281053234">24.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1747">1747</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="27.6315789474"><span class="matchup-k-cell matchup-k-has-lines"><span class="matchup-k-value">27.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span></span><span aria-label="Batter lines versus pitcher" class="matchup-k-popup" role="tooltip"><span class="matchup-k-line">De La Cruz 3-12 5K</span><span class="matchup-k-line">Stewart 0-2 0K</span><span class="matchup-k-line">Steer 3-19 7K</span><span class="matchup-k-line">Bleday 0-0 0K</span><span class="matchup-k-line">Suárez 2-2 0K</span><span class="matchup-k-line">Stephenson 4-8 2K</span><span class="matchup-k-line">Friedl 2-13 4K</span><span class="matchup-k-line">Arroyo 0-2 1K</span><span class="matchup-k-line">Hayes 2-9 2K</span></span></span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="76">76</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="25.1584047708">25.16</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="30.8988764045">30.90</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="27.6712328767">27.67</td>
