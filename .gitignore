@@ -8,5 +8,6 @@ keys.json
 log.txt
 debug/
 cron.log
+cron.log.*
 cron_update.log
 reports/

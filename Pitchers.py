@@ -19,6 +19,12 @@ from pybaseball import team_batting
 from unidecode import unidecode
 
 from oddapi import ALT_LINES_TOKEN, get_pitcher_odds_by_team
+from report_data import (
+    fetch_people_stats_map as fetch_hitter_people_stats_map,
+    fetch_mlb_team_ids,
+    index_stat_blocks as index_hitter_stat_blocks,
+    parse_vs_pitcher_stats as parse_hitter_vs_pitcher_stats,
+)
 from site_nav import build_date_nav_html, build_report_tabs
 from team_logos import get_team_logo_src
 
@@ -29,6 +35,7 @@ NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 COMPLETED_STATUSES = {"Final", "In Progress"}
 PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX","DraftKings"]
 OPP_HAND_K_COLUMN = "Opp K% vH"
+OPP_HAND_K_RANK_COLUMN = "Opp K% vH Rank"
 OPP_LAST_5_K_COLUMN = "Opp l5 K%"
 OPP_LAST_10_K_COLUMN = "Opp l10 K%"
 K_PA_COLUMN = "K/PA"
@@ -36,7 +43,11 @@ PA_GP_COLUMN = "PA/GP"
 BEST_K_ODDS_COLUMN = "Best K Odds"
 MATCHUP_SOURCE_COLUMN = "Matchup Src"
 START_TIME_COLUMN = "Start"
+PLAYER_ID_COLUMN = "Player ID"
+RECENT_PITCHER_GAMES_COLUMN = "Recent Games"
+MATCHUP_LINES_COLUMN = "Matchup Lines"
 MATCHUP_SOURCE_ESPN = "ESPN (AB)"
+MATCHUP_SOURCE_PREVIOUS_LINEUP = "Prev Lineup (BvP)"
 MATCHUP_SOURCE_SAVANT = "Savant (PA)"
 MATCHUP_K_MIN_SAMPLE = 15
 MATCHUP_K_HIGH_CONFIDENCE_SAMPLE = 20
@@ -146,9 +157,9 @@ STAT_HEADER_TOOLTIPS = {
     "K/9": "Strikeouts per 9 innings pitched.",
     "Whiff%": "Statcast whiff rate (swing-and-miss rate) from Baseball Savant.",
     K_PA_COLUMN: "Strikeout rate: strikeouts divided by batters faced, shown as a percent.",
-    "K%": "Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample.",
-    "PA": "Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample.",
-    MATCHUP_SOURCE_COLUMN: "Source for K% and PA sample: ESPN confirmed lineup (AB-based) or Savant probable-lineup (PA-based).",
+    "K%": "Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.",
+    "PA": "Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample.",
+    MATCHUP_SOURCE_COLUMN: "Source for K% and PA sample: ESPN confirmed lineup, previous completed lineup, or Savant probable lineup.",
     "SO/PA": "Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r.",
     OPP_HAND_K_COLUMN: "Opponent team strikeout percent versus the pitcher's handedness.",
     OPP_LAST_5_K_COLUMN: "Opponent team strikeout percent over its last 5 completed games before the report date.",
@@ -160,7 +171,18 @@ STAT_HEADER_TOOLTIPS = {
     "Ks": "Strikeouts recorded by this pitcher in the game once started/final.",
     BEST_K_ODDS_COLUMN: "Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines.",
 }
-INTERNAL_ONLY_COLUMNS = {"Hand", "BB", "BF", "Team", "Pitcher", "Error"}
+INTERNAL_ONLY_COLUMNS = {
+    "Hand",
+    "BB",
+    "BF",
+    "Team",
+    "Pitcher",
+    "Error",
+    PLAYER_ID_COLUMN,
+    RECENT_PITCHER_GAMES_COLUMN,
+    MATCHUP_LINES_COLUMN,
+    OPP_HAND_K_RANK_COLUMN,
+}
 SPORTSBOOK_TAGS = {
     "fanduel": "FD",
     "betrivers": "BR",
@@ -201,6 +223,39 @@ TEAM_MAPPING = {
     "KCR": "Kansas City Royals",
     "HOU": "Houston Astros",
 }
+TEAM_DISPLAY_ABBREVIATIONS = {
+    "Arizona Diamondbacks": "ARI",
+    "Athletics": "ATH",
+    "Oakland Athletics": "OAK",
+    "Atlanta Braves": "ATL",
+    "Baltimore Orioles": "BAL",
+    "Boston Red Sox": "BOS",
+    "Chicago Cubs": "CHC",
+    "Chicago White Sox": "CWS",
+    "Cincinnati Reds": "CIN",
+    "Cleveland Guardians": "CLE",
+    "Colorado Rockies": "COL",
+    "Detroit Tigers": "DET",
+    "Houston Astros": "HOU",
+    "Kansas City Royals": "KC",
+    "Los Angeles Angels": "LAA",
+    "Los Angeles Dodgers": "LAD",
+    "Miami Marlins": "MIA",
+    "Milwaukee Brewers": "MIL",
+    "Minnesota Twins": "MIN",
+    "New York Mets": "NYM",
+    "New York Yankees": "NYY",
+    "Philadelphia Phillies": "PHI",
+    "Pittsburgh Pirates": "PIT",
+    "San Diego Padres": "SD",
+    "San Francisco Giants": "SF",
+    "Seattle Mariners": "SEA",
+    "St. Louis Cardinals": "STL",
+    "Tampa Bay Rays": "TB",
+    "Texas Rangers": "TEX",
+    "Toronto Blue Jays": "TOR",
+    "Washington Nationals": "WSH",
+}
 PRIMARY_ODDS_PATTERN = re.compile(r"([0-9]+(?:\.[0-9]+)?):\s*(N/A|[+-]?\d+)\s*\|\s*(N/A|[+-]?\d+)")
 SPORTSBOOK_COLORS = {
     "fanduel": "#1E5EFF",
@@ -225,6 +280,10 @@ SPORTSBOOK_FALLBACK_COLORS = [
 ]
 TEAM_HAND_SPLIT_CACHE: Dict[Tuple[int, int], Dict[str, Optional[float]]] = {}
 TEAM_RECENT_K_CACHE: Dict[Tuple[int, int, str], Dict[str, Optional[float]]] = {}
+TEAM_HAND_SPLIT_RANK_CACHE: Dict[Tuple[int, str], Dict[int, int]] = {}
+PREVIOUS_LINEUP_PLAYER_IDS_CACHE: Dict[Tuple[int, str], List[int]] = {}
+PITCHER_ID_CACHE: Dict[str, Optional[int]] = {}
+PREVIOUS_LINEUP_K_CACHE: Dict[Tuple[int, int, str, int], Optional[Dict[str, Any]]] = {}
 
 
 def _normalize_person_name(name: Any) -> str:
@@ -339,6 +398,7 @@ def fetch_pitcher_stats(name: str, team: str, opponent: str, status: str, start_
         player_id = player["id"]
         stats = statsapi.player_stats(player_id, group="[pitching]", type="season")
         pitcher_stats = parse_pitcher_stats(stats, name)
+        pitcher_stats[PLAYER_ID_COLUMN] = player_id
         pitcher_stats["Opponent"] = opponent
         pitcher_stats["Status"] = status
         pitcher_stats[START_TIME_COLUMN] = start_time
@@ -417,7 +477,7 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
         response.raise_for_status()
     except requests.RequestException as exc:
         print(f"\033[91mFailed to retrieve probable pitcher data: {exc}\033[0m")
-        return pd.DataFrame(columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN])
+        return pd.DataFrame(columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
 
     soup = BeautifulSoup(response.content, "html.parser")
     blocks = soup.find_all("div", class_="mod")
@@ -433,6 +493,7 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
                         "PA": pa,
                         "K%": k_percentage,
                         MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+                        MATCHUP_LINES_COLUMN: [],
                     }
                 )
             except Exception:
@@ -443,10 +504,11 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
                         "PA": 0,
                         "K%": 0,
                         MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+                        MATCHUP_LINES_COLUMN: [],
                     }
                 )
 
-    return pd.DataFrame(data)
+    return pd.DataFrame(data, columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
 
 
 def _fetch_espn_scoreboard_events(date: str) -> List[Dict[str, Any]]:
@@ -528,6 +590,62 @@ def _is_espn_lineup_confirmed(
     return False
 
 
+def _matchup_stat_int(value: Any) -> Optional[int]:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return None
+    return int(numeric)
+
+
+def _last_name_from_display_name(name: Any) -> str:
+    text = str(name or "").strip()
+    if not text:
+        return ""
+    if "," in text:
+        return text.split(",", 1)[0].strip()
+
+    parts = text.split()
+    suffixes = {"jr", "jr.", "sr", "sr.", "ii", "iii", "iv", "v"}
+    while len(parts) > 1 and parts[-1].strip(".").lower() in suffixes:
+        parts.pop()
+    return parts[-1] if parts else ""
+
+
+def _format_matchup_k_line(
+    hits: Any,
+    at_bats: Any,
+    strikeouts: Any,
+    player_name: Any = None,
+) -> Optional[str]:
+    hit_count = _matchup_stat_int(hits)
+    at_bat_count = _matchup_stat_int(at_bats)
+    strikeout_count = _matchup_stat_int(strikeouts)
+    if hit_count is None and at_bat_count is None and strikeout_count is None:
+        return None
+
+    line = f"{hit_count or 0}-{at_bat_count or 0} {strikeout_count or 0}K"
+    name_text = str(player_name or "").strip()
+    if name_text:
+        return f"{name_text} {line}"
+    return line
+
+
+def _espn_athlete_display_name(athlete: Dict[str, Any]) -> str:
+    athlete_info = athlete.get("athlete") or {}
+    last_name = str(athlete_info.get("lastName") or athlete.get("lastName") or "").strip()
+    if last_name:
+        return last_name
+    for key in ("shortName", "displayName", "fullName"):
+        value = str(athlete_info.get(key) or "").strip()
+        if value:
+            return _last_name_from_display_name(value)
+    for key in ("shortName", "displayName", "name"):
+        value = str(athlete.get(key) or "").strip()
+        if value:
+            return _last_name_from_display_name(value)
+    return ""
+
+
 def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     matchup_by_team: Dict[str, Dict[str, Any]] = {}
     boxscore_players = (summary_data.get("boxscore") or {}).get("players") or []
@@ -559,17 +677,20 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
             strikeouts_idx = keys.index("strikeouts")
         except ValueError:
             continue
+        hits_idx = keys.index("hits") if "hits" in keys else None
 
         total_ab = 0.0
         total_ks = 0.0
         has_any_vs_stats = False
         has_any_numeric_value = False
+        matchup_lines: List[str] = []
         for athlete in lineup_athletes:
             vs_stats = athlete.get("vsStats") or []
             if vs_stats:
                 has_any_vs_stats = True
             raw_ab = vs_stats[at_bats_idx] if at_bats_idx < len(vs_stats) else None
             raw_ks = vs_stats[strikeouts_idx] if strikeouts_idx < len(vs_stats) else None
+            raw_hits = vs_stats[hits_idx] if hits_idx is not None and hits_idx < len(vs_stats) else None
             ab_value = pd.to_numeric(raw_ab, errors="coerce")
             ks_value = pd.to_numeric(raw_ks, errors="coerce")
             if pd.notna(ab_value):
@@ -578,6 +699,9 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
             if pd.notna(ks_value):
                 total_ks += float(ks_value)
                 has_any_numeric_value = True
+            line = _format_matchup_k_line(raw_hits, raw_ab, raw_ks, _espn_athlete_display_name(athlete))
+            if line:
+                matchup_lines.append(line)
 
         # ESPN removes lineup vsStats after first pitch for many games.
         # When that happens, keep Savant fallback instead of forcing zeroes.
@@ -585,16 +709,173 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
             continue
 
         k_percent = float(100 * total_ks / total_ab) if total_ab > 0 else 0.0
-        matchup_by_team[team_abbrev] = {"PA": total_ab, "K%": k_percent}
+        matchup_by_team[team_abbrev] = {"PA": total_ab, "K%": k_percent, MATCHUP_LINES_COLUMN: matchup_lines}
 
     return matchup_by_team
+
+
+def _extract_lineup_player_ids_from_boxscore(boxscore_data: Dict[str, Any], team_id: int) -> List[int]:
+    for side in ("home", "away"):
+        team_block = boxscore_data.get(side) or {}
+        team = team_block.get("team") or {}
+        if _to_int(team.get("id")) != int(team_id):
+            continue
+
+        batting_order = team_block.get("battingOrder") or []
+        player_ids = [int(player_id) for player_id in batting_order if _to_int(player_id) is not None]
+        return player_ids[:9] if len(player_ids) >= 9 else []
+    return []
+
+
+def _fetch_previous_lineup_player_ids(team_id: int, report_date: datetime.date) -> List[int]:
+    cache_key = (int(team_id), report_date.isoformat())
+    cached = PREVIOUS_LINEUP_PLAYER_IDS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    start_date = report_date - datetime.timedelta(days=45)
+    end_date = report_date - datetime.timedelta(days=1)
+    try:
+        games = statsapi.schedule(
+            start_date=start_date.strftime("%m/%d/%Y"),
+            end_date=end_date.strftime("%m/%d/%Y"),
+            team=team_id,
+        )
+    except Exception:
+        PREVIOUS_LINEUP_PLAYER_IDS_CACHE[cache_key] = []
+        return []
+
+    completed_games = []
+    for game in games:
+        if str(game.get("status") or "").strip() != "Final":
+            continue
+        game_date = _parse_stat_date(game.get("game_date"))
+        game_id = _to_int(game.get("game_id"))
+        if game_date is None or game_id is None or game_date >= report_date:
+            continue
+        completed_games.append((game_date, game_id))
+
+    completed_games.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    for _, game_id in completed_games:
+        try:
+            boxscore_data = statsapi.boxscore_data(game_id)
+        except Exception:
+            continue
+        lineup_ids = _extract_lineup_player_ids_from_boxscore(boxscore_data, team_id)
+        if lineup_ids:
+            PREVIOUS_LINEUP_PLAYER_IDS_CACHE[cache_key] = lineup_ids
+            return lineup_ids
+
+    PREVIOUS_LINEUP_PLAYER_IDS_CACHE[cache_key] = []
+    return []
+
+
+def _lookup_pitcher_id(pitcher_name: Any) -> Optional[int]:
+    name_text = str(pitcher_name or "").strip()
+    pitcher_key = _normalize_person_name(name_text)
+    if not pitcher_key:
+        return None
+    if pitcher_key in PITCHER_ID_CACHE:
+        return PITCHER_ID_CACHE[pitcher_key]
+
+    try:
+        players = statsapi.lookup_player(name_text)
+        player = _choose_best_player_match(players or [], name_text)
+        pitcher_id = _to_int(player.get("id") if player else None)
+    except Exception:
+        pitcher_id = None
+
+    PITCHER_ID_CACHE[pitcher_key] = pitcher_id
+    return pitcher_id
+
+
+def _person_display_name(person: Dict[str, Any]) -> str:
+    last_name = str(person.get("lastName") or "").strip()
+    if last_name:
+        return last_name
+    for key in ("fullName", "firstLastName", "nameFirstLast", "lastFirstName"):
+        value = str(person.get(key) or "").strip()
+        if value:
+            return _last_name_from_display_name(value)
+    return ""
+
+
+def _hitter_vs_pitcher_totals(person: Dict[str, Any], report_date: datetime.date) -> Dict[str, Any]:
+    return parse_hitter_vs_pitcher_stats(
+        index_hitter_stat_blocks(person),
+        report_date=report_date,
+        subtract_same_day_from_season_splits=False,
+    )
+
+
+def _previous_lineup_k_percent(
+    team_id: int,
+    season: int,
+    report_date: datetime.date,
+    pitcher_id: int,
+) -> Optional[Dict[str, Any]]:
+    pitcher_id = int(pitcher_id)
+    cache_key = (int(team_id), int(season), report_date.isoformat(), pitcher_id)
+    cached = PREVIOUS_LINEUP_K_CACHE.get(cache_key)
+    if cached is not None or cache_key in PREVIOUS_LINEUP_K_CACHE:
+        return cached
+
+    lineup_ids = _fetch_previous_lineup_player_ids(team_id, report_date)
+    if len(lineup_ids) < 9:
+        PREVIOUS_LINEUP_K_CACHE[cache_key] = None
+        return None
+
+    try:
+        people_by_id = fetch_hitter_people_stats_map(
+            lineup_ids[:9],
+            season,
+            None,
+            pitcher_id,
+            stats_end_date=report_date - datetime.timedelta(days=1),
+        )
+    except Exception:
+        PREVIOUS_LINEUP_K_CACHE[cache_key] = None
+        return None
+
+    total_strikeouts = 0
+    total_plate_appearances = 0
+    matchup_lines: List[str] = []
+    for player_id in lineup_ids[:9]:
+        person = people_by_id.get(int(player_id))
+        if not person:
+            continue
+        totals = _hitter_vs_pitcher_totals(person, report_date)
+        strikeouts = _to_int(totals.get("K")) or 0
+        plate_appearances = _to_int(totals.get("PA")) or 0
+        total_strikeouts += strikeouts
+        total_plate_appearances += plate_appearances
+        line = _format_matchup_k_line(
+            totals.get("H"),
+            totals.get("AB"),
+            strikeouts,
+            _person_display_name(person),
+        )
+        if line:
+            matchup_lines.append(line)
+
+    if total_plate_appearances <= 0:
+        PREVIOUS_LINEUP_K_CACHE[cache_key] = None
+        return None
+
+    result = {
+        "PA": float(total_plate_appearances),
+        "K%": float(100 * total_strikeouts / total_plate_appearances),
+        MATCHUP_LINES_COLUMN: matchup_lines,
+    }
+    PREVIOUS_LINEUP_K_CACHE[cache_key] = result
+    return result
 
 
 def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
     event_lookup = _build_espn_event_id_lookup(date)
     if not event_lookup:
-        return pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN])
+        return pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
 
     for game in schedule:
         away_team = str(game.get("away_name", "")).strip()
@@ -631,6 +912,7 @@ def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataF
                     "PA": lineup_stats[home_abbrev]["PA"],
                     "K%": lineup_stats[home_abbrev]["K%"],
                     MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
+                    MATCHUP_LINES_COLUMN: lineup_stats[home_abbrev].get(MATCHUP_LINES_COLUMN, []),
                 }
             )
         if home_pitcher and away_abbrev in lineup_stats:
@@ -640,17 +922,78 @@ def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataF
                     "PA": lineup_stats[away_abbrev]["PA"],
                     "K%": lineup_stats[away_abbrev]["K%"],
                     MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
+                    MATCHUP_LINES_COLUMN: lineup_stats[away_abbrev].get(MATCHUP_LINES_COLUMN, []),
                 }
             )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+
+
+def get_previous_lineup_opp_data(
+    date: str,
+    schedule: Sequence[Dict[str, Any]],
+    savant_df: pd.DataFrame,
+    excluded_pitchers: Optional[Sequence[str]] = None,
+) -> pd.DataFrame:
+    del savant_df
+    report_date = datetime.datetime.strptime(date, "%m/%d/%Y").date()
+    season = report_date.year
+    excluded_keys = {_normalize_person_name(name) for name in (excluded_pitchers or [])}
+    rows: List[Dict[str, Any]] = []
+
+    for game in schedule:
+        matchup_tasks = [
+            (game.get("away_probable_pitcher"), game.get("home_id")),
+            (game.get("home_probable_pitcher"), game.get("away_id")),
+        ]
+        for pitcher_name_raw, opponent_team_id_raw in matchup_tasks:
+            pitcher_name = str(pitcher_name_raw or "").strip()
+            pitcher_key = _normalize_person_name(pitcher_name)
+            opponent_team_id = _to_int(opponent_team_id_raw)
+            if not pitcher_name or not pitcher_key or pitcher_key in excluded_keys or opponent_team_id is None:
+                continue
+            pitcher_id = _lookup_pitcher_id(pitcher_name)
+            if pitcher_id is None:
+                continue
+
+            lineup_stats = _previous_lineup_k_percent(
+                opponent_team_id,
+                season,
+                report_date,
+                pitcher_id,
+            )
+            if not lineup_stats:
+                continue
+
+            rows.append(
+                {
+                    "Pitcher": pitcher_name,
+                    "PA": lineup_stats["PA"],
+                    "K%": lineup_stats["K%"],
+                    MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_PREVIOUS_LINEUP,
+                    MATCHUP_LINES_COLUMN: lineup_stats.get(MATCHUP_LINES_COLUMN, []),
+                }
+            )
+
+    return pd.DataFrame(rows, columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
 
 
 def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
     savant_df = get_savant_opp_data(date)
     espn_df = get_espn_opp_data(date, schedule)
+    espn_pitchers = [
+        str(row.get("Pitcher") or "").strip()
+        for _, row in espn_df.iterrows()
+        if str(row.get("Pitcher") or "").strip()
+    ]
+    previous_lineup_df = get_previous_lineup_opp_data(
+        date,
+        schedule,
+        savant_df,
+        excluded_pitchers=espn_pitchers,
+    )
 
-    columns = ["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN]
+    columns = ["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN]
     merged_lookup: Dict[str, Dict[str, Any]] = {}
 
     for _, row in savant_df.iterrows():
@@ -664,7 +1007,30 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
             "PA": row.get("PA"),
             "K%": row.get("K%"),
             MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+            MATCHUP_LINES_COLUMN: row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else [],
         }
+
+    for _, row in previous_lineup_df.iterrows():
+        name = str(row.get("Pitcher", "")).strip()
+        if not name:
+            continue
+        key = _normalize_person_name(name)
+        existing = merged_lookup.get(
+            key,
+            {
+                "Pitcher": name,
+                "Hand": pd.NA,
+                "PA": pd.NA,
+                "K%": pd.NA,
+                MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_PREVIOUS_LINEUP,
+                MATCHUP_LINES_COLUMN: [],
+            },
+        )
+        existing["PA"] = row.get("PA")
+        existing["K%"] = row.get("K%")
+        existing[MATCHUP_SOURCE_COLUMN] = MATCHUP_SOURCE_PREVIOUS_LINEUP
+        existing[MATCHUP_LINES_COLUMN] = row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else []
+        merged_lookup[key] = existing
 
     for _, row in espn_df.iterrows():
         name = str(row.get("Pitcher", "")).strip()
@@ -673,11 +1039,19 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
         key = _normalize_person_name(name)
         existing = merged_lookup.get(
             key,
-            {"Pitcher": name, "Hand": pd.NA, "PA": pd.NA, "K%": pd.NA, MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN},
+            {
+                "Pitcher": name,
+                "Hand": pd.NA,
+                "PA": pd.NA,
+                "K%": pd.NA,
+                MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
+                MATCHUP_LINES_COLUMN: [],
+            },
         )
         existing["PA"] = row.get("PA")
         existing["K%"] = row.get("K%")
         existing[MATCHUP_SOURCE_COLUMN] = MATCHUP_SOURCE_ESPN
+        existing[MATCHUP_LINES_COLUMN] = row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else []
         merged_lookup[key] = existing
 
     if not merged_lookup:
@@ -876,6 +1250,129 @@ def _parse_stat_date(value: Any) -> Optional[datetime.date]:
         return None
 
 
+def _team_display_abbreviation(team_name: Any) -> str:
+    text = str(team_name or "").strip()
+    if not text:
+        return ""
+    mapped = TEAM_DISPLAY_ABBREVIATIONS.get(text)
+    if mapped:
+        return mapped
+    reverse_mapping = {full_name: abbreviation for abbreviation, full_name in TEAM_MAPPING.items()}
+    mapped = reverse_mapping.get(text)
+    if mapped:
+        return mapped
+    words = re.findall(r"[A-Za-z0-9]+", text)
+    if not words:
+        return text[:3].upper()
+    if len(words) == 1:
+        return words[0][:3].upper()
+    return "".join(word[0] for word in words[-3:]).upper()
+
+
+def _pitcher_game_log_splits(player_id: int, season: int) -> List[Dict[str, Any]]:
+    try:
+        data = statsapi.get(
+            "person",
+            {
+                "personId": player_id,
+                "hydrate": (
+                    "stats(group=pitching,type=gameLog,"
+                    f"sportId=1,season={season}),currentTeam"
+                ),
+            },
+        )
+    except Exception:
+        return []
+
+    people = data.get("people") or []
+    if not people:
+        return []
+
+    for stats_block in people[0].get("stats") or []:
+        type_name = str((stats_block.get("type") or {}).get("displayName", "")).lower()
+        group_name = str((stats_block.get("group") or {}).get("displayName", "")).lower()
+        if type_name == "gamelog" and group_name == "pitching":
+            return list(stats_block.get("splits") or [])
+    return []
+
+
+def _format_recent_pitcher_game_line(split: Dict[str, Any]) -> Optional[str]:
+    stat = split.get("stat") or {}
+    strikeouts = _to_int(stat.get("strikeOuts"))
+    pitch_count = _to_int(stat.get("numberOfPitches"))
+    opponent = split.get("opponent") or {}
+    opponent_abbrev = _team_display_abbreviation(opponent.get("name"))
+    location_marker = "v" if split.get("isHome") is True else "@"
+
+    if not opponent_abbrev or strikeouts is None or pitch_count is None:
+        return None
+    return f"{location_marker} {opponent_abbrev} {strikeouts}K {pitch_count}P"
+
+
+def fetch_pitcher_recent_game_lines(
+    player_id: int,
+    season: int,
+    report_date: datetime.date,
+    *,
+    limit: int = 5,
+) -> List[str]:
+    all_splits: Dict[Tuple[datetime.date, int], Dict[str, Any]] = {}
+    for candidate_season in [season, season - 1]:
+        if candidate_season < 1900:
+            continue
+        for split in _pitcher_game_log_splits(player_id, candidate_season):
+            game_date = _parse_stat_date(split.get("date"))
+            if game_date is None or game_date >= report_date:
+                continue
+            game_pk = _to_int((split.get("game") or {}).get("gamePk")) or 0
+            all_splits[(game_date, game_pk)] = split
+
+    recent_splits = [
+        split
+        for _, split in sorted(all_splits.items(), key=lambda item: item[0], reverse=True)[:limit]
+    ]
+    lines = [_format_recent_pitcher_game_line(split) for split in recent_splits]
+    return [line for line in lines if line]
+
+
+def add_pitcher_recent_game_logs(
+    pitchers: pd.DataFrame,
+    season: int,
+    report_date: datetime.date,
+) -> pd.DataFrame:
+    enriched = pitchers.copy()
+    if enriched.empty:
+        enriched[RECENT_PITCHER_GAMES_COLUMN] = pd.Series(dtype="object")
+        return enriched
+
+    values: List[List[str]] = [[] for _ in range(len(enriched))]
+    tasks: List[Tuple[int, int]] = []
+    for row_position, (_, row) in enumerate(enriched.iterrows()):
+        player_id = _to_int(row.get(PLAYER_ID_COLUMN))
+        if player_id is None:
+            continue
+        tasks.append((row_position, player_id))
+
+    if not tasks:
+        enriched[RECENT_PITCHER_GAMES_COLUMN] = values
+        return enriched
+
+    max_workers = min(16, len(tasks))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_position = {
+            executor.submit(fetch_pitcher_recent_game_lines, player_id, season, report_date): row_position
+            for row_position, player_id in tasks
+        }
+        for future, row_position in future_to_position.items():
+            try:
+                values[row_position] = future.result()
+            except Exception:
+                values[row_position] = []
+
+    enriched[RECENT_PITCHER_GAMES_COLUMN] = values
+    return enriched
+
+
 def _recent_team_k_percent(
     splits: Sequence[Dict[str, Any]],
     cutoff_date: datetime.date,
@@ -999,10 +1496,38 @@ def _get_team_hand_split_k_lookup(team_id: int, season: int) -> Dict[str, Option
     return result
 
 
+def _get_team_hand_split_k_rank_map(season: int, pitcher_hand: str) -> Dict[int, int]:
+    hand = str(pitcher_hand or "").strip().upper()
+    if hand == "L":
+        split_key = "vs_lhp"
+    elif hand == "R":
+        split_key = "vs_rhp"
+    else:
+        return {}
+
+    cache_key = (season, hand)
+    cached = TEAM_HAND_SPLIT_RANK_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    rows: List[Tuple[int, float]] = []
+    for team_id in fetch_mlb_team_ids(season):
+        split_lookup = _get_team_hand_split_k_lookup(team_id, season)
+        k_percent = _to_float(split_lookup.get(split_key))
+        if k_percent is None:
+            continue
+        rows.append((team_id, k_percent))
+
+    rows.sort(key=lambda row: row[1], reverse=True)
+    rank_map = {team_id: rank for rank, (team_id, _) in enumerate(rows, start=1)}
+    TEAM_HAND_SPLIT_RANK_CACHE[cache_key] = rank_map
+    return rank_map
+
+
 def build_opponent_hand_k_lookup(
     schedule: Sequence[Dict[str, Any]],
     season: int,
-) -> Dict[str, Dict[str, Optional[float]]]:
+) -> Dict[str, Dict[str, Any]]:
     team_name_to_id: Dict[str, int] = {}
     for game in schedule:
         away_name = str(game.get("away_name", "")).strip()
@@ -1014,10 +1539,17 @@ def build_opponent_hand_k_lookup(
         if home_name and home_id is not None:
             team_name_to_id[home_name] = home_id
 
-    return {
-        team_name: _get_team_hand_split_k_lookup(team_id, season)
-        for team_name, team_id in team_name_to_id.items()
+    rank_maps = {
+        "L": _get_team_hand_split_k_rank_map(season, "L"),
+        "R": _get_team_hand_split_k_rank_map(season, "R"),
     }
+    lookup: Dict[str, Dict[str, Any]] = {}
+    for team_name, team_id in team_name_to_id.items():
+        split_lookup = dict(_get_team_hand_split_k_lookup(team_id, season))
+        split_lookup["vs_lhp_rank"] = rank_maps["L"].get(team_id)
+        split_lookup["vs_rhp_rank"] = rank_maps["R"].get(team_id)
+        lookup[team_name] = split_lookup
+    return lookup
 
 
 def build_opponent_recent_k_lookup(
@@ -1044,26 +1576,32 @@ def build_opponent_recent_k_lookup(
 
 def add_opponent_hand_matchup_k_percent(
     pitchers: pd.DataFrame,
-    opponent_hand_lookup: Dict[str, Dict[str, Optional[float]]],
+    opponent_hand_lookup: Dict[str, Dict[str, Any]],
 ) -> pd.DataFrame:
     enriched = pitchers.copy()
     if enriched.empty:
         enriched[OPP_HAND_K_COLUMN] = pd.NA
+        enriched[OPP_HAND_K_RANK_COLUMN] = pd.NA
         return enriched
 
     values: List[Optional[float]] = []
+    ranks: List[Optional[int]] = []
     for _, row in enriched.iterrows():
         hand = str(row.get("Hand", "")).strip().upper()
         opponent = str(row.get("Opponent", "")).strip()
         split_lookup = opponent_hand_lookup.get(opponent, {})
         if hand == "L":
             values.append(split_lookup.get("vs_lhp"))
+            ranks.append(_to_int(split_lookup.get("vs_lhp_rank")))
         elif hand == "R":
             values.append(split_lookup.get("vs_rhp"))
+            ranks.append(_to_int(split_lookup.get("vs_rhp_rank")))
         else:
             values.append(None)
+            ranks.append(None)
 
     enriched[OPP_HAND_K_COLUMN] = values
+    enriched[OPP_HAND_K_RANK_COLUMN] = ranks
     return enriched
 
 
@@ -1580,19 +2118,71 @@ def _render_matchup_source_marker(value: Any) -> str:
     text = str(value or "").strip()
     if text == MATCHUP_SOURCE_ESPN:
         return '<span class="k-src-marker src-espn" title="ESPN confirmed lineup sample">E</span>'
+    if text == MATCHUP_SOURCE_PREVIOUS_LINEUP:
+        return '<span class="k-src-marker src-previous-lineup" title="Previous completed lineup BvP sample">P</span>'
     if text == MATCHUP_SOURCE_SAVANT:
         return '<span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span>'
     return ""
 
 
-def _annotate_k_percent_with_source(k_percent_value: Any, source_value: Any) -> str:
+def _matchup_lines_from_value(value: Any) -> List[str]:
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if value is None:
+        return []
+    try:
+        if pd.isna(value):
+            return []
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    if text in {"", "-", "N/A", "nan", "None"}:
+        return []
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def _annotate_k_percent_with_source(k_percent_value: Any, source_value: Any, matchup_lines: Any = None) -> str:
     text = str(k_percent_value or "").strip()
     if text in {"", "-", "N/A", "nan", "None"}:
         return "-"
     marker_html = _render_matchup_source_marker(source_value)
     if not marker_html:
         return escape(text)
-    return f'{escape(text)}<span class="k-src-gap" aria-hidden="true"></span>{marker_html}'
+    value_html = f'{escape(text)}<span class="k-src-gap" aria-hidden="true"></span>{marker_html}'
+    source_text = str(source_value or "").strip()
+    lines = _matchup_lines_from_value(matchup_lines)[:9]
+    if source_text in {MATCHUP_SOURCE_ESPN, MATCHUP_SOURCE_PREVIOUS_LINEUP} and lines:
+        popup_lines = "".join(f'<span class="matchup-k-line">{escape(line)}</span>' for line in lines)
+        return (
+            '<span class="matchup-k-cell matchup-k-has-lines">'
+            f'<span class="matchup-k-value">{value_html}</span>'
+            '<span class="matchup-k-popup" role="tooltip" aria-label="Batter lines versus pitcher">'
+            f"{popup_lines}"
+            "</span>"
+            "</span>"
+        )
+    return value_html
+
+
+def _render_opponent_hand_k_with_rank(k_percent_value: Any, rank_value: Any) -> str:
+    text = str(k_percent_value or "").strip()
+    if text in {"", "-", "N/A", "nan", "None"}:
+        return "-"
+    rank = _to_int(rank_value)
+    if rank is None or rank <= 0:
+        return escape(text)
+    max_rank = 30
+    rank_pct = min(max((rank - 1) / (max_rank - 1), 0.0), 1.0)
+    rank_hue = int(round(140 - (140 * rank_pct)))
+    return (
+        '<span class="opp-hand-k-cell">'
+        f'<span class="opp-hand-k-value">{escape(text)}</span>'
+        '<span class="k-src-gap" aria-hidden="true"></span>'
+        f'<span class="opp-hand-rank-badge" style="--rank-hue: {rank_hue};" '
+        'title="Opponent MLB rank in K% versus pitcher hand; 1 = highest K%, 30 = lowest K%">'
+        f"{rank}</span>"
+        "</span>"
+    )
 
 
 def _opponent_time_chip_metadata(status: Any) -> Tuple[str, str]:
@@ -1642,7 +2232,13 @@ def _render_opponent_with_start(opponent: Any, start_time: Any, status: Any = No
 
 
 def _render_hand_badge(hand: Any) -> str:
-    hand_text = str(hand or "").strip().upper()
+    try:
+        if pd.isna(hand):
+            hand_text = ""
+        else:
+            hand_text = str(hand).strip().upper()
+    except (TypeError, ValueError):
+        hand_text = str(hand or "").strip().upper()
     if hand_text not in {"R", "L"}:
         hand_text = "TBD"
     hand_class = {"R": "hand-right", "L": "hand-left"}.get(hand_text, "hand-tbd")
@@ -1652,14 +2248,45 @@ def _render_hand_badge(hand: Any) -> str:
     )
 
 
-def _render_pitcher_name_cell(name: Any, hand: Any) -> str:
+def _recent_game_lines_from_value(value: Any) -> List[str]:
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if value is None:
+        return []
+    try:
+        if pd.isna(value):
+            return []
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    if text in {"", "-", "N/A", "nan", "None"}:
+        return []
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def _render_pitcher_name_cell(name: Any, hand: Any, recent_games: Any = None) -> str:
     name_text = str(name or "").strip()
     if not name_text:
         return "-"
+    recent_lines = _recent_game_lines_from_value(recent_games)[:5]
+    classes = ["pitcher-name-cell"]
+    popup_html = ""
+    if recent_lines:
+        classes.append("pitcher-has-recent")
+        popup_lines = "".join(
+            f'<span class="pitcher-recent-line">{escape(line)}</span>'
+            for line in recent_lines
+        )
+        popup_html = (
+            '<span class="pitcher-recent-popup" role="tooltip" aria-label="Last 5 pitcher games">'
+            f"{popup_lines}"
+            "</span>"
+        )
     return (
-        '<span class="pitcher-name-cell">'
+        f'<span class="{" ".join(classes)}">'
         f"{make_pitcher_hyperlink(name_text)}"
         f"{_render_hand_badge(hand)}"
+        f"{popup_html}"
         "</span>"
     )
 
@@ -2081,7 +2708,11 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
     odds_columns = _odds_columns_from_df(report_df)
     if "Name" in report_df.columns:
         report_df["Name"] = report_df.apply(
-            lambda row: _render_pitcher_name_cell(row.get("Name"), row.get("Hand")),
+            lambda row: _render_pitcher_name_cell(
+                row.get("Name"),
+                row.get("Hand"),
+                row.get(RECENT_PITCHER_GAMES_COLUMN),
+            ),
             axis=1,
         )
     if "Ks" in report_df.columns and "Status" in report_df.columns:
@@ -2110,9 +2741,21 @@ def _format_for_report_table(df: pd.DataFrame) -> pd.DataFrame:
             numeric_col = pd.to_numeric(report_df[col], errors="coerce")
             report_df[col] = numeric_col.apply(lambda val: fmt.format(val) if pd.notna(val) else "-")
 
+    if OPP_HAND_K_COLUMN in report_df.columns and OPP_HAND_K_RANK_COLUMN in report_df.columns:
+        report_df[OPP_HAND_K_COLUMN] = report_df.apply(
+            lambda row: _render_opponent_hand_k_with_rank(
+                row.get(OPP_HAND_K_COLUMN),
+                row.get(OPP_HAND_K_RANK_COLUMN),
+            ),
+            axis=1,
+        )
     if "K%" in report_df.columns and MATCHUP_SOURCE_COLUMN in report_df.columns:
         report_df["K%"] = report_df.apply(
-            lambda row: _annotate_k_percent_with_source(row.get("K%"), row.get(MATCHUP_SOURCE_COLUMN)),
+            lambda row: _annotate_k_percent_with_source(
+                row.get("K%"),
+                row.get(MATCHUP_SOURCE_COLUMN),
+                row.get(MATCHUP_LINES_COLUMN),
+            ),
             axis=1,
         )
     if "Opponent" in report_df.columns:
@@ -2509,6 +3152,10 @@ def write_to_html(
       white-space: normal;
       overflow-wrap: anywhere;
     }}
+    table.pitchers-table td.column-name {{
+      overflow: visible;
+      position: relative;
+    }}
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {{
       min-width: 72px;
@@ -2693,10 +3340,90 @@ def write_to_html(
       color: #1d4ed8;
       border-color: #93c5fd;
     }}
+    .k-src-marker.src-previous-lineup {{
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fbbf24;
+    }}
     .k-src-marker.src-savant {{
       background: #dcfce7;
       color: #166534;
       border-color: #86efac;
+    }}
+    .opp-hand-k-cell {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }}
+    .opp-hand-rank-badge {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 14px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: hsl(var(--rank-hue, 140) 78% 92%);
+      border: 1px solid hsl(var(--rank-hue, 140) 58% 68%);
+      color: hsl(var(--rank-hue, 140) 72% 24%);
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      transform: translateY(-1px);
+    }}
+    .matchup-k-cell {{
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }}
+    .matchup-k-cell.matchup-k-has-lines {{
+      cursor: help;
+    }}
+    .matchup-k-popup {{
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }}
+    .matchup-k-popup::before {{
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }}
+    .matchup-k-cell.matchup-k-has-lines:hover .matchup-k-popup,
+    .matchup-k-cell.matchup-k-has-lines:focus-within .matchup-k-popup {{
+      visibility: visible;
+      opacity: 1;
+    }}
+    .matchup-k-line {{
+      display: block;
+      white-space: nowrap;
     }}
     .pitcher-name-cell {{
       display: inline-flex;
@@ -2704,6 +3431,54 @@ def write_to_html(
       justify-content: center;
       gap: 4px;
       flex-wrap: wrap;
+      position: relative;
+    }}
+    .pitcher-name-cell.pitcher-has-recent {{
+      cursor: help;
+    }}
+    .pitcher-recent-popup {{
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }}
+    .pitcher-recent-popup::before {{
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }}
+    .pitcher-name-cell.pitcher-has-recent:hover .pitcher-recent-popup,
+    .pitcher-name-cell.pitcher-has-recent:focus-within .pitcher-recent-popup,
+    table.pitchers-table td.column-name:hover .pitcher-name-cell.pitcher-has-recent .pitcher-recent-popup {{
+      visibility: visible;
+      opacity: 1;
+    }}
+    .pitcher-recent-line {{
+      display: block;
+      white-space: nowrap;
     }}
     .hand-marker {{
       transform: none;
@@ -3077,7 +3852,7 @@ def write_to_html(
           <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
           <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
           <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback. Hover headers for definitions.</span>
         </div>
         <div class="table-controls" aria-label="Pitcher table controls">
           <span class="table-controls-label">Show</span>
@@ -3549,6 +4324,7 @@ def main(
     opponent_recent_lookup = build_opponent_recent_k_lookup(schedule, report_year, report_date_obj)
     pitchers = add_opponent_recent_k_percent(pitchers, opponent_recent_lookup)
     pitchers = calculate_additional_metrics(report_date, pitchers)
+    pitchers = add_pitcher_recent_game_logs(pitchers, report_year, report_date_obj)
 
     final_df = pitchers
     if odds.lower() == "n":

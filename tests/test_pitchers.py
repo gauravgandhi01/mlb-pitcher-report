@@ -11,18 +11,31 @@ import Pitchers as pitchers_module
 from Pitchers import (
     BEST_K_ODDS_COLUMN,
     K_PA_COLUMN,
+    MATCHUP_LINES_COLUMN,
     MATCHUP_SOURCE_COLUMN,
+    MATCHUP_SOURCE_ESPN,
+    MATCHUP_SOURCE_PREVIOUS_LINEUP,
+    MATCHUP_SOURCE_SAVANT,
     OPP_HAND_K_COLUMN,
+    OPP_HAND_K_RANK_COLUMN,
     OPP_LAST_10_K_COLUMN,
     OPP_LAST_5_K_COLUMN,
     PA_GP_COLUMN,
+    RECENT_PITCHER_GAMES_COLUMN,
     START_TIME_COLUMN,
     _classify_best_odds_point,
     _classify_matchup_k_percent,
     _classify_matchup_sample_size,
+    _extract_espn_lineup_matchup_stats,
+    _format_recent_pitcher_game_line,
     _get_team_recent_k_lookup,
+    _previous_lineup_k_percent,
     _render_best_k_odds_cell,
+    _render_matchup_source_marker,
+    build_opponent_hand_k_lookup,
     calculate_additional_metrics,
+    fetch_pitcher_recent_game_lines,
+    get_opp_data,
     prepare_team_batting_df,
     resolve_effective_report_date_and_schedule,
     summarize_pitcher_best_k_odds,
@@ -48,8 +61,10 @@ class PitchersRenderTests(unittest.TestCase):
                     "K%": 29.4,
                     "PA": 25,
                     MATCHUP_SOURCE_COLUMN: "ESPN (AB)",
+                    MATCHUP_LINES_COLUMN: ["Batter 1-3 2K", "Batter 0-2 1K"],
                     "SO/PA": 24.3,
                     OPP_HAND_K_COLUMN: 23.1,
+                    OPP_HAND_K_RANK_COLUMN: 1,
                     OPP_LAST_5_K_COLUMN: 24.5,
                     OPP_LAST_10_K_COLUMN: 22.8,
                     "r": 4,
@@ -57,6 +72,7 @@ class PitchersRenderTests(unittest.TestCase):
                     START_TIME_COLUMN: "7:10p",
                     "Status": "Scheduled",
                     "Ks": "N/A",
+                    RECENT_PITCHER_GAMES_COLUMN: ["v PIT 8K 98P", "@ MIL 6K 91P"],
                     "FanDuel": "6.5: +102|-118 || ALT: 5.5: -150|+120; 7.5: +160|-210",
                     "BetRivers": "6.5: +100|-108 || ALT: 7.5: +170|-220",
                     "Novig": "7.5: +125|-145 || ALT: 6.5: +104|-110",
@@ -76,8 +92,10 @@ class PitchersRenderTests(unittest.TestCase):
                     "K%": 26.2,
                     "PA": 18,
                     MATCHUP_SOURCE_COLUMN: "Savant (PA)",
+                    MATCHUP_LINES_COLUMN: [],
                     "SO/PA": 22.1,
                     OPP_HAND_K_COLUMN: 21.0,
+                    OPP_HAND_K_RANK_COLUMN: 12,
                     OPP_LAST_5_K_COLUMN: 19.4,
                     OPP_LAST_10_K_COLUMN: 20.7,
                     "r": 9,
@@ -85,6 +103,7 @@ class PitchersRenderTests(unittest.TestCase):
                     START_TIME_COLUMN: "4:10p",
                     "Status": "In Progress",
                     "Ks": 5,
+                    RECENT_PITCHER_GAMES_COLUMN: [],
                     "FanDuel": "5.5: -104|-122 || ALT: 4.5: -220|+168",
                     "BetRivers": "5.5: -101|-119",
                 },
@@ -102,8 +121,10 @@ class PitchersRenderTests(unittest.TestCase):
                     "K%": 31.0,
                     "PA": 12,
                     MATCHUP_SOURCE_COLUMN: "ESPN (AB)",
+                    MATCHUP_LINES_COLUMN: [],
                     "SO/PA": 25.6,
                     OPP_HAND_K_COLUMN: 19.7,
+                    OPP_HAND_K_RANK_COLUMN: None,
                     OPP_LAST_5_K_COLUMN: 18.6,
                     OPP_LAST_10_K_COLUMN: 21.3,
                     "r": 15,
@@ -111,6 +132,7 @@ class PitchersRenderTests(unittest.TestCase):
                     START_TIME_COLUMN: "1:10p",
                     "Status": "Scheduled",
                     "Ks": "",
+                    RECENT_PITCHER_GAMES_COLUMN: [],
                 },
                 {
                     "Name": "Delta Dart",
@@ -126,8 +148,10 @@ class PitchersRenderTests(unittest.TestCase):
                     "K%": 16.4,
                     "PA": 22,
                     MATCHUP_SOURCE_COLUMN: "Savant (PA)",
+                    MATCHUP_LINES_COLUMN: [],
                     "SO/PA": 19.2,
                     OPP_HAND_K_COLUMN: 18.8,
+                    OPP_HAND_K_RANK_COLUMN: 30,
                     OPP_LAST_5_K_COLUMN: 17.9,
                     OPP_LAST_10_K_COLUMN: 18.7,
                     "r": 19,
@@ -135,6 +159,7 @@ class PitchersRenderTests(unittest.TestCase):
                     START_TIME_COLUMN: "8:10p",
                     "Status": "Final",
                     "Ks": 7,
+                    RECENT_PITCHER_GAMES_COLUMN: [],
                 },
             ]
         )
@@ -225,6 +250,21 @@ class PitchersRenderTests(unittest.TestCase):
             self.assertNotIn("AB/GP", archive_html)
             self.assertNotIn(">N/A</td>", archive_html)
             self.assertIn("pitcher-name-cell", archive_html)
+            self.assertIn("pitcher-has-recent", archive_html)
+            self.assertIn("pitcher-recent-popup", archive_html)
+            self.assertIn("v PIT 8K 98P", archive_html)
+            self.assertIn("@ MIL 6K 91P", archive_html)
+            self.assertNotIn(f">{RECENT_PITCHER_GAMES_COLUMN}</th>", archive_html)
+            self.assertIn("matchup-k-cell matchup-k-has-lines", archive_html)
+            self.assertIn("matchup-k-popup", archive_html)
+            self.assertIn("Batter 1-3 2K", archive_html)
+            self.assertNotIn(f">{MATCHUP_LINES_COLUMN}</th>", archive_html)
+            self.assertIn("opp-hand-rank-badge", archive_html)
+            self.assertIn("--rank-hue: 140", archive_html)
+            self.assertIn("--rank-hue: 0", archive_html)
+            self.assertIn(">1</span>", archive_html)
+            self.assertNotIn(">(1)</span>", archive_html)
+            self.assertNotIn(f">{OPP_HAND_K_RANK_COLUMN}</th>", archive_html)
             self.assertIn("hand-marker hand-right", archive_html)
             self.assertIn("hand-marker hand-left", archive_html)
             self.assertIn("6.5 | O +104 NV | U -108 BR", archive_html)
@@ -415,6 +455,231 @@ class PitchersRenderTests(unittest.TestCase):
 
         self.assertIsNone(empty_result["last_5"])
         self.assertIsNone(empty_result["last_10"])
+
+    def test_opponent_hand_lookup_includes_k_rank_by_pitcher_hand(self) -> None:
+        schedule = [
+            {
+                "away_name": "Boston Red Sox",
+                "away_id": 111,
+                "home_name": "New York Yankees",
+                "home_id": 222,
+            }
+        ]
+
+        split_by_team = {
+            111: {"vs_lhp": 28.0, "vs_rhp": 21.0},
+            222: {"vs_lhp": 19.0, "vs_rhp": 24.0},
+            333: {"vs_lhp": 25.0, "vs_rhp": 30.0},
+        }
+
+        with patch.object(pitchers_module, "TEAM_HAND_SPLIT_RANK_CACHE", {}), patch(
+            "Pitchers.fetch_mlb_team_ids",
+            return_value=[111, 222, 333],
+        ), patch(
+            "Pitchers._get_team_hand_split_k_lookup",
+            side_effect=lambda team_id, season: split_by_team[team_id],
+        ):
+            lookup = build_opponent_hand_k_lookup(schedule, 2026)
+
+        self.assertEqual(lookup["Boston Red Sox"]["vs_lhp"], 28.0)
+        self.assertEqual(lookup["Boston Red Sox"]["vs_lhp_rank"], 1)
+        self.assertEqual(lookup["Boston Red Sox"]["vs_rhp_rank"], 3)
+        self.assertEqual(lookup["New York Yankees"]["vs_rhp_rank"], 2)
+
+    def test_espn_lineup_matchup_stats_include_batter_hover_lines(self) -> None:
+        athletes = []
+        for index in range(9):
+            athletes.append(
+                {
+                    "starter": True,
+                    "batOrder": index + 1,
+                    "athlete": {"shortName": f"Sample Batter {index + 1}", "lastName": f"Batter{index + 1}"},
+                    "vsStats": [1, 3, 2 if index == 0 else 1],
+                }
+            )
+        summary_data = {
+            "boxscore": {
+                "players": [
+                    {
+                        "team": {"abbreviation": "NYY"},
+                        "statistics": [
+                            {
+                                "type": "batting",
+                                "keys": ["hits", "atBats", "strikeouts"],
+                                "athletes": athletes,
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+
+        result = _extract_espn_lineup_matchup_stats(summary_data)
+
+        self.assertIn("NYY", result)
+        self.assertEqual(result["NYY"]["PA"], 27.0)
+        self.assertAlmostEqual(result["NYY"]["K%"], 100 * 10 / 27)
+        self.assertIn("Batter1 1-3 2K", result["NYY"][MATCHUP_LINES_COLUMN])
+
+    def test_previous_lineup_k_percent_aggregates_batter_vs_pitcher_stats(self) -> None:
+        lineup_ids = list(range(101, 110))
+
+        def person(player_id: int, strikeouts: int, plate_appearances: int, hits: int, at_bats: int) -> dict:
+            return {
+                "id": player_id,
+                "fullName": f"Hitter {player_id}",
+                "lastName": f"Last{player_id}",
+                "stats": [
+                    {
+                        "type": {"displayName": "vsPlayer"},
+                        "group": {"displayName": "hitting"},
+                        "splits": [
+                            {
+                                "season": "2026",
+                                "stat": {
+                                    "strikeOuts": strikeouts,
+                                    "plateAppearances": plate_appearances,
+                                    "hits": hits,
+                                    "atBats": at_bats,
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+
+        people = {
+            player_id: person(player_id, strikeouts=index + 1, plate_appearances=10, hits=1, at_bats=3)
+            for index, player_id in enumerate(lineup_ids)
+        }
+
+        with patch.object(pitchers_module, "PREVIOUS_LINEUP_K_CACHE", {}), patch(
+            "Pitchers._fetch_previous_lineup_player_ids",
+            return_value=lineup_ids,
+        ), patch(
+            "Pitchers.fetch_hitter_people_stats_map",
+            return_value=people,
+        ) as fetch_people:
+            result = _previous_lineup_k_percent(158, 2026, dt.date(2026, 7, 12), 999)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["PA"], 90.0)
+        self.assertAlmostEqual(result["K%"], 50.0)
+        self.assertEqual(len(result[MATCHUP_LINES_COLUMN]), 9)
+        self.assertIn("Last101 1-3 1K", result[MATCHUP_LINES_COLUMN])
+        fetch_people.assert_called_once_with(
+            lineup_ids,
+            2026,
+            None,
+            999,
+            stats_end_date=dt.date(2026, 7, 11),
+        )
+
+    def test_get_opp_data_prefers_previous_lineup_over_savant_when_espn_missing(self) -> None:
+        savant_df = pd.DataFrame(
+            [
+                {
+                    "Pitcher": "Alpha Ace",
+                    "Hand": "R",
+                    "PA": 4,
+                    "K%": 10.0,
+                    MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
+                    MATCHUP_LINES_COLUMN: [],
+                }
+            ]
+        )
+        previous_df = pd.DataFrame(
+            [
+                {
+                    "Pitcher": "Alpha Ace",
+                    "PA": 90,
+                    "K%": 24.4,
+                    MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_PREVIOUS_LINEUP,
+                    MATCHUP_LINES_COLUMN: ["One 1-3 2K"],
+                }
+            ]
+        )
+        espn_df = pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+
+        with patch("Pitchers.get_savant_opp_data", return_value=savant_df), patch(
+            "Pitchers.get_espn_opp_data",
+            return_value=espn_df,
+        ), patch("Pitchers.get_previous_lineup_opp_data", return_value=previous_df):
+            result = get_opp_data("07/12/2026", [])
+
+        alpha = result.loc[result["Pitcher"] == "Alpha Ace"].iloc[0]
+        self.assertEqual(alpha["Hand"], "R")
+        self.assertEqual(alpha["PA"], 90)
+        self.assertEqual(alpha["K%"], 24.4)
+        self.assertEqual(alpha[MATCHUP_SOURCE_COLUMN], MATCHUP_SOURCE_PREVIOUS_LINEUP)
+        self.assertEqual(alpha[MATCHUP_LINES_COLUMN], ["One 1-3 2K"])
+
+    def test_matchup_source_marker_includes_previous_lineup_marker(self) -> None:
+        html = _render_matchup_source_marker(MATCHUP_SOURCE_PREVIOUS_LINEUP)
+
+        self.assertIn(">P</span>", html)
+        self.assertIn("Previous completed lineup BvP sample", html)
+
+    def test_format_recent_pitcher_game_line_uses_opponent_strikeouts_pitch_count_and_location(self) -> None:
+        home_split = {
+            "opponent": {"name": "Pittsburgh Pirates"},
+            "stat": {"strikeOuts": 8, "numberOfPitches": 98},
+            "isHome": True,
+        }
+        away_split = {
+            "opponent": {"name": "Milwaukee Brewers"},
+            "stat": {"strikeOuts": 6, "numberOfPitches": 91},
+            "isHome": False,
+        }
+
+        self.assertEqual(_format_recent_pitcher_game_line(home_split), "v PIT 8K 98P")
+        self.assertEqual(_format_recent_pitcher_game_line(away_split), "@ MIL 6K 91P")
+
+    def test_fetch_pitcher_recent_game_lines_uses_last_five_before_report_date(self) -> None:
+        def split(
+            date: str,
+            game_pk: int,
+            opponent: str,
+            strikeouts: int,
+            pitches: int,
+            is_home: bool,
+        ) -> dict:
+            return {
+                "date": date,
+                "game": {"gamePk": game_pk},
+                "opponent": {"name": opponent},
+                "stat": {"strikeOuts": strikeouts, "numberOfPitches": pitches},
+                "isHome": is_home,
+            }
+
+        current_season_splits = [
+            split("2026-06-01", 1, "Pittsburgh Pirates", 4, 80, True),
+            split("2026-06-08", 2, "Milwaukee Brewers", 6, 91, False),
+            split("2026-06-15", 3, "Chicago Cubs", 7, 94, True),
+            split("2026-06-22", 4, "Cincinnati Reds", 8, 98, False),
+            split("2026-06-29", 5, "St. Louis Cardinals", 9, 101, True),
+            split("2026-07-12", 6, "Philadelphia Phillies", 10, 105, False),
+        ]
+        previous_season_splits = [
+            split("2025-09-20", 7, "New York Mets", 5, 88, False),
+        ]
+
+        def fake_splits(_player_id: int, season: int) -> list:
+            return current_season_splits if season == 2026 else previous_season_splits
+
+        with patch("Pitchers._pitcher_game_log_splits", side_effect=fake_splits):
+            lines = fetch_pitcher_recent_game_lines(123, 2026, dt.date(2026, 7, 12))
+
+        self.assertEqual(
+            lines,
+            [
+                "v STL 9K 101P",
+                "@ CIN 8K 98P",
+                "v CHC 7K 94P",
+                "@ MIL 6K 91P",
+                "v PIT 4K 80P",
+            ],
+        )
 
     def test_summarize_pitcher_best_k_odds_uses_consensus_line_and_best_prices(self) -> None:
         row = {
