@@ -373,6 +373,15 @@ class PitchersRenderTests(unittest.TestCase):
         self.assertEqual(report_date, "06/17/2026")
         self.assertEqual(schedule, [{"status": "Final"}])
 
+    def test_pitcher_date_resolution_keeps_current_slate_when_next_day_is_empty(self) -> None:
+        current_schedule = [{"status": "Final"}, {"status": "In Progress"}]
+
+        with patch("mlb_pitcher_report.reports.pitchers.fetch_schedule", side_effect=[current_schedule, []]):
+            report_date, schedule = resolve_effective_report_date_and_schedule("07/12/2026")
+
+        self.assertEqual(report_date, "07/12/2026")
+        self.assertEqual(schedule, current_schedule)
+
     def test_team_recent_k_lookup_aggregates_last_5_and_last_10_before_report_date(self) -> None:
         cutoff_date = dt.date(2026, 6, 27)
         game_log_splits = [

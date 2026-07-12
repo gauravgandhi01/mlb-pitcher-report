@@ -23,6 +23,15 @@ class ReportDataDateResolutionTests(unittest.TestCase):
         self.assertEqual(report_date, "06/18/2026")
         self.assertEqual(schedule, next_schedule)
 
+    def test_resolve_effective_report_date_keeps_current_slate_when_next_day_is_empty(self) -> None:
+        completed_schedule = [{"status": "Final"}]
+
+        with patch("mlb_pitcher_report.shared.report_data.fetch_schedule", side_effect=[completed_schedule, []]):
+            report_date, schedule = resolve_effective_report_date_and_schedule("07/12/2026")
+
+        self.assertEqual(report_date, "07/12/2026")
+        self.assertEqual(schedule, completed_schedule)
+
     def test_resolve_effective_report_date_respects_exact_mode(self) -> None:
         completed_schedule = [{"status": "Final"}]
 

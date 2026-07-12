@@ -185,6 +185,14 @@ def resolve_effective_report_date_and_schedule(
 
     next_report_date = _next_report_date(report_date)
     next_schedule = fetch_schedule(next_report_date)
+    if not next_schedule:
+        print(
+            "\033[93mNo games remain in a not-started state on "
+            f"{report_date}, and no reportable games were found on {next_report_date}. "
+            "Keeping the current slate.\033[0m"
+        )
+        return report_date, schedule
+
     print(
         "\033[93mNo games remain in a not-started state on "
         f"{report_date}. Rolling report forward to {next_report_date}.\033[0m"
