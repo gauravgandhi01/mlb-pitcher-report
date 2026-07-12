@@ -691,6 +691,10 @@ class MatchupsLogicTests(unittest.TestCase):
             archive_summary_html = archive_summary_path.read_text(encoding="utf-8")
             archive_detail_html = archive_detail_path.read_text(encoding="utf-8")
 
+            self.assertIn('<link rel="icon" href="./favicon.svg" type="image/svg+xml">', root_summary_html)
+            self.assertIn('<link rel="icon" href="./favicon.svg" type="image/svg+xml">', root_detail_html)
+            self.assertIn('<link rel="icon" href="../favicon.svg" type="image/svg+xml">', archive_summary_html)
+            self.assertIn('<link rel="icon" href="../favicon.svg" type="image/svg+xml">', archive_detail_html)
             self.assertIn('href="./matchups-detail.html#game-401694912"', root_summary_html)
             self.assertIn('href="./matchups-detail-report-06122026.html#game-401694912"', archive_summary_html)
             self.assertIn('id="game-401694912"', root_detail_html)

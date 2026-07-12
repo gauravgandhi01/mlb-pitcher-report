@@ -218,6 +218,8 @@ class PitchersRenderTests(unittest.TestCase):
 
             self.assertIn("show-live-toggle", archive_html)
             self.assertIn("show-final-toggle", archive_html)
+            self.assertIn('<link rel="icon" href="../favicon.svg" type="image/svg+xml">', archive_html)
+            self.assertIn('<link rel="icon" href="./favicon.svg" type="image/svg+xml">', root_html)
             self.assertIn("hero-nav-row", archive_html)
             self.assertIn(">Show</span>", archive_html)
             self.assertIn("In Progress", control_labels)
@@ -255,8 +257,11 @@ class PitchersRenderTests(unittest.TestCase):
             self.assertIn("v PIT 8K 98P", archive_html)
             self.assertIn("@ MIL 6K 91P", archive_html)
             self.assertNotIn(f">{RECENT_PITCHER_GAMES_COLUMN}</th>", archive_html)
-            self.assertIn("matchup-k-cell matchup-k-has-lines", archive_html)
+            self.assertIn("matchup-k-cell matchup-k-has-popup matchup-k-has-lines", archive_html)
             self.assertIn("matchup-k-popup", archive_html)
+            self.assertIn("matchup-k-source-line", archive_html)
+            self.assertIn("ESPN confirmed lineup", archive_html)
+            self.assertIn("Savant fallback", archive_html)
             self.assertIn("Batter 1-3 2K", archive_html)
             self.assertNotIn(f">{MATCHUP_LINES_COLUMN}</th>", archive_html)
             self.assertIn("opp-hand-rank-badge", archive_html)
@@ -299,6 +304,10 @@ class PitchersRenderTests(unittest.TestCase):
             self.assertIn("cell-elite", alpha_pa_gp_cell.get("class", []))
             self.assertIn("cell-weak", charlie_pa_gp_cell.get("class", []))
             self.assertIn("cell-elite", alpha_k_pct_cell.get("class", []))
+            self.assertEqual(alpha_k_pct_cell.select_one(".matchup-k-value").get_text(strip=True), "29.4")
+            self.assertIsNone(alpha_k_pct_cell.select_one(".matchup-k-value .k-src-marker"))
+            self.assertIsNotNone(alpha_k_pct_cell.select_one(".matchup-k-popup .k-src-marker.src-espn"))
+            self.assertIsNotNone(bravo_k_pct_cell.select_one(".matchup-k-popup .k-src-marker.src-savant"))
             self.assertIn("cell-confidence-high", alpha_pa_cell.get("class", []))
             self.assertIn("cell-strong", bravo_k_pct_cell.get("class", []))
             self.assertIn("cell-low-confidence", charlie_k_pct_cell.get("class", []))
@@ -700,6 +709,16 @@ class PitchersRenderTests(unittest.TestCase):
             [group["point_text"] for group in summary["line_groups"]],
             ["7.5", "6.5"],
         )
+
+    def test_summarize_pitcher_best_k_odds_includes_betonlineag(self) -> None:
+        summary = summarize_pitcher_best_k_odds(
+            {"BetOnline.ag": "5.5: +115|-135"},
+            ["BetOnline.ag"],
+        )
+
+        self.assertEqual(summary["summary"], "5.5 | O +115 BOL | U -135 BOL")
+        self.assertEqual(summary["best_over"]["book"], "BetOnline.ag")
+        self.assertEqual(summary["best_over"]["tag"], "BOL")
 
     def test_classify_best_odds_point_uses_fixed_buckets(self) -> None:
         self.assertEqual(_classify_best_odds_point(7.5), "best-odds-point-elite")

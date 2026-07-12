@@ -33,7 +33,7 @@ ROOT_INDEX_FILE = Path(__file__).resolve().parent / "index.html"
 SCHEDULE_STATUSES = {"Pre-Game", "Scheduled", "Warmup", "Final", "In Progress"}
 NOT_STARTED_STATUSES = {"Pre-Game", "Scheduled", "Warmup"}
 COMPLETED_STATUSES = {"Final", "In Progress"}
-PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX","DraftKings"]
+PREFERRED_ODDS_COLUMNS = ["FanDuel", "BetRivers", "Novig", "ProphetX", "DraftKings", "BetOnline.ag"]
 OPP_HAND_K_COLUMN = "Opp K% vH"
 OPP_HAND_K_RANK_COLUMN = "Opp K% vH Rank"
 OPP_LAST_5_K_COLUMN = "Opp l5 K%"
@@ -157,7 +157,7 @@ STAT_HEADER_TOOLTIPS = {
     "K/9": "Strikeouts per 9 innings pitched.",
     "Whiff%": "Statcast whiff rate (swing-and-miss rate) from Baseball Savant.",
     K_PA_COLUMN: "Strikeout rate: strikeouts divided by batters faced, shown as a percent.",
-    "K%": "Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.",
+    "K%": "Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Hover K% to see the source.",
     "PA": "Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample.",
     MATCHUP_SOURCE_COLUMN: "Source for K% and PA sample: ESPN confirmed lineup, previous completed lineup, or Savant probable lineup.",
     "SO/PA": "Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r.",
@@ -189,6 +189,7 @@ SPORTSBOOK_TAGS = {
     "novig": "NV",
     "prophetx": "PX",
     "draftkings": "DK",
+    "betonlineag": "BOL",
 }
 TEAM_MAPPING = {
     "SEA": "Seattle Mariners",
@@ -2125,6 +2126,17 @@ def _render_matchup_source_marker(value: Any) -> str:
     return ""
 
 
+def _matchup_source_label(value: Any) -> str:
+    text = str(value or "").strip()
+    if text == MATCHUP_SOURCE_ESPN:
+        return "ESPN confirmed lineup"
+    if text == MATCHUP_SOURCE_PREVIOUS_LINEUP:
+        return "Previous lineup BvP"
+    if text == MATCHUP_SOURCE_SAVANT:
+        return "Savant fallback"
+    return ""
+
+
 def _matchup_lines_from_value(value: Any) -> List[str]:
     if isinstance(value, (list, tuple)):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -2148,20 +2160,24 @@ def _annotate_k_percent_with_source(k_percent_value: Any, source_value: Any, mat
     marker_html = _render_matchup_source_marker(source_value)
     if not marker_html:
         return escape(text)
-    value_html = f'{escape(text)}<span class="k-src-gap" aria-hidden="true"></span>{marker_html}'
-    source_text = str(source_value or "").strip()
+    source_label = _matchup_source_label(source_value)
     lines = _matchup_lines_from_value(matchup_lines)[:9]
-    if source_text in {MATCHUP_SOURCE_ESPN, MATCHUP_SOURCE_PREVIOUS_LINEUP} and lines:
-        popup_lines = "".join(f'<span class="matchup-k-line">{escape(line)}</span>' for line in lines)
-        return (
-            '<span class="matchup-k-cell matchup-k-has-lines">'
-            f'<span class="matchup-k-value">{value_html}</span>'
-            '<span class="matchup-k-popup" role="tooltip" aria-label="Batter lines versus pitcher">'
-            f"{popup_lines}"
-            "</span>"
-            "</span>"
-        )
-    return value_html
+    popup_lines = "".join(f'<span class="matchup-k-line">{escape(line)}</span>' for line in lines)
+    classes = ["matchup-k-cell", "matchup-k-has-popup"]
+    if lines:
+        classes.append("matchup-k-has-lines")
+    return (
+        f'<span class="{" ".join(classes)}">'
+        f'<span class="matchup-k-value">{escape(text)}</span>'
+        '<span class="matchup-k-popup" role="tooltip" aria-label="K% source and batter lines">'
+        '<span class="matchup-k-source-line">'
+        f"{marker_html}"
+        f'<span class="matchup-k-source-text">{escape(source_label)}</span>'
+        "</span>"
+        f"{popup_lines}"
+        "</span>"
+        "</span>"
+    )
 
 
 def _render_opponent_hand_k_with_rank(k_percent_value: Any, rank_value: Any) -> str:
@@ -2830,6 +2846,7 @@ def write_to_html(
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MLB Pitcher Report {display_date}</title>
+  <link rel="icon" href="__FAVICON_HREF__" type="image/svg+xml">
   <style>
     :root {{
       --bg: #f3f6fb;
@@ -3379,7 +3396,7 @@ def write_to_html(
       align-items: center;
       justify-content: center;
     }}
-    .matchup-k-cell.matchup-k-has-lines {{
+    .matchup-k-cell.matchup-k-has-popup {{
       cursor: help;
     }}
     .matchup-k-popup {{
@@ -3416,10 +3433,21 @@ def write_to_html(
       border-right: 5px solid transparent;
       border-bottom: 5px solid #0f172a;
     }}
-    .matchup-k-cell.matchup-k-has-lines:hover .matchup-k-popup,
-    .matchup-k-cell.matchup-k-has-lines:focus-within .matchup-k-popup {{
+    .matchup-k-cell.matchup-k-has-popup:hover .matchup-k-popup,
+    .matchup-k-cell.matchup-k-has-popup:focus-within .matchup-k-popup {{
       visibility: visible;
       opacity: 1;
+    }}
+    .matchup-k-source-line {{
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }}
+    .matchup-k-source-text {{
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10px;
+      font-weight: 800;
     }}
     .matchup-k-line {{
       display: block;
@@ -3852,7 +3880,7 @@ def write_to_html(
           <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
           <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
           <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback. Hover headers for definitions.</span>
+          <span class="legend-note">Hover K% for source: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback.</span>
         </div>
         <div class="table-controls" aria-label="Pitcher table controls">
           <span class="table-controls-label">Show</span>
@@ -4225,11 +4253,13 @@ def write_to_html(
         html_content
         .replace("__TABS_HTML__", archive_tabs_html)
         .replace("__DATE_NAV_HTML__", archive_date_nav_html)
+        .replace("__FAVICON_HREF__", "../favicon.svg")
     )
     root_html_content = (
         html_content
         .replace("__TABS_HTML__", root_tabs_html)
         .replace("__DATE_NAV_HTML__", root_date_nav_html)
+        .replace("__FAVICON_HREF__", "./favicon.svg")
     )
     output_path.write_text(archive_html_content, encoding="utf-8")
     if write_root:

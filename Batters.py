@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
@@ -11,6 +12,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 from report_data import (
+    aggregate_stat_lines,
     build_espn_event_snapshot_lookup,
     compute_hit_streak,
     compute_recent_metrics,
@@ -21,6 +23,7 @@ from report_data import (
     extract_game_logs,
     fetch_espn_summary,
     fetch_people_stats_map,
+    fetch_pitcher_historical_batter_vs_pitcher_stat_lines,
     fetch_pitcher_context,
     fetch_team_meta,
     fetch_team_roster,
@@ -129,6 +132,8 @@ def build_candidate_rows(
             same_day_vsp = fetch_game_batter_vs_pitcher_stat_lines(int(game_id), int(pitcher_id)).get(person_id)
         vsp = parse_vs_pitcher_stats(
             indexed,
+            batter_id=person_id,
+            pitcher_id=pitcher_id,
             report_date=report_date,
             same_day_line=same_day_vsp,
             subtract_same_day_from_season_splits=False,
@@ -197,6 +202,7 @@ def build_candidate_rows(
             "Game Hit Result": game_hit_result,
             "Game Home Run Result": game_home_run_result,
             "__player_id": person_id,
+            "__pitcher_id": _to_int(pitcher_id),
             "__recent14d_pa": recent14["PA"],
             "__recent14d_ops": recent14["OPS"],
             "__season_pa": season["PA"],
@@ -509,6 +515,74 @@ def build_home_run_matchup_section(df: pd.DataFrame) -> pd.DataFrame:
         kind="mergesort",
     )
     return home_run_rows.head(HOME_RUN_SECTION_LIMIT)
+
+
+def verify_historical_bvp_for_feature_candidates(
+    df: pd.DataFrame,
+    report_date: dt.date,
+    candidate_indices: Optional[Sequence[Any]] = None,
+) -> pd.DataFrame:
+    if df.empty or "__player_id" not in df.columns or "__pitcher_id" not in df.columns:
+        return df
+
+    verified = df.copy()
+    if candidate_indices is None:
+        vsp_pa = pd.to_numeric(verified["VsP PA"], errors="coerce").fillna(0)
+        vsp_ab = pd.to_numeric(verified["VsP AB"], errors="coerce").fillna(0)
+        vsp_hr = pd.to_numeric(verified["VsP HR"], errors="coerce").fillna(0)
+        candidate_mask = (vsp_pa >= MATCHUP_MIN_PA) | (vsp_ab >= MATCHUP_MIN_PA) | (vsp_hr >= HOME_RUN_MIN_HR)
+    else:
+        candidate_mask = verified.index.isin(candidate_indices)
+
+    if not candidate_mask.any():
+        return verified
+
+    blank_vsp = aggregate_stat_lines([])
+    pitcher_ids = sorted(
+        int(value)
+        for value in pd.to_numeric(verified.loc[candidate_mask, "__pitcher_id"], errors="coerce").dropna().unique()
+    )
+    historical_lines_by_pitcher: Dict[int, Dict[int, Dict[str, Any]]] = {}
+    with ThreadPoolExecutor(max_workers=min(6, len(pitcher_ids) or 1)) as executor:
+        future_to_pitcher_id = {}
+        for pitcher_id in pitcher_ids:
+            pitcher_mask = candidate_mask & (pd.to_numeric(verified["__pitcher_id"], errors="coerce") == pitcher_id)
+            player_ids = [
+                int(player_id)
+                for player_id in pd.to_numeric(verified.loc[pitcher_mask, "__player_id"], errors="coerce").dropna()
+            ]
+            future = executor.submit(
+                fetch_pitcher_historical_batter_vs_pitcher_stat_lines,
+                pitcher_id,
+                report_date,
+                player_ids,
+            )
+            future_to_pitcher_id[future] = pitcher_id
+        for future in as_completed(future_to_pitcher_id):
+            pitcher_id = future_to_pitcher_id[future]
+            try:
+                historical_lines_by_pitcher[pitcher_id] = future.result()
+            except Exception:
+                historical_lines_by_pitcher[pitcher_id] = {}
+
+    for pitcher_id in pitcher_ids:
+        pitcher_mask = candidate_mask & (pd.to_numeric(verified["__pitcher_id"], errors="coerce") == pitcher_id)
+        historical_lines = historical_lines_by_pitcher.get(pitcher_id, {})
+        for row_index in verified.loc[pitcher_mask].index:
+            player_id = _to_int(verified.at[row_index, "__player_id"])
+            vsp = historical_lines.get(int(player_id)) if player_id is not None else None
+            if vsp is None:
+                vsp = blank_vsp
+            verified.at[row_index, "VsP PA"] = vsp["PA"]
+            verified.at[row_index, "VsP AB"] = vsp["AB"]
+            verified.at[row_index, "VsP H"] = vsp["H"]
+            verified.at[row_index, "VsP HR"] = vsp["HR"]
+            verified.at[row_index, "VsP RBI"] = vsp["RBI"]
+            verified.at[row_index, "VsP AVG"] = vsp["AVG"]
+            verified.at[row_index, "VsP OPS"] = vsp["OPS"]
+            verified.at[row_index, "VsP K%"] = vsp["K%"]
+
+    return verified
 
 
 def _format_rate(value: Any) -> str:
@@ -1157,6 +1231,7 @@ def write_html(
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MLB Batter Report {escape(display_date)}</title>
+  <link rel="icon" href="__FAVICON_HREF__" type="image/svg+xml">
   <style>
     :root {{
       --bg: #eef4f9;
@@ -1859,11 +1934,13 @@ def write_html(
         html_content
         .replace("__TABS_HTML__", archive_tabs_html)
         .replace("__DATE_NAV_HTML__", archive_date_nav_html)
+        .replace("__FAVICON_HREF__", "../favicon.svg")
     )
     root_html_content = (
         html_content
         .replace("__TABS_HTML__", root_tabs_html)
         .replace("__DATE_NAV_HTML__", root_date_nav_html)
+        .replace("__FAVICON_HREF__", "./favicon.svg")
     )
     output_path.write_text(archive_html_content, encoding="utf-8")
     if write_root:
@@ -2024,6 +2101,8 @@ def main(raw_date_input: str, *, allow_roll_forward: bool = True, write_root: bo
     report_key = report_date.replace("/", "")
     rows = build_report_rows(schedule, report_date)
     final_df = sort_batters_for_report(apply_hot_scores(rows))
+    report_date_obj = dt.datetime.strptime(report_date, "%m/%d/%Y").date()
+    final_df = verify_historical_bvp_for_feature_candidates(final_df, report_date_obj)
     streak_df = build_active_hit_streak_section(final_df)
     hot_df = build_hot_streak_matchup_section(final_df)
     home_run_df = build_home_run_matchup_section(final_df)

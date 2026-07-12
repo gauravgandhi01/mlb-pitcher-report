@@ -24,6 +24,36 @@ class OddsApiTests(unittest.TestCase):
                 "game-123",
             )
 
+    def test_process_bookmaker_outcomes_includes_betonlineag(self) -> None:
+        bookmaker = {
+            "key": "betonlineag",
+            "title": "BetOnline",
+            "markets": [
+                {
+                    "key": "pitcher_strikeouts",
+                    "outcomes": [
+                        {
+                            "description": "Alpha Ace",
+                            "name": "Over",
+                            "point": 5.5,
+                            "price": 110,
+                        },
+                        {
+                            "description": "Alpha Ace",
+                            "name": "Under",
+                            "point": 5.5,
+                            "price": -130,
+                        },
+                    ],
+                }
+            ],
+        }
+
+        self.assertEqual(
+            oddapi.process_bookmaker_outcomes(bookmaker, oddapi.IGNORED_BOOKMAKERS),
+            [{"pitcher": "Alpha Ace", "BetOnline.ag": "5.5: +110|-130"}],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

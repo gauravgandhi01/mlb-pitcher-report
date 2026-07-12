@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
@@ -26,6 +27,10 @@ PITCHER_SEASON_RANK_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, int]]] = {}
 PARK_WEATHER_CACHE: Dict[Tuple[int, str], Optional[Dict[str, Any]]] = {}
 GAME_BVP_LINE_CACHE: Dict[Tuple[int, int], Dict[int, Dict[str, Any]]] = {}
 GAME_BATTER_LINE_CACHE: Dict[int, Dict[int, Dict[str, Any]]] = {}
+PITCHER_DEBUT_YEAR_CACHE: Dict[int, int] = {}
+PITCHER_GAME_LOG_CACHE: Dict[Tuple[int, int], List[Dict[str, Any]]] = {}
+BATTER_GAME_LOG_CACHE: Dict[Tuple[int, int], List[Dict[str, Any]]] = {}
+PITCHER_HISTORICAL_BVP_CACHE: Dict[Tuple[int, dt.date], Dict[int, Dict[str, Any]]] = {}
 
 MLB_PARK_METADATA: Dict[int, Dict[str, Any]] = {
     1: {"name": "Angel Stadium", "lat": 33.8003, "lon": -117.8827, "roof_type": "open"},
@@ -884,6 +889,31 @@ def _subtract_stat_line(base_line: Dict[str, Any], adjustment_line: Optional[Dic
     )
 
 
+def _nested_person_id(split: Dict[str, Any], key: str) -> Optional[int]:
+    return to_int((split.get(key) or {}).get("id"))
+
+
+def _split_matches_batter_pitcher(
+    split: Dict[str, Any],
+    *,
+    batter_id: Optional[int] = None,
+    pitcher_id: Optional[int] = None,
+) -> bool:
+    if batter_id is not None:
+        split_batter_id = _nested_person_id(split, "batter")
+        if split_batter_id is None:
+            split_batter_id = _nested_person_id(split, "player")
+        if split_batter_id != int(batter_id):
+            return False
+
+    if pitcher_id is not None:
+        split_pitcher_id = _nested_person_id(split, "pitcher")
+        if split_pitcher_id is not None and split_pitcher_id != int(pitcher_id):
+            return False
+
+    return True
+
+
 def extract_batter_vs_pitcher_stat_lines_from_plays(
     plays: Sequence[Dict[str, Any]],
     pitcher_id: int,
@@ -947,6 +977,162 @@ def fetch_game_batter_vs_pitcher_stat_lines(game_id: int, pitcher_id: int) -> Di
     return stat_lines
 
 
+def fetch_pitcher_debut_year(pitcher_id: int, fallback_year: int) -> int:
+    pitcher_id = int(pitcher_id)
+    cached = PITCHER_DEBUT_YEAR_CACHE.get(pitcher_id)
+    if cached is not None:
+        return cached
+
+    debut_year = int(fallback_year)
+    try:
+        payload = statsapi.get("people", {"personIds": pitcher_id}, force=True)
+    except Exception:
+        payload = {}
+
+    people = payload.get("people") or []
+    if people:
+        debut_date = parse_date(people[0].get("mlbDebutDate"))
+        if debut_date is not None:
+            debut_year = min(debut_date.year, int(fallback_year))
+
+    PITCHER_DEBUT_YEAR_CACHE[pitcher_id] = debut_year
+    return debut_year
+
+
+def fetch_pitcher_game_log_splits(pitcher_id: int, season: int) -> List[Dict[str, Any]]:
+    cache_key = (int(pitcher_id), int(season))
+    cached = PITCHER_GAME_LOG_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        payload = statsapi.get(
+            "people",
+            {
+                "personIds": int(pitcher_id),
+                "hydrate": f"stats(group=[pitching],type=[gameLog],season={int(season)})",
+            },
+            force=True,
+        )
+    except Exception:
+        payload = {}
+
+    people = payload.get("people") or []
+    splits: List[Dict[str, Any]] = []
+    for block in (people[0].get("stats") if people else []) or []:
+        if str((block.get("type") or {}).get("displayName") or "").strip() != "gameLog":
+            continue
+        splits.extend(block.get("splits") or [])
+
+    PITCHER_GAME_LOG_CACHE[cache_key] = splits
+    return splits
+
+
+def fetch_batter_game_log_splits(batter_id: int, season: int) -> List[Dict[str, Any]]:
+    cache_key = (int(batter_id), int(season))
+    cached = BATTER_GAME_LOG_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        payload = statsapi.get(
+            "people",
+            {
+                "personIds": int(batter_id),
+                "hydrate": f"stats(group=[hitting],type=[gameLog],season={int(season)})",
+            },
+            force=True,
+        )
+    except Exception:
+        payload = {}
+
+    people = payload.get("people") or []
+    splits: List[Dict[str, Any]] = []
+    for block in (people[0].get("stats") if people else []) or []:
+        if str((block.get("type") or {}).get("displayName") or "").strip() != "gameLog":
+            continue
+        splits.extend(block.get("splits") or [])
+
+    BATTER_GAME_LOG_CACHE[cache_key] = splits
+    return splits
+
+
+def fetch_pitcher_historical_batter_vs_pitcher_stat_lines(
+    pitcher_id: int,
+    report_date: dt.date,
+    batter_ids: Optional[Sequence[int]] = None,
+) -> Dict[int, Dict[str, Any]]:
+    cache_key = (int(pitcher_id), report_date)
+    target_batter_ids = {int(batter_id) for batter_id in batter_ids or []}
+    cached = PITCHER_HISTORICAL_BVP_CACHE.get(cache_key)
+    if cached is not None:
+        if target_batter_ids:
+            return {
+                batter_id: line
+                for batter_id, line in cached.items()
+                if batter_id in target_batter_ids
+            }
+        return cached
+
+    debut_year = fetch_pitcher_debut_year(int(pitcher_id), report_date.year)
+    game_ids: List[int] = []
+    game_dates_by_id: Dict[int, dt.date] = {}
+    seen_game_ids = set()
+    for season in range(debut_year, report_date.year + 1):
+        for split in fetch_pitcher_game_log_splits(int(pitcher_id), season):
+            game_date = parse_date(split.get("date"))
+            if game_date is None or game_date >= report_date:
+                continue
+            game_id = to_int((split.get("game") or {}).get("gamePk"))
+            if game_id is None or int(game_id) in seen_game_ids:
+                continue
+            seen_game_ids.add(int(game_id))
+            game_ids.append(int(game_id))
+            game_dates_by_id[int(game_id)] = game_date
+
+    if target_batter_ids:
+        overlapping_game_ids = set()
+        for batter_id in target_batter_ids:
+            for season in range(debut_year, report_date.year + 1):
+                for split in fetch_batter_game_log_splits(int(batter_id), season):
+                    game_date = parse_date(split.get("date"))
+                    if game_date is None or game_date >= report_date:
+                        continue
+                    game_id = to_int((split.get("game") or {}).get("gamePk"))
+                    if game_id is not None and int(game_id) in game_dates_by_id:
+                        overlapping_game_ids.add(int(game_id))
+        game_ids = [game_id for game_id in game_ids if game_id in overlapping_game_ids]
+
+    lines_by_batter: Dict[int, List[Dict[str, Any]]] = {}
+    game_line_maps: List[Dict[int, Dict[str, Any]]] = []
+    if game_ids:
+        max_workers = min(8, len(game_ids))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_game_id = {
+                executor.submit(fetch_game_batter_vs_pitcher_stat_lines, game_id, int(pitcher_id)): game_id
+                for game_id in game_ids
+            }
+            for future in as_completed(future_to_game_id):
+                try:
+                    game_line_maps.append(future.result())
+                except Exception:
+                    continue
+
+    for game_line_map in game_line_maps:
+        for batter_id, line in game_line_map.items():
+            if target_batter_ids and int(batter_id) not in target_batter_ids:
+                continue
+            lines_by_batter.setdefault(int(batter_id), []).append(line)
+
+    stat_lines = {
+        batter_id: aggregate_stat_lines(lines)
+        for batter_id, lines in lines_by_batter.items()
+    }
+    if not target_batter_ids:
+        PITCHER_HISTORICAL_BVP_CACHE[cache_key] = stat_lines
+    return stat_lines
+
+
 def extract_game_batter_stat_lines_from_boxscore(boxscore_data: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     stat_lines: Dict[int, Dict[str, Any]] = {}
     for side in ("away", "home"):
@@ -986,14 +1172,35 @@ def fetch_game_batter_stat_lines(game_id: int) -> Dict[int, Dict[str, Any]]:
 def parse_vs_pitcher_stats(
     indexed_blocks: Dict[str, List[Dict[str, Any]]],
     *,
+    batter_id: Optional[int] = None,
+    pitcher_id: Optional[int] = None,
     report_date: Optional[dt.date] = None,
     same_day_line: Optional[Dict[str, Any]] = None,
     subtract_same_day_from_season_splits: bool = True,
 ) -> Dict[str, Any]:
     report_year = report_date.year if report_date is not None else None
+
+    total_splits = []
+    for block in indexed_blocks.get("vsPlayerTotal", []):
+        for split in block.get("splits") or []:
+            if _split_matches_batter_pitcher(split, batter_id=batter_id, pitcher_id=pitcher_id):
+                total_splits.append(split)
+    if total_splits:
+        line = aggregate_stat_lines([_stat_line_from_split_stat(split.get("stat") or {}) for split in total_splits])
+        if subtract_same_day_from_season_splits and same_day_line:
+            line = _subtract_stat_line(line, same_day_line)
+        totals = aggregate_stat_lines([line])
+        if totals.get("AVG") is None and len(total_splits) == 1 and not same_day_line:
+            totals["AVG"] = to_float((total_splits[0].get("stat") or {}).get("avg"))
+        if totals.get("OPS") is None and len(total_splits) == 1 and not same_day_line:
+            totals["OPS"] = to_float((total_splits[0].get("stat") or {}).get("ops"))
+        return totals
+
     season_splits = []
     for block in indexed_blocks.get("vsPlayer", []):
-        season_splits.extend(block.get("splits") or [])
+        for split in block.get("splits") or []:
+            if _split_matches_batter_pitcher(split, batter_id=batter_id, pitcher_id=pitcher_id):
+                season_splits.append(split)
     if season_splits:
         rows = []
         for split in season_splits:
@@ -1009,19 +1216,6 @@ def parse_vs_pitcher_stats(
                 line = _subtract_stat_line(line, same_day_line)
             rows.append(line)
         return aggregate_stat_lines(rows)
-
-    total_split = first_stat_split(indexed_blocks.get("vsPlayerTotal", []))
-    if total_split is not None:
-        stat = total_split.get("stat") or {}
-        line = _stat_line_from_split_stat(stat)
-        if same_day_line:
-            line = _subtract_stat_line(line, same_day_line)
-        totals = aggregate_stat_lines([line])
-        if totals.get("AVG") is None and not same_day_line:
-            totals["AVG"] = to_float(stat.get("avg"))
-        if totals.get("OPS") is None and not same_day_line:
-            totals["OPS"] = to_float(stat.get("ops"))
-        return totals
 
     return aggregate_stat_lines([])
 

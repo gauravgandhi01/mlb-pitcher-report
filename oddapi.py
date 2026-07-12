@@ -18,6 +18,7 @@ KEYS_FILE = Path("keys.json")
 MIN_REQUESTS_REMAINING = 30
 REQUEST_TIMEOUT_SECONDS = 12
 IGNORED_BOOKMAKERS = {"mybookieag", "betmgm", "superbook", "bovada"}
+BOOKMAKER_TITLE_OVERRIDES = {"betonlineag": "BetOnline.ag"}
 MIN_REQUEST_INTERVAL_SECONDS = 0.35
 MAX_429_RETRIES = 4
 MAX_BACKOFF_SECONDS = 12.0
@@ -336,6 +337,13 @@ def _format_line(point: float, over_price: Optional[int], under_price: Optional[
     return f"{point_text}: {over_text}|{under_text}"
 
 
+def _bookmaker_display_name(bookmaker: Dict[str, Any]) -> str:
+    bookmaker_key = str(bookmaker.get("key") or "").strip().lower()
+    if bookmaker_key in BOOKMAKER_TITLE_OVERRIDES:
+        return BOOKMAKER_TITLE_OVERRIDES[bookmaker_key]
+    return str(bookmaker.get("title") or "Unknown Book")
+
+
 def _build_best_and_alts_line(line_entries: List[Dict[str, Any]]) -> Optional[str]:
     if not line_entries:
         return None
@@ -398,7 +406,7 @@ def process_bookmaker_outcomes(
             data.append(
                 {
                     "pitcher": pitcher,
-                    bookmaker.get("title", "Unknown Book"): best_and_alts,
+                    _bookmaker_display_name(bookmaker): best_and_alts,
                 }
             )
     return data

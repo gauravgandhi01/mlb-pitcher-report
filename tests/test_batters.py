@@ -25,11 +25,12 @@ from Batters import (
     extract_espn_game_total,
     format_home_run_focus_dataframe,
     format_report_dataframe,
-    parse_vs_pitcher_stats,
     rank_active_roster_candidates,
     sort_batters_for_report,
+    verify_historical_bvp_for_feature_candidates,
     write_html,
 )
+from report_data import parse_vs_pitcher_stats
 
 
 class BattersLogicTests(unittest.TestCase):
@@ -748,6 +749,147 @@ class BattersLogicTests(unittest.TestCase):
         self.assertEqual(formatted.iloc[0]["VsP HR/PA"], "25.0%")
         self.assertEqual(formatted.iloc[0]["VsP H-AB"], "4-7")
 
+    def test_verifies_historical_bvp_before_good_matchup_section(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Split Mirage",
+                    "Team": "Pittsburgh Pirates",
+                    "Pitcher": "Gasser",
+                    "Hit Stk": 1,
+                    "Season AVG": 0.250,
+                    "Recent AVG": 0.300,
+                    "VsP PA": 10,
+                    "VsP AB": 10,
+                    "VsP H": 5,
+                    "VsP HR": 0,
+                    "VsP RBI": 0,
+                    "VsP AVG": 0.500,
+                    "VsP OPS": 1.000,
+                    "VsP K%": 0.0,
+                    "__player_id": 10,
+                    "__pitcher_id": 30,
+                    "Status": "Scheduled",
+                }
+            ]
+        )
+
+        with patch(
+            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            return_value={
+                10: {
+                    "PA": 2,
+                    "AB": 2,
+                    "H": 1,
+                    "HR": 0,
+                    "RBI": 0,
+                    "AVG": 0.500,
+                    "OPS": 1.000,
+                    "K%": 0.0,
+                }
+            },
+        ):
+            verified = verify_historical_bvp_for_feature_candidates(df, dt.date(2026, 7, 12))
+
+        self.assertEqual(verified.iloc[0]["VsP PA"], 2)
+        self.assertTrue(build_good_matchups_section(verified, pd.DataFrame()).empty)
+
+    def test_verifies_preliminary_avg_miss_before_good_matchup_section(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "False Negative",
+                    "Team": "Philadelphia Phillies",
+                    "Pitcher": "Skubal",
+                    "Hit Stk": 1,
+                    "Season AVG": 0.250,
+                    "Recent AVG": 0.300,
+                    "VsP PA": 11,
+                    "VsP AB": 11,
+                    "VsP H": 3,
+                    "VsP HR": 0,
+                    "VsP RBI": 0,
+                    "VsP AVG": 3 / 11,
+                    "VsP OPS": 0.600,
+                    "VsP K%": 0.0,
+                    "__player_id": 10,
+                    "__pitcher_id": 30,
+                    "Status": "Scheduled",
+                }
+            ]
+        )
+
+        with patch(
+            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            return_value={
+                10: {
+                    "PA": 6,
+                    "AB": 6,
+                    "H": 3,
+                    "HR": 0,
+                    "RBI": 0,
+                    "AVG": 0.500,
+                    "OPS": 1.100,
+                    "K%": 10.0,
+                }
+            },
+        ):
+            verified = verify_historical_bvp_for_feature_candidates(df, dt.date(2026, 7, 12))
+
+        good = build_good_matchups_section(verified, pd.DataFrame())
+        self.assertEqual(verified.iloc[0]["VsP PA"], 6)
+        self.assertEqual(verified.iloc[0]["VsP H"], 3)
+        self.assertFalse(good.empty)
+        self.assertEqual(good.iloc[0]["Batter"], "False Negative")
+
+    def test_verifies_when_preliminary_pa_is_below_threshold_but_ab_qualifies(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Batter": "Undercounted PA",
+                    "Team": "Texas Rangers",
+                    "Pitcher": "Javier",
+                    "Hit Stk": 0,
+                    "Season AVG": 0.290,
+                    "Recent AVG": 0.290,
+                    "VsP PA": 3,
+                    "VsP AB": 4,
+                    "VsP H": 2,
+                    "VsP HR": 0,
+                    "VsP RBI": 0,
+                    "VsP AVG": 0.500,
+                    "VsP OPS": 1.000,
+                    "VsP K%": 0.0,
+                    "__player_id": 10,
+                    "__pitcher_id": 30,
+                    "Status": "In Progress",
+                }
+            ]
+        )
+
+        with patch(
+            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            return_value={
+                10: {
+                    "PA": 5,
+                    "AB": 5,
+                    "H": 3,
+                    "HR": 0,
+                    "RBI": 1,
+                    "AVG": 0.600,
+                    "OPS": 1.400,
+                    "K%": 40.0,
+                }
+            },
+        ):
+            verified = verify_historical_bvp_for_feature_candidates(df, dt.date(2026, 7, 12))
+
+        good = build_good_matchups_section(verified, pd.DataFrame())
+        self.assertEqual(verified.iloc[0]["VsP PA"], 5)
+        self.assertEqual(verified.iloc[0]["VsP H"], 3)
+        self.assertFalse(good.empty)
+        self.assertEqual(good.iloc[0]["Batter"], "Undercounted PA")
+
     def test_format_report_dataframe_adds_final_game_hit_markers_to_batter_name(self) -> None:
         df = pd.DataFrame(
             [
@@ -969,6 +1111,8 @@ class BattersRenderTests(unittest.TestCase):
             archive_html = archive_path.read_text(encoding="utf-8")
             root_html = root_file.read_text(encoding="utf-8")
 
+            self.assertIn('<link rel="icon" href="../favicon.svg" type="image/svg+xml">', archive_html)
+            self.assertIn('<link rel="icon" href="./favicon.svg" type="image/svg+xml">', root_html)
             self.assertIn('class="date-nav"', archive_html)
             self.assertIn("hero-nav-row", archive_html)
             self.assertIn('class="featured-tables"', archive_html)

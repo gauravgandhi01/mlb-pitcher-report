@@ -668,6 +668,8 @@ def _build_offense_matchup(
         snapshot = _build_player_snapshot(player_id, people_by_id[player_id], report_date)
         snapshot["vsp"] = parse_vs_pitcher_stats(
             snapshot.pop("__indexed"),
+            batter_id=player_id,
+            pitcher_id=(pitcher_context or {}).get("id"),
             report_date=report_date,
             same_day_line=same_day_bvp_lines.get(player_id),
         )
@@ -1328,6 +1330,7 @@ def _render_page_html(
     cards_html: str,
     cards_section_class: str,
     css: str,
+    favicon_href: str,
 ) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1336,6 +1339,7 @@ def _render_page_html(
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{escape(title)}</title>
+  <link rel="icon" href="{escape(favicon_href, quote=True)}" type="image/svg+xml">
   <style>
 {css}
   </style>
@@ -2605,6 +2609,7 @@ def write_html(
         cards_html=summary_cards_root,
         cards_section_class="summary-cards",
         css=_summary_page_css(),
+        favicon_href="./favicon.svg",
     )
     summary_archive_html = _render_page_html(
         title=f"MLB Matchups {display_date}",
@@ -2620,6 +2625,7 @@ def write_html(
         cards_html=summary_cards_archive,
         cards_section_class="summary-cards",
         css=_summary_page_css(),
+        favicon_href="../favicon.svg",
     )
     detail_root_html = _render_page_html(
         title=f"MLB Matchup Details {display_date}",
@@ -2635,6 +2641,7 @@ def write_html(
         cards_html=detail_cards_html,
         cards_section_class="cards",
         css=_detail_page_css(),
+        favicon_href="./favicon.svg",
     )
     detail_archive_html = _render_page_html(
         title=f"MLB Matchup Details {display_date}",
@@ -2650,6 +2657,7 @@ def write_html(
         cards_html=detail_cards_html,
         cards_section_class="cards",
         css=_detail_page_css(),
+        favicon_href="../favicon.svg",
     )
 
     summary_output_path = REPORTS_DIR / f"matchups-report-{report_key}.html"
