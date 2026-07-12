@@ -1341,6 +1341,12 @@ def write_html(
       gap: 10px;
       align-items: start;
     }}
+    .featured-column {{
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-width: 0;
+    }}
     .featured-tables .table-wrap {{
       max-height: min(58vh, 460px);
     }}
@@ -1763,6 +1769,9 @@ def write_html(
       .featured-tables {{
         grid-template-columns: 1fr;
       }}
+      .featured-column {{
+        gap: 10px;
+      }}
       .featured-tables .table-wrap {{
         max-height: 72vh;
       }}
@@ -1796,47 +1805,49 @@ def write_html(
     </section>
 
     <div class="featured-tables">
-      <section class="panel">
-        <div class="panel-header section-hot">
-          <h2>Hot Streaks With Pitcher History</h2>
-          <div class="note">{STREAK_SECTION_MIN}+ hit streak, {MATCHUP_MIN_PA}+ PA vs pitcher.</div>
-        </div>
-        <div class="table-wrap">
-          {hot_table}
-        </div>
-      </section>
+      <div class="featured-column">
+        <section class="panel">
+          <div class="panel-header section-hot">
+            <h2>Hot Streaks With Pitcher History</h2>
+            <div class="note">{STREAK_SECTION_MIN}+ hit streak, {MATCHUP_MIN_PA}+ PA vs pitcher.</div>
+          </div>
+          <div class="table-wrap">
+            {hot_table}
+          </div>
+        </section>
 
-      <section class="panel">
-        <div class="panel-header section-matchup">
-          <h2>Good Historical Matchups</h2>
-          <div class="note">Best direct AVG vs scheduled pitcher.</div>
-        </div>
-        <div class="table-wrap">
-          {matchup_table}
-        </div>
-      </section>
-    </div>
+        <section class="panel">
+          <div class="panel-header section-streak">
+            <h2>Active Hit Streaks 6+ Games</h2>
+            <div class="note">{ACTIVE_STREAK_SECTION_MIN}+ active hit streak.</div>
+          </div>
+          <div class="table-wrap">
+            {streak_table}
+          </div>
+        </section>
+      </div>
 
-    <div class="featured-tables">
-      <section class="panel">
-        <div class="panel-header section-streak">
-          <h2>Active Hit Streaks 6+ Games</h2>
-          <div class="note">{ACTIVE_STREAK_SECTION_MIN}+ active hit streak.</div>
-        </div>
-        <div class="table-wrap">
-          {streak_table}
-        </div>
-      </section>
+      <div class="featured-column">
+        <section class="panel">
+          <div class="panel-header section-matchup">
+            <h2>Good Historical Matchups</h2>
+            <div class="note">Best direct AVG vs scheduled pitcher.</div>
+          </div>
+          <div class="table-wrap">
+            {matchup_table}
+          </div>
+        </section>
 
-      <section class="panel">
-        <div class="panel-header section-homer">
-          <h2>Home Run History vs Scheduled Pitcher</h2>
-          <div class="note">{HOME_RUN_MIN_HR}+ HR and {MATCHUP_MIN_PA}+ PA vs pitcher, sorted by VsP HR/PA.</div>
-        </div>
-        <div class="table-wrap">
-          {home_run_table}
-        </div>
-      </section>
+        <section class="panel">
+          <div class="panel-header section-homer">
+            <h2>Home Run History vs Scheduled Pitcher</h2>
+            <div class="note">{HOME_RUN_MIN_HR}+ HR and {MATCHUP_MIN_PA}+ PA vs pitcher, sorted by VsP HR/PA.</div>
+          </div>
+          <div class="table-wrap">
+            {home_run_table}
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </body>

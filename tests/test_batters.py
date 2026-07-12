@@ -972,12 +972,21 @@ class BattersRenderTests(unittest.TestCase):
             self.assertIn('class="date-nav"', archive_html)
             self.assertIn("hero-nav-row", archive_html)
             self.assertIn('class="featured-tables"', archive_html)
-            self.assertEqual(archive_html.count('class="featured-tables"'), 2)
+            self.assertEqual(archive_html.count('class="featured-tables"'), 1)
+            self.assertEqual(archive_html.count('class="featured-column"'), 2)
             self.assertIn("grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);", archive_html)
             self.assertIn(".featured-tables table.pitchers-table {", archive_html)
             self.assertIn("min-width: 0;", archive_html)
             self.assertIn("<h2>Active Hit Streaks 6+ Games</h2>", archive_html)
             self.assertIn("<h2>Home Run History vs Scheduled Pitcher</h2>", archive_html)
+            self.assertLess(
+                archive_html.index("<h2>Hot Streaks With Pitcher History</h2>"),
+                archive_html.index("<h2>Active Hit Streaks 6+ Games</h2>"),
+            )
+            self.assertLess(
+                archive_html.index("<h2>Active Hit Streaks 6+ Games</h2>"),
+                archive_html.index("<h2>Good Historical Matchups</h2>"),
+            )
             self.assertIn(".date-pill-label {", archive_html)
             self.assertIn("display: none;", archive_html)
             self.assertIn("justify-content: flex-end;", archive_html)
