@@ -515,6 +515,11 @@
       color: #1d4ed8;
       border-color: #93c5fd;
     }
+    .k-src-marker.src-previous-lineup {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fbbf24;
+    }
     .k-src-marker.src-savant {
       background: #dcfce7;
       color: #166534;
@@ -566,7 +571,8 @@
       border-bottom: 5px solid #0f172a;
     }
     .pitcher-name-cell.pitcher-has-recent:hover .pitcher-recent-popup,
-    .pitcher-name-cell.pitcher-has-recent:focus-within .pitcher-recent-popup {
+    .pitcher-name-cell.pitcher-has-recent:focus-within .pitcher-recent-popup,
+    table.pitchers-table td.column-name:hover .pitcher-name-cell.pitcher-has-recent .pitcher-recent-popup {
       visibility: visible;
       opacity: 1;
     }
@@ -934,7 +940,7 @@
   <div class="layout">
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - 07/13/2026</h1>
-      <p class="updated-at">Last updated: 2026-07-12 00:43:33 EDT</p>
+      <p class="updated-at">Last updated: 2026-07-12 01:04:27 EDT</p>
       <div class="hero-nav-row">
         <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/13/2026">Pitchers</span><a class="report-tab" href="./batters-report-07132026.html" title="Batters report for 07/13/2026">Batters</a><a class="report-tab" href="./matchups-report-07132026.html" title="Matchups report for 07/13/2026">Matchups</a></nav>
         <nav class="date-nav" aria-label="Archive dates"><a class="date-pill" href="./report-07112026.html" title="Yesterday archive (07/11/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/11</span></a><a class="date-pill" href="./report-07122026.html" title="Today archive (07/12/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/12</span></a><span class="date-pill active" title="Tomorrow archive (07/13/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/13</span></span></nav>
@@ -946,7 +952,7 @@
           <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
           <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
           <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback. Hover headers for definitions.</span>
         </div>
         <div class="table-controls" aria-label="Pitcher table controls">
           <span class="table-controls-label">Show</span>
@@ -973,8 +979,8 @@
 <th aria-label="K/9: Strikeouts per 9 innings pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="6" data-sort-key="K/9" role="button" tabindex="0" title="Strikeouts per 9 innings pitched.">K/9</th>
 <th aria-label="Whiff%: Statcast whiff rate (swing-and-miss rate) from Baseball Savant." aria-sort="none" class="group-savant stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="7" data-sort-key="Whiff%" role="button" tabindex="0" title="Statcast whiff rate (swing-and-miss rate) from Baseball Savant.">Whiff%</th>
 <th aria-label="K/PA: Strikeout rate: strikeouts divided by batters faced, shown as a percent." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="8" data-sort-key="K/PA" role="button" tabindex="0" title="Strikeout rate: strikeouts divided by batters faced, shown as a percent.">K/PA</th>
-<th aria-label="K%: Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample.">K%</th>
-<th aria-label="PA: Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample.">PA</th>
+<th aria-label="K%: Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.">K%</th>
+<th aria-label="PA: Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample.">PA</th>
 <th aria-label="Opp K% vH: Opponent team strikeout percent versus the pitcher's handedness." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="11" data-sort-key="Opp K% vH" role="button" tabindex="0" title="Opponent team strikeout percent versus the pitcher's handedness.">Opp K% vH</th>
 <th aria-label="Opp l5 K%: Opponent team strikeout percent over its last 5 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="12" data-sort-key="Opp l5 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 5 completed games before the report date.">Opp l5 K%</th>
 <th aria-label="Opp l10 K%: Opponent team strikeout percent over its last 10 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="13" data-sort-key="Opp l10 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 10 completed games before the report date.">Opp l10 K%</th>

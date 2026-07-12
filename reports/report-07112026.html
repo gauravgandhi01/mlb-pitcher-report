@@ -327,6 +327,10 @@
       white-space: normal;
       overflow-wrap: anywhere;
     }
+    table.pitchers-table td.column-name {
+      overflow: visible;
+      position: relative;
+    }
     table.pitchers-table th.column-opponent,
     table.pitchers-table td.column-opponent {
       min-width: 72px;
@@ -511,6 +515,11 @@
       color: #1d4ed8;
       border-color: #93c5fd;
     }
+    .k-src-marker.src-previous-lineup {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fbbf24;
+    }
     .k-src-marker.src-savant {
       background: #dcfce7;
       color: #166534;
@@ -522,6 +531,54 @@
       justify-content: center;
       gap: 4px;
       flex-wrap: wrap;
+      position: relative;
+    }
+    .pitcher-name-cell.pitcher-has-recent {
+      cursor: help;
+    }
+    .pitcher-recent-popup {
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }
+    .pitcher-recent-popup::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }
+    .pitcher-name-cell.pitcher-has-recent:hover .pitcher-recent-popup,
+    .pitcher-name-cell.pitcher-has-recent:focus-within .pitcher-recent-popup,
+    table.pitchers-table td.column-name:hover .pitcher-name-cell.pitcher-has-recent .pitcher-recent-popup {
+      visibility: visible;
+      opacity: 1;
+    }
+    .pitcher-recent-line {
+      display: block;
+      white-space: nowrap;
     }
     .hand-marker {
       transform: none;
@@ -883,7 +940,7 @@
   <div class="layout">
     <header class="hero">
       <h1>MLB Pitcher Strikeout Report - 07/11/2026</h1>
-      <p class="updated-at">Last updated: 2026-07-12 00:40:18 EDT</p>
+      <p class="updated-at">Last updated: 2026-07-12 01:00:43 EDT</p>
       <div class="hero-nav-row">
         <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/11/2026">Pitchers</span><a class="report-tab" href="./batters-report-07112026.html" title="Batters report for 07/11/2026">Batters</a><a class="report-tab" href="./matchups-report-07112026.html" title="Matchups report for 07/11/2026">Matchups</a></nav>
         <nav class="date-nav" aria-label="Archive dates"><span class="date-pill active" title="Yesterday archive (07/11/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/11</span></span><a class="date-pill" href="./report-07122026.html" title="Today archive (07/12/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/12</span></a><a class="date-pill" href="./report-07132026.html" title="Tomorrow archive (07/13/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/13</span></a></nav>
@@ -895,7 +952,7 @@
           <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
           <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
           <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
-          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, S = Savant fallback. Hover headers for definitions.</span>
+          <span class="legend-note">K% source marker: E = ESPN confirmed lineup, P = previous lineup, S = Savant fallback. Hover headers for definitions.</span>
         </div>
         <div class="table-controls" aria-label="Pitcher table controls">
           <span class="table-controls-label">Show</span>
@@ -922,8 +979,8 @@
 <th aria-label="K/9: Strikeouts per 9 innings pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="6" data-sort-key="K/9" role="button" tabindex="0" title="Strikeouts per 9 innings pitched.">K/9</th>
 <th aria-label="Whiff%: Statcast whiff rate (swing-and-miss rate) from Baseball Savant." aria-sort="none" class="group-savant stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="7" data-sort-key="Whiff%" role="button" tabindex="0" title="Statcast whiff rate (swing-and-miss rate) from Baseball Savant.">Whiff%</th>
 <th aria-label="K/PA: Strikeout rate: strikeouts divided by batters faced, shown as a percent." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="8" data-sort-key="K/PA" role="button" tabindex="0" title="Strikeout rate: strikeouts divided by batters faced, shown as a percent.">K/PA</th>
-<th aria-label="K%: Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout rate vs this pitcher. Coloring rewards strong K% only when the matchup sample is meaningful. Tiny suffix indicates source: E = ESPN confirmed lineup sample, S = Savant probable-lineup sample.">K%</th>
-<th aria-label="PA: Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. Savant source = PA; ESPN source = AB from batter-vs-pitcher splits. Coloring reflects confidence for the K% matchup sample.">PA</th>
+<th aria-label="K%: Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses those hitters versus the starter's hand; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses those hitters versus the starter's hand; Savant uses its probable-lineup sample. Tiny suffix indicates source: E, P, or S.">K%</th>
+<th aria-label="PA: Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup and Savant sources = PA. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup and Savant sources = PA. Coloring reflects confidence for the K% matchup sample.">PA</th>
 <th aria-label="Opp K% vH: Opponent team strikeout percent versus the pitcher's handedness." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="11" data-sort-key="Opp K% vH" role="button" tabindex="0" title="Opponent team strikeout percent versus the pitcher's handedness.">Opp K% vH</th>
 <th aria-label="Opp l5 K%: Opponent team strikeout percent over its last 5 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="12" data-sort-key="Opp l5 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 5 completed games before the report date.">Opp l5 K%</th>
 <th aria-label="Opp l10 K%: Opponent team strikeout percent over its last 10 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="13" data-sort-key="Opp l10 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 10 completed games before the report date.">Opp l10 K%</th>
@@ -936,7 +993,7 @@
 </thead>
 <tbody>
 <tr class="pitcher-row-selectable row-final" data-initial-index="0" data-pitcher-key="cam schlittler">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Cam%20Schlittler-k-log">Cam Schlittler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Cam%20Schlittler-k-log">Cam Schlittler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ TB 8K 101P</span><span class="pitcher-recent-line">v DET 5K 85P</span><span class="pitcher-recent-line">@ BOS 9K 92P</span><span class="pitcher-recent-line">v CIN 13K 96P</span><span class="pitcher-recent-line">@ TOR 7K 101P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="435">435</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="137">137</td>
@@ -945,8 +1002,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.39">10.4</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="27.6">27.6</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="29.21108742">29.21</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="46.7">46.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="18.2519280206">18.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1945">1945</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.5323193916">20.53</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="16.9154228856">16.92</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.298245614">19.30</td>
@@ -957,7 +1014,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="1" data-pitcher-key="joe ryan">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Joe%20Ryan-k-log">Joe Ryan</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Joe%20Ryan-k-log">Joe Ryan</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ NYY 9K 106P</span><span class="pitcher-recent-line">@ HOU 5K 91P</span><span class="pitcher-recent-line">v LAD 9K 98P</span><span class="pitcher-recent-line">@ TEX 7K 97P</span><span class="pitcher-recent-line">v STL 8K 102P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="417">417</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="128">128</td>
@@ -966,8 +1023,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.44">10.4</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26.5">26.5</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="28.4444444444">28.44</td>
-<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="33.3">33.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="45">45</td>
+<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="25.5154639175">25.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1552">1552</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.8030018762">24.80</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="27.5510204082">27.55</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="25.9668508287">25.97</td>
@@ -978,7 +1035,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="2" data-pitcher-key="braxton ashcraft">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Braxton%20Ashcraft-k-log">Braxton Ashcraft</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Braxton%20Ashcraft-k-log">Braxton Ashcraft</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ WSH 7K 94P</span><span class="pitcher-recent-line">@ PHI 8K 97P</span><span class="pitcher-recent-line">v SEA 10K 86P</span><span class="pitcher-recent-line">@ ATH 7K 93P</span><span class="pitcher-recent-line">v MIA 4K 90P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="421">421</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="128">128</td>
@@ -987,8 +1044,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.16">10.2</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="27.4">27.4</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.7657266811">27.77</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="12.5">12.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="8">8</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.4115684093">20.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1798">1798</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.9689922481">20.97</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.5929648241">18.59</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.4810126582">18.48</td>
@@ -999,7 +1056,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-hot" data-initial-index="3" data-pitcher-key="cristopher sanchez">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Cristopher%20S%C3%A1nchez-k-log">Cristopher Sánchez</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Cristopher%20S%C3%A1nchez-k-log">Cristopher Sánchez</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ KC 1K 83P</span><span class="pitcher-recent-line">v PIT 9K 92P</span><span class="pitcher-recent-line">@ WSH 6K 92P</span><span class="pitcher-recent-line">v NYM 5K 91P</span><span class="pitcher-recent-line">@ MIL 3K 98P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="496">496</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="144">144</td>
@@ -1008,8 +1065,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="10.18">10.2</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="32.3">32.3</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.4285714286">27.43</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="40">40.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="19.7701149425">19.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="435">435</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.5352112676">22.54</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="25.1336898396">25.13</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.1025641026">24.10</td>
@@ -1020,7 +1077,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="4" data-pitcher-key="eury perez">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Eury%20P%C3%A9rez-k-log">Eury Pérez</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Eury%20P%C3%A9rez-k-log">Eury Pérez</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ ATH 8K 92P</span><span class="pitcher-recent-line">@ COL 8K 86P</span><span class="pitcher-recent-line">v TEX 1K 68P</span><span class="pitcher-recent-line">@ TOR 9K 73P</span><span class="pitcher-recent-line">v NYM 5K 86P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="16">16</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="308">308</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="95">95</td>
@@ -1029,8 +1086,8 @@
 <td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="9.98">10.0</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.7">28.7</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="27.2206303725">27.22</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="53.3">53.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.8384710234">20.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1622">1622</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.1220811143">22.12</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="28.9617486339">28.96</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="28.4153005464">28.42</td>
@@ -1041,7 +1098,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="5" data-pitcher-key="logan gilbert">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Logan%20Gilbert-k-log">Logan Gilbert</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Logan%20Gilbert-k-log">Logan Gilbert</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v TOR 7K 91P</span><span class="pitcher-recent-line">@ CLE 7K 103P</span><span class="pitcher-recent-line">v BOS 8K 94P</span><span class="pitcher-recent-line">v BAL 10K 94P</span><span class="pitcher-recent-line">@ BAL 5K 105P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="418">418</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="119">119</td>
@@ -1050,8 +1107,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.39">9.4</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="30.1">30.1</td>
 <td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="26.5033407572">26.50</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.4">21.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="28">28</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="18.9583333333">19.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1920">1920</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="19.1368078176">19.14</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.9039548023">20.90</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.3296398892">21.33</td>
@@ -1062,7 +1119,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="6" data-pitcher-key="casey mize">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Casey%20Mize-k-log">Casey Mize</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Casey%20Mize-k-log">Casey Mize</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ TEX 4K 94P</span><span class="pitcher-recent-line">@ NYY 10K 88P</span><span class="pitcher-recent-line">v NYY 6K 97P</span><span class="pitcher-recent-line">@ HOU 3K 86P</span><span class="pitcher-recent-line">v LAA 6K 58P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="14">14</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="282">282</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="77">77</td>
@@ -1071,8 +1128,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.96">9.0</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.7">28.7</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="25.3289473684">25.33</td>
-<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="36.4">36.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="22">22</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2996515679">22.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1722">1722</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="23.0769230769">23.08</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.3958333333">22.40</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.2984293194">23.30</td>
@@ -1083,7 +1140,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="7" data-pitcher-key="eduardo rivera">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Eduardo%20Rivera-k-log">Eduardo Rivera</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Eduardo%20Rivera-k-log">Eduardo Rivera</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v NYY 3K 41P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="2">2</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="22">22</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="6">6</td>
@@ -1092,8 +1149,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.71">7.7</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="42.1">42.1</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="25">25.00</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.3880597015">22.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="536">536</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.8781218781">21.88</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="14.4278606965">14.43</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.0661577608">18.07</td>
@@ -1104,7 +1161,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="8" data-pitcher-key="yoshinobu yamamoto">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Yoshinobu%20Yamamoto-k-log">Yoshinobu Yamamoto</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Yoshinobu%20Yamamoto-k-log">Yoshinobu Yamamoto</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v SD 10K 100P</span><span class="pitcher-recent-line">@ SD 4K 89P</span><span class="pitcher-recent-line">v BAL 6K 102P</span><span class="pitcher-recent-line">@ CWS 7K 109P</span><span class="pitcher-recent-line">v LAA 4K 93P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="17">17</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="395">395</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="106">106</td>
@@ -1113,8 +1170,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.62">8.6</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="28.2">28.2</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.9411764706">24.94</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="23.9">23.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="92">92</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="18.0145008366">18.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1793">1793</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.6233166603">20.62</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.7513227513">22.75</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1081794195">21.11</td>
@@ -1125,7 +1182,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="9" data-pitcher-key="griffin jax">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Griffin%20Jax-k-log">Griffin Jax</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Griffin%20Jax-k-log">Griffin Jax</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v NYY 10K 81P</span><span class="pitcher-recent-line">@ KC 5K 71P</span><span class="pitcher-recent-line">v KC 7K 88P</span><span class="pitcher-recent-line">v WSH 5K 69P</span><span class="pitcher-recent-line">@ LAA 5K 63P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="25">25</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="254">254</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="71">71</td>
@@ -1134,8 +1191,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.13">9.1</td>
 <td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="31.5">31.5</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.7386759582">24.74</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="19.6">19.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="46">46</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.3251670379">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1796">1796</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.9343629344">22.93</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.7777777778">22.78</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="26.4788732394">26.48</td>
@@ -1146,7 +1203,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="10" data-pitcher-key="brandon sproat">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Brandon%20Sproat-k-log">Brandon Sproat</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Brandon%20Sproat-k-log">Brandon Sproat</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ ARI 4K 92P</span><span class="pitcher-recent-line">v CIN 7K 106P</span><span class="pitcher-recent-line">@ CIN 10K 80P</span><span class="pitcher-recent-line">v CLE 6K 65P</span><span class="pitcher-recent-line">@ ATH 3K 68P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="302">302</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="87">87</td>
@@ -1155,8 +1212,8 @@
 <td class="group-pitcher cell-strong" data-sort-key="K/9" data-sort-value="9.55">9.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher cell-strong" data-sort-key="K/PA" data-sort-value="24.7159090909">24.72</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.552116235">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1583">1583</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.8862973761">22.89</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.0980392157">20.10</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.9130434783">23.91</td>
@@ -1167,7 +1224,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-hot" data-initial-index="11" data-pitcher-key="gage jump">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Gage%20Jump-k-log">Gage Jump</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Gage%20Jump-k-log">Gage Jump</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v MIA 1K 85P</span><span class="pitcher-recent-line">v LAD 5K 91P</span><span class="pitcher-recent-line">@ SF 9K 97P</span><span class="pitcher-recent-line">v LAA 7K 107P</span><span class="pitcher-recent-line">v COL 6K 75P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="9">9</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="182">182</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="48">48</td>
@@ -1176,8 +1233,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.88">8.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="23.5294117647">23.53</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="24.1502683363">24.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="559">559</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.7353224254">24.74</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.652173913">20.65</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.6">21.60</td>
@@ -1188,7 +1245,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="12" data-pitcher-key="kyle bradish">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Kyle%20Bradish-k-log">Kyle Bradish</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Kyle%20Bradish-k-log">Kyle Bradish</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ CIN 5K 106P</span><span class="pitcher-recent-line">v WSH 2K 85P</span><span class="pitcher-recent-line">@ LAA 9K 101P</span><span class="pitcher-recent-line">@ SEA 12K 100P</span><span class="pitcher-recent-line">v SEA 5K 85P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="401">401</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="106">106</td>
@@ -1197,8 +1254,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.89">8.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="23.3480176211">23.35</td>
-<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.9">17.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="28">28</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.4525043178">22.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1737">1737</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.6161616162">21.62</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.4834123223">18.48</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.7513227513">22.75</td>
@@ -1209,7 +1266,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="13" data-pitcher-key="shane drohan">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Shane%20Drohan-k-log">Shane Drohan</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Shane%20Drohan-k-log">Shane Drohan</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ STL 2K 85P</span><span class="pitcher-recent-line">v CIN 7K 78P</span><span class="pitcher-recent-line">@ CIN 5K 98P</span><span class="pitcher-recent-line">v CLE 3K 91P</span><span class="pitcher-recent-line">v PHI 7K 78P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="267">267</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="67">67</td>
@@ -1218,8 +1275,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.61">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26.8">26.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.9452054795">22.95</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="7.7">7.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="13">13</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.5589225589">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="594">594</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="26.0406582769">26.04</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.0980392157">20.10</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="23.9130434783">23.91</td>
@@ -1230,7 +1287,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-hot" data-initial-index="14" data-pitcher-key="peter lambert">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Peter%20Lambert-k-log">Peter Lambert</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Peter%20Lambert-k-log">Peter Lambert</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v TB 6K 90P</span><span class="pitcher-recent-line">v MIN 4K 100P</span><span class="pitcher-recent-line">@ TOR 6K 92P</span><span class="pitcher-recent-line">v DET 5K 89P</span><span class="pitcher-recent-line">@ LAA 6K 91P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="15">15</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="314">314</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="81">81</td>
@@ -1239,8 +1296,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.48">8.5</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.6">25.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.8813559322">22.88</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20">20.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="45">45</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2941176471">22.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1700">1700</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.452389774">21.45</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.7569060773">23.76</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="20.054200542">20.05</td>
@@ -1251,7 +1308,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-cold" data-initial-index="15" data-pitcher-key="bryan hudson">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Bryan%20Hudson-k-log">Bryan Hudson</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Bryan%20Hudson-k-log">Bryan Hudson</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v BOS 2K 24P</span><span class="pitcher-recent-line">@ CLE 2K 15P</span><span class="pitcher-recent-line">@ BAL 0K 10P</span><span class="pitcher-recent-line">v KC 1K 15P</span><span class="pitcher-recent-line">v CLE 3K 23P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="42">42</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="144">144</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="39">39</td>
@@ -1260,8 +1317,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.56">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="24">24.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.4137931034">22.41</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2">22.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="9">9</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="23.5">23.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="400">400</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.8">24.80</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="31.8181818182">31.82</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="27.5482093664">27.55</td>
@@ -1272,7 +1329,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="16" data-pitcher-key="freddy peralta">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Freddy%20Peralta-k-log">Freddy Peralta</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Freddy%20Peralta-k-log">Freddy Peralta</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ ATL 6K 103P</span><span class="pitcher-recent-line">@ TOR 4K 91P</span><span class="pitcher-recent-line">v CHC 5K 98P</span><span class="pitcher-recent-line">@ PHI 2K 80P</span><span class="pitcher-recent-line">v ATL 2K 90P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="413">413</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="104">104</td>
@@ -1281,8 +1338,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.97">9.0</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="26">26.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.3175965665">22.32</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="26.7">26.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent" data-sort-key="PA" data-sort-value="15">15</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.3009292352">21.3<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1399">1399</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.590714007">22.59</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="22.5490196078">22.55</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.7621483376">22.76</td>
@@ -1293,7 +1350,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-cold" data-initial-index="17" data-pitcher-key="trey yesavage">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Trey%20Yesavage-k-log">Trey Yesavage</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Trey%20Yesavage-k-log">Trey Yesavage</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ SEA 7K 96P</span><span class="pitcher-recent-line">v NYM 3K 94P</span><span class="pitcher-recent-line">v HOU 5K 105P</span><span class="pitcher-recent-line">@ BOS 6K 95P</span><span class="pitcher-recent-line">v NYY 3K 81P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="14">14</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="264">264</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="69">69</td>
@@ -1302,8 +1359,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.28">8.3</td>
 <td class="group-savant cell-strong" data-sort-key="Whiff%" data-sort-value="29.3">29.3</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="22.1864951768">22.19</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="0">0.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="0">0</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.0010319917">21.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1938">1938</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.8987672768">22.90</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="20.9039548023">20.90</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.1192411924">24.12</td>
@@ -1314,7 +1371,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="18" data-pitcher-key="tyler mahle">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Tyler%20Mahle-k-log">Tyler Mahle</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Tyler%20Mahle-k-log">Tyler Mahle</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ COL 5K 75P</span><span class="pitcher-recent-line">@ ARI 3K 85P</span><span class="pitcher-recent-line">v ATH 4K 70P</span><span class="pitcher-recent-line">v ARI 3K 81P</span><span class="pitcher-recent-line">@ ARI 6K 79P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="15">15</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="299">299</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="73">73</td>
@@ -1323,8 +1380,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.42">8.4</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="21.9">21.9</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.6617210682">21.66</td>
-<td class="group-opponent cell-strong" data-sort-key="K%" data-sort-value="25.7">25.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="35">35</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.5419501134">21.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1764">1764</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.4615384615">21.46</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="23.2323232323">23.23</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.7969543147">19.80</td>
@@ -1335,7 +1392,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-hot" data-initial-index="19" data-pitcher-key="noah cameron">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Noah%20Cameron-k-log">Noah Cameron</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Noah%20Cameron-k-log">Noah Cameron</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v PHI 7K 105P</span><span class="pitcher-recent-line">v TB 0K 86P</span><span class="pitcher-recent-line">@ TB 5K 108P</span><span class="pitcher-recent-line">v STL 6K 108P</span><span class="pitcher-recent-line">v HOU 1K 86P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="382">382</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="91">91</td>
@@ -1344,8 +1401,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.56">8.6</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="23.8">23.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.5130023641">21.51</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="16.7">16.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="6">6</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="24.3807040417">24.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="767">767</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="25.2077562327">25.21</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="19.0217391304">19.02</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.1621621622">22.16</td>
@@ -1356,7 +1413,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="20" data-pitcher-key="matthew liberatore">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Matthew%20Liberatore-k-log">Matthew Liberatore</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Matthew%20Liberatore-k-log">Matthew Liberatore</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ CHC 3K 78P</span><span class="pitcher-recent-line">@ ATL 9K 98P</span><span class="pitcher-recent-line">v ARI 3K 98P</span><span class="pitcher-recent-line">@ KC 2K 48P</span><span class="pitcher-recent-line">@ MIN 4K 70P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="365">365</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="88">88</td>
@@ -1365,8 +1422,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.46">8.5</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="21.359223301">21.36</td>
-<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="29.1">29.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="55">55</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="19.6307094266">19.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1029">1029</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.4121258634">21.41</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="24.8730964467">24.87</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="22.3650385604">22.37</td>
@@ -1377,7 +1434,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-cold" data-initial-index="21" data-pitcher-key="walker buehler">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Walker%20Buehler-k-log">Walker Buehler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Walker%20Buehler-k-log">Walker Buehler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v ARI 4K 93P</span><span class="pitcher-recent-line">@ CHC 6K 85P</span><span class="pitcher-recent-line">v LAD 5K 74P</span><span class="pitcher-recent-line">@ TEX 7K 87P</span><span class="pitcher-recent-line">@ BAL 5K 86P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="349">349</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="81">81</td>
@@ -1386,8 +1443,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.19">8.2</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="20.8">20.8</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.8762886598">20.88</td>
-<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.1">17.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="41">41</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.7645788337">17.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1852">1852</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="19.2396313364">19.24</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="14.0540540541">14.05</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="17.6966292135">17.70</td>
@@ -1398,7 +1455,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="22" data-pitcher-key="reynaldo lopez">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Reynaldo%20L%C3%B3pez-k-log">Reynaldo López</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Reynaldo%20L%C3%B3pez-k-log">Reynaldo López</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v NYM 5K 80P</span><span class="pitcher-recent-line">v STL 6K 69P</span><span class="pitcher-recent-line">@ SF 1K 57P</span><span class="pitcher-recent-line">v MIL 3K 58P</span><span class="pitcher-recent-line">v SF 1K 30P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="22">22</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="232">232</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="54">54</td>
@@ -1407,8 +1464,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="7.88">7.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22">22.0</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.7692307692">20.77</td>
-<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="32">32.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="25">25</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.0674536256">20.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1779">1779</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.8042071197">21.80</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l5 K%" data-sort-value="26.0606060606">26.06</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1382113821">21.14</td>
@@ -1419,7 +1476,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="23" data-pitcher-key="kumar rocker">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Kumar%20Rocker-k-log">Kumar Rocker</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Kumar%20Rocker-k-log">Kumar Rocker</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v DET 4K 85P</span><span class="pitcher-recent-line">@ TOR 5K 92P</span><span class="pitcher-recent-line">@ MIA 9K 76P</span><span class="pitcher-recent-line">v MIN 4K 70P</span><span class="pitcher-recent-line">@ KC 3K 83P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="18">18</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="350">350</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="80">80</td>
@@ -1428,8 +1485,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8">8.0</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.5">25.5</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.5128205128">20.51</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.7">22.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="22">22</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.9105346744">20.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1889">1889</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.9847881202">21.98</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.1111111111">21.11</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.1111111111">21.11</td>
@@ -1440,7 +1497,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="24" data-pitcher-key="bubba chandler">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Bubba%20Chandler-k-log">Bubba Chandler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Bubba%20Chandler-k-log">Bubba Chandler</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ WSH 0K 86P</span><span class="pitcher-recent-line">@ PHI 6K 97P</span><span class="pitcher-recent-line">v SEA 4K 75P</span><span class="pitcher-recent-line">@ COL 1K 74P</span><span class="pitcher-recent-line">v MIA 6K 84P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="19">19</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="357">357</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="85">85</td>
@@ -1449,8 +1506,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.11">8.1</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.6">22.6</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="20.190023753">20.19</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="18.2">18.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="11">11</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="20.4115684093">20.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1798">1798</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="20.9689922481">20.97</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="18.5929648241">18.59</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.4810126582">18.48</td>
@@ -1461,7 +1518,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-hot" data-initial-index="25" data-pitcher-key="kyle freeland">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Kyle%20Freeland-k-log">Kyle Freeland</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Kyle%20Freeland-k-log">Kyle Freeland</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ LAD 2K 72P</span><span class="pitcher-recent-line">v MIA 7K 85P</span><span class="pitcher-recent-line">v BOS 4K 81P</span><span class="pitcher-recent-line">v PIT 8K 81P</span><span class="pitcher-recent-line">@ ATH 4K 95P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="17">17</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="376">376</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="79">79</td>
@@ -1470,8 +1527,8 @@
 <td class="group-pitcher" data-sort-key="K/9" data-sort-value="8.08">8.1</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="22.5">22.5</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="19.6517412935">19.65</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.5">21.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="65">65</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.2030075188">21.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="665">665</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="22.6034308779">22.60</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="19.5767195767">19.58</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="19.8952879581">19.90</td>
@@ -1482,7 +1539,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="26" data-pitcher-key="tanner bibee">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Tanner%20Bibee-k-log">Tanner Bibee</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Tanner%20Bibee-k-log">Tanner Bibee</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v CWS 1K 62P</span><span class="pitcher-recent-line">v TEX 2K 91P</span><span class="pitcher-recent-line">@ CWS 3K 89P</span><span class="pitcher-recent-line">@ HOU 7K 95P</span><span class="pitcher-recent-line">v DET 8K 91P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="418">418</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="87">87</td>
@@ -1491,8 +1548,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.93">6.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="25.3">25.3</td>
 <td class="group-pitcher" data-sort-key="K/PA" data-sort-value="19.0371991247">19.04</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2">22.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent" data-sort-key="PA" data-sort-value="18">18</td>
+<td class="group-opponent cell-weak" data-sort-key="K%" data-sort-value="17.0050761421">17.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1970">1970</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.4277286136">20.43</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l5 K%" data-sort-value="13.1313131313">13.13</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="15.5339805825">15.53</td>
@@ -1503,7 +1560,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="27" data-pitcher-key="nick lodolo">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Nick%20Lodolo-k-log">Nick Lodolo</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Nick%20Lodolo-k-log">Nick Lodolo</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v BAL 4K 97P</span><span class="pitcher-recent-line">@ MIL 4K 96P</span><span class="pitcher-recent-line">v MIL 6K 75P</span><span class="pitcher-recent-line">v NYM 2K 90P</span><span class="pitcher-recent-line">v ARI 5K 96P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="12">12</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="235">235</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="50">50</td>
@@ -1512,8 +1569,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="7.18">7.2</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="20.8">20.8</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="17.9211469534">17.92</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="21.1">21.1<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="114">114</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="21.5231788079">21.5<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="906">906</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.3006597549">21.30</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.3114754098">21.31</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%" data-sort-value="21.038961039">21.04</td>
@@ -1524,7 +1581,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-cold" data-initial-index="28" data-pitcher-key="brandon pfaadt">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Brandon%20Pfaadt-k-log">Brandon Pfaadt</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Brandon%20Pfaadt-k-log">Brandon Pfaadt</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ SD 6K 72P</span><span class="pitcher-recent-line">v SF 2K 66P</span><span class="pitcher-recent-line">v LAD 1K 37P</span><span class="pitcher-recent-line">@ SEA 3K 31P</span><span class="pitcher-recent-line">v COL 0K 23P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="16">16</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="207">207</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="41">41</td>
@@ -1533,8 +1590,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.88">6.9</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="23">23.0</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="17.7489177489">17.75</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="20.4">20.4<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="142">142</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="22.5905936777">22.6<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1297">1297</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp K% vH" data-sort-value="20.2728306177">20.27</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.164021164">21.16</td>
 <td class="column-opp-hand group-opponent cell-weak" data-sort-key="Opp l10 K%" data-sort-value="18.3727034121">18.37</td>
@@ -1545,7 +1602,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final row-ks-cold" data-initial-index="29" data-pitcher-key="ryan johnson">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Ryan%20Johnson-k-log">Ryan Johnson</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Ryan%20Johnson-k-log">Ryan Johnson</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v BOS 6K 87P</span><span class="pitcher-recent-line">@ SEA 3K 81P</span><span class="pitcher-recent-line">v BAL 8K 90P</span><span class="pitcher-recent-line">@ ATH 2K 89P</span><span class="pitcher-recent-line">v ATH 0K 34P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="9">9</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="132">132</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="25">25</td>
@@ -1554,8 +1611,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.75">6.8</td>
 <td class="group-savant" data-sort-key="Whiff%" data-sort-value="24.5">24.5</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="16.7785234899">16.78</td>
-<td class="group-opponent cell-low-confidence" data-sort-key="K%" data-sort-value="50">50.0<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="2">2</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="18.9462480043">18.9<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1879">1879</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH" data-sort-value="21.3955281419">21.40</td>
 <td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%" data-sort-value="21.9387755102">21.94</td>
 <td class="column-opp-hand group-opponent cell-strong" data-sort-key="Opp l10 K%" data-sort-value="24.5524296675">24.55</td>
@@ -1566,7 +1623,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="30" data-pitcher-key="pj poulin">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/PJ%20Poulin-k-log">PJ Poulin</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/PJ%20Poulin-k-log">PJ Poulin</a><span class="k-src-marker hand-marker hand-left" title="Pitcher handedness: L">L</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v PIT 0K 14P</span><span class="pitcher-recent-line">@ BAL 0K 25P</span><span class="pitcher-recent-line">@ BAL 1K 11P</span><span class="pitcher-recent-line">v PHI 1K 15P</span><span class="pitcher-recent-line">v PHI 1K 8P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="35">35</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="131">131</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="25">25</td>
@@ -1575,8 +1632,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="6.14">6.1</td>
 <td class="group-savant cell-weak" data-sort-key="Whiff%" data-sort-value="16.3">16.3</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="16.339869281">16.34</td>
-<td class="group-opponent" data-sort-key="K%" data-sort-value="22.2">22.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-low" data-sort-key="PA" data-sort-value="9">9</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="24.161849711">24.2<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="865">865</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="24.6732026144">24.67</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="33.8709677419">33.87</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="30.2197802198">30.22</td>
@@ -1587,7 +1644,7 @@
 <td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
 </tr>
 <tr class="pitcher-row-selectable row-final" data-initial-index="31" data-pitcher-key="javier assad">
-<td class="column-name"><span class="pitcher-name-cell"><a href="https://statmuse.com/mlb/ask/Javier%20Assad-k-log">Javier Assad</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span></span></td>
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Javier%20Assad-k-log">Javier Assad</a><span class="k-src-marker hand-marker hand-right" title="Pitcher handedness: R">R</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">v STL 2K 80P</span><span class="pitcher-recent-line">v SD 1K 53P</span><span class="pitcher-recent-line">@ NYM 5K 83P</span><span class="pitcher-recent-line">v COL 1K 92P</span><span class="pitcher-recent-line">@ SF 5K 85P</span></span></span></td>
 <td class="group-pitcher" data-sort-key="GP" data-sort-value="15">15</td>
 <td class="group-pitcher" data-sort-key="AB" data-sort-value="225">225</td>
 <td class="group-pitcher" data-sort-key="K" data-sort-value="37">37</td>
@@ -1596,8 +1653,8 @@
 <td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="5.43">5.4</td>
 <td class="group-savant cell-weak" data-sort-key="Whiff%" data-sort-value="13.1">13.1</td>
 <td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="15.1639344262">15.16</td>
-<td class="group-opponent cell-elite" data-sort-key="K%" data-sort-value="28.8">28.8<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-savant" title="Savant probable-lineup sample">S</span></td>
-<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="73">73</td>
+<td class="group-opponent" data-sort-key="K%" data-sort-value="24.7281053234">24.7<span aria-hidden="true" class="k-src-gap"></span><span class="k-src-marker src-previous-lineup" title="Previous completed lineup vs starter hand">P</span></td>
+<td class="group-opponent cell-confidence-high" data-sort-key="PA" data-sort-value="1747">1747</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp K% vH" data-sort-value="25.1584047708">25.16</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l5 K%" data-sort-value="30.8988764045">30.90</td>
 <td class="column-opp-hand group-opponent cell-elite" data-sort-key="Opp l10 K%" data-sort-value="27.6712328767">27.67</td>
