@@ -2,7 +2,7 @@ import datetime as dt
 import unittest
 from pathlib import Path
 
-from site_nav import build_date_nav_html, build_report_tabs, format_report_date, report_key_for_date
+from mlb_pitcher_report.shared.site_nav import build_date_nav_html, build_report_tabs, format_report_date, report_key_for_date
 
 
 class SiteNavTests(unittest.TestCase):

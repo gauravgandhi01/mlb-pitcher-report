@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pandas as pd
 from bs4 import BeautifulSoup
 
-import Pitchers as pitchers_module
-from Pitchers import (
+from mlb_pitcher_report.reports import pitchers as pitchers_module
+from mlb_pitcher_report.reports.pitchers import (
     BEST_K_ODDS_COLUMN,
     K_PA_COLUMN,
     MATCHUP_LINES_COLUMN,
@@ -364,7 +364,7 @@ class PitchersRenderTests(unittest.TestCase):
             self.assertFalse(root_index.exists())
 
     def test_pitcher_date_resolution_respects_exact_mode(self) -> None:
-        with patch("Pitchers.fetch_schedule", return_value=[{"status": "Final"}]):
+        with patch("mlb_pitcher_report.reports.pitchers.fetch_schedule", return_value=[{"status": "Final"}]):
             report_date, schedule = resolve_effective_report_date_and_schedule(
                 "06/17/2026",
                 allow_roll_forward=False,
@@ -411,7 +411,7 @@ class PitchersRenderTests(unittest.TestCase):
         payload = {"stats": [{"splits": game_log_splits}]}
 
         with patch.object(pitchers_module, "TEAM_RECENT_K_CACHE", {}), patch(
-            "Pitchers.statsapi.get",
+            "mlb_pitcher_report.reports.pitchers.statsapi.get",
             return_value=payload,
         ):
             result = _get_team_recent_k_lookup(140, 2026, cutoff_date)
@@ -447,7 +447,7 @@ class PitchersRenderTests(unittest.TestCase):
         empty_payload = {"stats": [{"splits": []}]}
 
         with patch.object(pitchers_module, "TEAM_RECENT_K_CACHE", {}), patch(
-            "Pitchers.statsapi.get",
+            "mlb_pitcher_report.reports.pitchers.statsapi.get",
             return_value=short_payload,
         ):
             short_result = _get_team_recent_k_lookup(111, 2026, cutoff_date)
@@ -457,7 +457,7 @@ class PitchersRenderTests(unittest.TestCase):
         self.assertAlmostEqual(short_result["last_10"], expected_short_rate)
 
         with patch.object(pitchers_module, "TEAM_RECENT_K_CACHE", {}), patch(
-            "Pitchers.statsapi.get",
+            "mlb_pitcher_report.reports.pitchers.statsapi.get",
             return_value=empty_payload,
         ):
             empty_result = _get_team_recent_k_lookup(112, 2026, cutoff_date)
@@ -482,10 +482,10 @@ class PitchersRenderTests(unittest.TestCase):
         }
 
         with patch.object(pitchers_module, "TEAM_HAND_SPLIT_RANK_CACHE", {}), patch(
-            "Pitchers.fetch_mlb_team_ids",
+            "mlb_pitcher_report.reports.pitchers.fetch_mlb_team_ids",
             return_value=[111, 222, 333],
         ), patch(
-            "Pitchers._get_team_hand_split_k_lookup",
+            "mlb_pitcher_report.reports.pitchers._get_team_hand_split_k_lookup",
             side_effect=lambda team_id, season: split_by_team[team_id],
         ):
             lookup = build_opponent_hand_k_lookup(schedule, 2026)
@@ -563,10 +563,10 @@ class PitchersRenderTests(unittest.TestCase):
         }
 
         with patch.object(pitchers_module, "PREVIOUS_LINEUP_K_CACHE", {}), patch(
-            "Pitchers._fetch_previous_lineup_player_ids",
+            "mlb_pitcher_report.reports.pitchers._fetch_previous_lineup_player_ids",
             return_value=lineup_ids,
         ), patch(
-            "Pitchers.fetch_hitter_people_stats_map",
+            "mlb_pitcher_report.reports.pitchers.fetch_hitter_people_stats_map",
             return_value=people,
         ) as fetch_people:
             result = _previous_lineup_k_percent(158, 2026, dt.date(2026, 7, 12), 999)
@@ -610,10 +610,10 @@ class PitchersRenderTests(unittest.TestCase):
         )
         espn_df = pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
 
-        with patch("Pitchers.get_savant_opp_data", return_value=savant_df), patch(
-            "Pitchers.get_espn_opp_data",
+        with patch("mlb_pitcher_report.reports.pitchers.get_savant_opp_data", return_value=savant_df), patch(
+            "mlb_pitcher_report.reports.pitchers.get_espn_opp_data",
             return_value=espn_df,
-        ), patch("Pitchers.get_previous_lineup_opp_data", return_value=previous_df):
+        ), patch("mlb_pitcher_report.reports.pitchers.get_previous_lineup_opp_data", return_value=previous_df):
             result = get_opp_data("07/12/2026", [])
 
         alpha = result.loc[result["Pitcher"] == "Alpha Ace"].iloc[0]
@@ -676,7 +676,7 @@ class PitchersRenderTests(unittest.TestCase):
         def fake_splits(_player_id: int, season: int) -> list:
             return current_season_splits if season == 2026 else previous_season_splits
 
-        with patch("Pitchers._pitcher_game_log_splits", side_effect=fake_splits):
+        with patch("mlb_pitcher_report.reports.pitchers._pitcher_game_log_splits", side_effect=fake_splits):
             lines = fetch_pitcher_recent_game_lines(123, 2026, dt.date(2026, 7, 12))
 
         self.assertEqual(
@@ -772,7 +772,7 @@ class PitchersRenderTests(unittest.TestCase):
             ]
         }
 
-        with patch("Pitchers.statsapi.get", return_value=payload):
+        with patch("mlb_pitcher_report.reports.pitchers.statsapi.get", return_value=payload):
             result = prepare_team_batting_df(2026)
 
         self.assertEqual(
@@ -816,7 +816,7 @@ class PitchersRenderTests(unittest.TestCase):
             ]
         )
 
-        with patch("Pitchers.get_strikeouts_by_player_name", return_value=7):
+        with patch("mlb_pitcher_report.reports.pitchers.get_strikeouts_by_player_name", return_value=7):
             result = calculate_additional_metrics("06/27/2026", pitchers)
 
         alpha_row = result.loc[result["Name"] == "Alpha Ace"].iloc[0]

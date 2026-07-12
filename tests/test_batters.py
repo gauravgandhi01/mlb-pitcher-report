@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pandas as pd
 
-import Batters as batters_module
-from Batters import (
+from mlb_pitcher_report.reports import batters as batters_module
+from mlb_pitcher_report.reports.batters import (
     HOME_RUN_REPORT_COLUMNS,
     ACTIVE_STREAK_SECTION_MIN,
     RECENT_GAMES,
@@ -30,7 +30,7 @@ from Batters import (
     verify_historical_bvp_for_feature_candidates,
     write_html,
 )
-from report_data import parse_vs_pitcher_stats
+from mlb_pitcher_report.shared.report_data import parse_vs_pitcher_stats
 
 
 class BattersLogicTests(unittest.TestCase):
@@ -775,7 +775,7 @@ class BattersLogicTests(unittest.TestCase):
         )
 
         with patch(
-            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            "mlb_pitcher_report.reports.batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
             return_value={
                 10: {
                     "PA": 2,
@@ -820,7 +820,7 @@ class BattersLogicTests(unittest.TestCase):
         )
 
         with patch(
-            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            "mlb_pitcher_report.reports.batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
             return_value={
                 10: {
                     "PA": 6,
@@ -868,7 +868,7 @@ class BattersLogicTests(unittest.TestCase):
         )
 
         with patch(
-            "Batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
+            "mlb_pitcher_report.reports.batters.fetch_pitcher_historical_batter_vs_pitcher_stat_lines",
             return_value={
                 10: {
                     "PA": 5,

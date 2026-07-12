@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-import oddapi
+from mlb_pitcher_report.odds import oddapi
 
 
 class OddsApiTests(unittest.TestCase):

@@ -4380,7 +4380,10 @@ def main(
 
 def _parse_cli_args(argv: Sequence[str]) -> Tuple[str, str, bool, bool]:
     if len(argv) < 3:
-        print("Usage: python3 Pitchers.py <today|tmrw|MM/DD|MM/DD/YYYY> <y|n> [--exact] [--no-root]")
+        print(
+            "Usage: python3 -m mlb_pitcher_report.reports.pitchers "
+            "<today|tmrw|MM/DD|MM/DD/YYYY> <y|n> [--exact] [--no-root]"
+        )
         sys.exit(1)
 
     date_input = str(argv[1])

@@ -1,9 +1,9 @@
 import unittest
 
-from Batters import _render_team_cell
-from Matchups import _render_team_chip
-from Pitchers import _render_opponent_with_start
-from team_logos import get_team_logo_src, resolve_team_logo_file_path
+from mlb_pitcher_report.reports.batters import _render_team_cell
+from mlb_pitcher_report.reports.matchups import _render_team_chip
+from mlb_pitcher_report.reports.pitchers import _render_opponent_with_start
+from mlb_pitcher_report.shared.team_logos import get_team_logo_src, resolve_team_logo_file_path
 
 
 class TeamLogoTests(unittest.TestCase):

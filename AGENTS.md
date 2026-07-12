@@ -14,7 +14,7 @@ The reports are intended for GitHub Pages style publishing. The root HTML files 
 
 ## Source Layout
 
-- `Pitchers.py`, `Batters.py`, `Matchups.py`: compatibility entrypoints. Keep these names working for cron and manual usage.
+- `mlb_pitcher_report/reports/pitchers.py`, `mlb_pitcher_report/reports/batters.py`, `mlb_pitcher_report/reports/matchups.py`: report entry modules invoked by cron with `python3 -m`.
 - `mlb_pitcher_report/reports/`: report-specific builders and renderers.
 - `mlb_pitcher_report/shared/`: shared schedule, StatsAPI, ESPN, weather, navigation, and logo helpers.
 - `mlb_pitcher_report/odds/`: odds API integration used by the pitcher report.
@@ -42,17 +42,17 @@ python3 -m pytest
 Generate current root pages:
 
 ```bash
-python3 Pitchers.py today y
-python3 Batters.py today
-python3 Matchups.py today
+python3 -m mlb_pitcher_report.reports.pitchers today y
+python3 -m mlb_pitcher_report.reports.batters today
+python3 -m mlb_pitcher_report.reports.matchups today
 ```
 
 Generate archive-only pages for an exact date:
 
 ```bash
-python3 Pitchers.py 07/12/2026 y --exact --no-root
-python3 Batters.py 07/12/2026 --exact --no-root
-python3 Matchups.py 07/12/2026 --exact --no-root
+python3 -m mlb_pitcher_report.reports.pitchers 07/12/2026 y --exact --no-root
+python3 -m mlb_pitcher_report.reports.batters 07/12/2026 --exact --no-root
+python3 -m mlb_pitcher_report.reports.matchups 07/12/2026 --exact --no-root
 ```
 
 Dry-run the cron workflow:
@@ -70,7 +70,6 @@ Keep source, tests, root generated pages, `favicon.svg`, `requirements.txt`, `re
 ## Compatibility Rules
 
 - Do not change report scoring, odds selection, lineup selection, roll-forward behavior, filenames, CLI arguments, or link structure during cleanup-only work.
-- Keep the top-level module names importable. Tests and ad-hoc workflows import private helpers from `Pitchers`, `Batters`, and `Matchups`.
+- Import report code from package modules. Root compatibility wrappers are intentionally not part of the supported workflow.
 - Prefer small, mechanical refactors with `python3 -m pytest` after each risky move.
 - If rendered HTML changes are intentional, explain the user-visible reason and add or update tests. Cleanup refactors should avoid intentional output changes.
-

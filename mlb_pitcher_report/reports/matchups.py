@@ -1502,7 +1502,10 @@ def main(raw_date_input: str, *, allow_roll_forward: bool = True, write_root: bo
 
 def _parse_cli_args(argv: Sequence[str]) -> tuple[str, bool, bool]:
     if len(argv) < 2:
-        print("Usage: python3 Matchups.py <today|tmrw|MM/DD|MM/DD/YYYY> [--exact] [--no-root]")
+        print(
+            "Usage: python3 -m mlb_pitcher_report.reports.matchups "
+            "<today|tmrw|MM/DD|MM/DD/YYYY> [--exact] [--no-root]"
+        )
         sys.exit(1)
 
     supported_flags = {"--exact", "--no-root"}

@@ -82,18 +82,18 @@ class CronPublishUtilsTests(unittest.TestCase):
     def test_frequent_mode_dry_run_generates_root_once(self) -> None:
         result = self._run_cron_dry_run("frequent")
 
-        self.assertIn("DRY RUN: python3 Pitchers.py today y", result.stdout)
-        self.assertIn("DRY RUN: python3 Batters.py today", result.stdout)
-        self.assertIn("DRY RUN: python3 Matchups.py today", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.pitchers today y", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.batters today", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.matchups today", result.stdout)
         self.assertNotIn("--exact --no-root", result.stdout)
 
     def test_archive_mode_dry_run_generates_yesterday_and_tomorrow_only(self) -> None:
         result = self._run_cron_dry_run("archive", odds="n")
 
-        self.assertIn("DRY RUN: python3 Pitchers.py 07/11/2026 n --exact --no-root", result.stdout)
-        self.assertIn("DRY RUN: python3 Batters.py 07/11/2026 --exact --no-root", result.stdout)
-        self.assertIn("DRY RUN: python3 Matchups.py 07/13/2026 --exact --no-root", result.stdout)
-        self.assertNotIn("Pitchers.py 07/12/2026", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.pitchers 07/11/2026 n --exact --no-root", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.batters 07/11/2026 --exact --no-root", result.stdout)
+        self.assertIn("DRY RUN: python3 -m mlb_pitcher_report.reports.matchups 07/13/2026 --exact --no-root", result.stdout)
+        self.assertNotIn("mlb_pitcher_report.reports.pitchers 07/12/2026", result.stdout)
 
     def test_script_managed_log_rotation_rotates_before_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

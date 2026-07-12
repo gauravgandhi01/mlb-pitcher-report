@@ -2,8 +2,8 @@ import datetime as dt
 import unittest
 from unittest.mock import patch
 
-import report_data as report_data_module
-from report_data import (
+from mlb_pitcher_report.shared import report_data as report_data_module
+from mlb_pitcher_report.shared.report_data import (
     extract_batter_vs_pitcher_stat_lines_from_plays,
     fetch_pitcher_historical_batter_vs_pitcher_stat_lines,
     fetch_people_stats_map,
@@ -17,7 +17,7 @@ class ReportDataDateResolutionTests(unittest.TestCase):
         completed_schedule = [{"status": "Final"}]
         next_schedule = [{"status": "Scheduled"}]
 
-        with patch("report_data.fetch_schedule", side_effect=[completed_schedule, next_schedule]):
+        with patch("mlb_pitcher_report.shared.report_data.fetch_schedule", side_effect=[completed_schedule, next_schedule]):
             report_date, schedule = resolve_effective_report_date_and_schedule("06/17/2026")
 
         self.assertEqual(report_date, "06/18/2026")
@@ -26,7 +26,7 @@ class ReportDataDateResolutionTests(unittest.TestCase):
     def test_resolve_effective_report_date_respects_exact_mode(self) -> None:
         completed_schedule = [{"status": "Final"}]
 
-        with patch("report_data.fetch_schedule", return_value=completed_schedule):
+        with patch("mlb_pitcher_report.shared.report_data.fetch_schedule", return_value=completed_schedule):
             report_date, schedule = resolve_effective_report_date_and_schedule(
                 "06/17/2026",
                 allow_roll_forward=False,
@@ -89,7 +89,7 @@ class ReportDataDateResolutionTests(unittest.TestCase):
         self.assertAlmostEqual(stats["AVG"], 1 / 3, places=6)
 
     def test_fetch_people_stats_map_includes_end_date_in_hydrate(self) -> None:
-        with patch("report_data.statsapi.get", return_value={"people": [{"id": 123}]}) as get_mock:
+        with patch("mlb_pitcher_report.shared.report_data.statsapi.get", return_value={"people": [{"id": 123}]}) as get_mock:
             fetch_people_stats_map(
                 [123],
                 season=2026,
@@ -313,13 +313,13 @@ class ReportDataDateResolutionTests(unittest.TestCase):
         }
 
         with patch.object(report_data_module, "PITCHER_HISTORICAL_BVP_CACHE", {}), patch(
-            "report_data.fetch_pitcher_debut_year",
+            "mlb_pitcher_report.shared.report_data.fetch_pitcher_debut_year",
             return_value=2025,
         ), patch(
-            "report_data.fetch_pitcher_game_log_splits",
+            "mlb_pitcher_report.shared.report_data.fetch_pitcher_game_log_splits",
             side_effect=lambda pitcher_id, season: game_logs_by_season.get(season, []),
         ), patch(
-            "report_data.fetch_game_batter_vs_pitcher_stat_lines",
+            "mlb_pitcher_report.shared.report_data.fetch_game_batter_vs_pitcher_stat_lines",
             side_effect=lambda game_id, pitcher_id: game_lines.get(game_id, {}),
         ) as game_bvp_mock:
             stats = fetch_pitcher_historical_batter_vs_pitcher_stat_lines(

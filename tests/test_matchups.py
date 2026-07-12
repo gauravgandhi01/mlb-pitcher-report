@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import Matchups as matchups_module
+from mlb_pitcher_report.reports import matchups as matchups_module
 
-from Matchups import (
+from mlb_pitcher_report.reports.matchups import (
     GameMatchup,
     OffenseMatchup,
     ParkContext,
@@ -29,7 +29,7 @@ from Matchups import (
     write_html,
     build_pitcher_recent_form,
 )
-from report_data import (
+from mlb_pitcher_report.shared.report_data import (
     aggregate_stat_lines,
     build_metric_rank_index,
     extract_open_meteo_hourly_park_context,
@@ -637,7 +637,7 @@ class MatchupsLogicTests(unittest.TestCase):
         self.assertEqual(context["source"], "Open-Meteo")
 
     def test_fetch_park_context_skips_weather_call_for_indoor_roofs(self) -> None:
-        with patch("report_data.requests.get") as mock_get:
+        with patch("mlb_pitcher_report.shared.report_data.requests.get") as mock_get:
             context = fetch_park_context(12, "2026-06-12T23:05:00Z", "06/12/2026")
 
         self.assertEqual(context["roof_type"], "indoor")

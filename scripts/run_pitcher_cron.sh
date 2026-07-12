@@ -132,16 +132,16 @@ file_in_list() {
 }
 
 run_root_generation() {
-  run_cmd python3 Pitchers.py "$REPORT_DATE" "$INCLUDE_ODDS"
-  run_cmd python3 Batters.py "$REPORT_DATE"
-  run_cmd python3 Matchups.py "$REPORT_DATE"
+  run_cmd python3 -m mlb_pitcher_report.reports.pitchers "$REPORT_DATE" "$INCLUDE_ODDS"
+  run_cmd python3 -m mlb_pitcher_report.reports.batters "$REPORT_DATE"
+  run_cmd python3 -m mlb_pitcher_report.reports.matchups "$REPORT_DATE"
 }
 
 run_archive_generation() {
   local archive_date="$1"
-  run_cmd python3 Pitchers.py "$archive_date" "$INCLUDE_ODDS" --exact --no-root
-  run_cmd python3 Batters.py "$archive_date" --exact --no-root
-  run_cmd python3 Matchups.py "$archive_date" --exact --no-root
+  run_cmd python3 -m mlb_pitcher_report.reports.pitchers "$archive_date" "$INCLUDE_ODDS" --exact --no-root
+  run_cmd python3 -m mlb_pitcher_report.reports.batters "$archive_date" --exact --no-root
+  run_cmd python3 -m mlb_pitcher_report.reports.matchups "$archive_date" --exact --no-root
 }
 
 stage_existing_files() {
