@@ -17,6 +17,5 @@ debug/
 cron.log
 cron.log.*
 cron_update.log
-reports/
 MLB-StatsAPI.wiki/
 sgo/
