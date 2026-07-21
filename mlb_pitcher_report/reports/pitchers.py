@@ -47,6 +47,9 @@ START_TIME_COLUMN = "Start"
 PLAYER_ID_COLUMN = "Player ID"
 RECENT_PITCHER_GAMES_COLUMN = "Recent Games"
 MATCHUP_LINES_COLUMN = "Matchup Lines"
+BVP_H_COLUMN = "BvP H"
+BVP_AB_COLUMN = "BvP AB"
+BVP_AVG_COLUMN = "BvP AVG"
 MATCHUP_SOURCE_ESPN = "ESPN (AB)"
 MATCHUP_SOURCE_PREVIOUS_LINEUP = "Prev Lineup (BvP)"
 MATCHUP_SOURCE_SAVANT = "Savant (PA)"
@@ -182,6 +185,9 @@ INTERNAL_ONLY_COLUMNS = {
     PLAYER_ID_COLUMN,
     RECENT_PITCHER_GAMES_COLUMN,
     MATCHUP_LINES_COLUMN,
+    BVP_H_COLUMN,
+    BVP_AB_COLUMN,
+    BVP_AVG_COLUMN,
     OPP_HAND_K_RANK_COLUMN,
 }
 SPORTSBOOK_TAGS = {
@@ -473,13 +479,24 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
     converted_date = date_obj.strftime("%Y-%m-%d")
     url = f"https://baseballsavant.mlb.com/probable-pitchers?date={converted_date}"
     data: List[Dict[str, Any]] = []
+    columns = [
+        "Pitcher",
+        "Hand",
+        "PA",
+        "K%",
+        MATCHUP_SOURCE_COLUMN,
+        MATCHUP_LINES_COLUMN,
+        BVP_H_COLUMN,
+        BVP_AB_COLUMN,
+        BVP_AVG_COLUMN,
+    ]
 
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
     except requests.RequestException as exc:
         print(f"\033[91mFailed to retrieve probable pitcher data: {exc}\033[0m")
-        return pd.DataFrame(columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+        return pd.DataFrame(columns=columns)
 
     soup = BeautifulSoup(response.content, "html.parser")
     blocks = soup.find_all("div", class_="mod")
@@ -496,6 +513,9 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
                         "K%": k_percentage,
                         MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
                         MATCHUP_LINES_COLUMN: [],
+                        BVP_H_COLUMN: pd.NA,
+                        BVP_AB_COLUMN: pd.NA,
+                        BVP_AVG_COLUMN: pd.NA,
                     }
                 )
             except Exception:
@@ -507,10 +527,13 @@ def get_savant_opp_data(date: str) -> pd.DataFrame:
                         "K%": 0,
                         MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
                         MATCHUP_LINES_COLUMN: [],
+                        BVP_H_COLUMN: pd.NA,
+                        BVP_AB_COLUMN: pd.NA,
+                        BVP_AVG_COLUMN: pd.NA,
                     }
                 )
 
-    return pd.DataFrame(data, columns=["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+    return pd.DataFrame(data, columns=columns)
 
 
 def _fetch_espn_scoreboard_events(date: str) -> List[Dict[str, Any]]:
@@ -682,6 +705,7 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
         hits_idx = keys.index("hits") if "hits" in keys else None
 
         total_ab = 0.0
+        total_hits = 0.0
         total_ks = 0.0
         has_any_vs_stats = False
         has_any_numeric_value = False
@@ -695,8 +719,12 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
             raw_hits = vs_stats[hits_idx] if hits_idx is not None and hits_idx < len(vs_stats) else None
             ab_value = pd.to_numeric(raw_ab, errors="coerce")
             ks_value = pd.to_numeric(raw_ks, errors="coerce")
+            hits_value = pd.to_numeric(raw_hits, errors="coerce")
             if pd.notna(ab_value):
                 total_ab += float(ab_value)
+                has_any_numeric_value = True
+            if pd.notna(hits_value):
+                total_hits += float(hits_value)
                 has_any_numeric_value = True
             if pd.notna(ks_value):
                 total_ks += float(ks_value)
@@ -711,7 +739,14 @@ def _extract_espn_lineup_matchup_stats(summary_data: Dict[str, Any]) -> Dict[str
             continue
 
         k_percent = float(100 * total_ks / total_ab) if total_ab > 0 else 0.0
-        matchup_by_team[team_abbrev] = {"PA": total_ab, "K%": k_percent, MATCHUP_LINES_COLUMN: matchup_lines}
+        matchup_by_team[team_abbrev] = {
+            "PA": total_ab,
+            "K%": k_percent,
+            BVP_H_COLUMN: total_hits,
+            BVP_AB_COLUMN: total_ab,
+            BVP_AVG_COLUMN: float(total_hits / total_ab) if total_ab > 0 else None,
+            MATCHUP_LINES_COLUMN: matchup_lines,
+        }
 
     return matchup_by_team
 
@@ -841,6 +876,8 @@ def _previous_lineup_k_percent(
 
     total_strikeouts = 0
     total_plate_appearances = 0
+    total_hits = 0
+    total_at_bats = 0
     matchup_lines: List[str] = []
     for player_id in lineup_ids[:9]:
         person = people_by_id.get(int(player_id))
@@ -849,11 +886,15 @@ def _previous_lineup_k_percent(
         totals = _hitter_vs_pitcher_totals(person, report_date)
         strikeouts = _to_int(totals.get("K")) or 0
         plate_appearances = _to_int(totals.get("PA")) or 0
+        hits = _to_int(totals.get("H")) or 0
+        at_bats = _to_int(totals.get("AB")) or 0
         total_strikeouts += strikeouts
         total_plate_appearances += plate_appearances
+        total_hits += hits
+        total_at_bats += at_bats
         line = _format_matchup_k_line(
-            totals.get("H"),
-            totals.get("AB"),
+            hits,
+            at_bats,
             strikeouts,
             _person_display_name(person),
         )
@@ -867,6 +908,9 @@ def _previous_lineup_k_percent(
     result = {
         "PA": float(total_plate_appearances),
         "K%": float(100 * total_strikeouts / total_plate_appearances),
+        BVP_H_COLUMN: total_hits,
+        BVP_AB_COLUMN: total_at_bats,
+        BVP_AVG_COLUMN: float(total_hits / total_at_bats) if total_at_bats > 0 else None,
         MATCHUP_LINES_COLUMN: matchup_lines,
     }
     PREVIOUS_LINEUP_K_CACHE[cache_key] = result
@@ -875,9 +919,19 @@ def _previous_lineup_k_percent(
 
 def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
+    columns = [
+        "Pitcher",
+        "PA",
+        "K%",
+        MATCHUP_SOURCE_COLUMN,
+        MATCHUP_LINES_COLUMN,
+        BVP_H_COLUMN,
+        BVP_AB_COLUMN,
+        BVP_AVG_COLUMN,
+    ]
     event_lookup = _build_espn_event_id_lookup(date)
     if not event_lookup:
-        return pd.DataFrame(columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+        return pd.DataFrame(columns=columns)
 
     for game in schedule:
         away_team = str(game.get("away_name", "")).strip()
@@ -915,6 +969,9 @@ def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataF
                     "K%": lineup_stats[home_abbrev]["K%"],
                     MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
                     MATCHUP_LINES_COLUMN: lineup_stats[home_abbrev].get(MATCHUP_LINES_COLUMN, []),
+                    BVP_H_COLUMN: lineup_stats[home_abbrev].get(BVP_H_COLUMN),
+                    BVP_AB_COLUMN: lineup_stats[home_abbrev].get(BVP_AB_COLUMN),
+                    BVP_AVG_COLUMN: lineup_stats[home_abbrev].get(BVP_AVG_COLUMN),
                 }
             )
         if home_pitcher and away_abbrev in lineup_stats:
@@ -925,10 +982,13 @@ def get_espn_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataF
                     "K%": lineup_stats[away_abbrev]["K%"],
                     MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
                     MATCHUP_LINES_COLUMN: lineup_stats[away_abbrev].get(MATCHUP_LINES_COLUMN, []),
+                    BVP_H_COLUMN: lineup_stats[away_abbrev].get(BVP_H_COLUMN),
+                    BVP_AB_COLUMN: lineup_stats[away_abbrev].get(BVP_AB_COLUMN),
+                    BVP_AVG_COLUMN: lineup_stats[away_abbrev].get(BVP_AVG_COLUMN),
                 }
             )
 
-    return pd.DataFrame(rows, columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+    return pd.DataFrame(rows, columns=columns)
 
 
 def get_previous_lineup_opp_data(
@@ -942,6 +1002,16 @@ def get_previous_lineup_opp_data(
     season = report_date.year
     excluded_keys = {_normalize_person_name(name) for name in (excluded_pitchers or [])}
     rows: List[Dict[str, Any]] = []
+    columns = [
+        "Pitcher",
+        "PA",
+        "K%",
+        MATCHUP_SOURCE_COLUMN,
+        MATCHUP_LINES_COLUMN,
+        BVP_H_COLUMN,
+        BVP_AB_COLUMN,
+        BVP_AVG_COLUMN,
+    ]
 
     for game in schedule:
         matchup_tasks = [
@@ -974,10 +1044,13 @@ def get_previous_lineup_opp_data(
                     "K%": lineup_stats["K%"],
                     MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_PREVIOUS_LINEUP,
                     MATCHUP_LINES_COLUMN: lineup_stats.get(MATCHUP_LINES_COLUMN, []),
+                    BVP_H_COLUMN: lineup_stats.get(BVP_H_COLUMN),
+                    BVP_AB_COLUMN: lineup_stats.get(BVP_AB_COLUMN),
+                    BVP_AVG_COLUMN: lineup_stats.get(BVP_AVG_COLUMN),
                 }
             )
 
-    return pd.DataFrame(rows, columns=["Pitcher", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN])
+    return pd.DataFrame(rows, columns=columns)
 
 
 def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
@@ -995,7 +1068,17 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
         excluded_pitchers=espn_pitchers,
     )
 
-    columns = ["Pitcher", "Hand", "PA", "K%", MATCHUP_SOURCE_COLUMN, MATCHUP_LINES_COLUMN]
+    columns = [
+        "Pitcher",
+        "Hand",
+        "PA",
+        "K%",
+        MATCHUP_SOURCE_COLUMN,
+        MATCHUP_LINES_COLUMN,
+        BVP_H_COLUMN,
+        BVP_AB_COLUMN,
+        BVP_AVG_COLUMN,
+    ]
     merged_lookup: Dict[str, Dict[str, Any]] = {}
 
     for _, row in savant_df.iterrows():
@@ -1010,6 +1093,9 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
             "K%": row.get("K%"),
             MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_SAVANT,
             MATCHUP_LINES_COLUMN: row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else [],
+            BVP_H_COLUMN: row.get(BVP_H_COLUMN),
+            BVP_AB_COLUMN: row.get(BVP_AB_COLUMN),
+            BVP_AVG_COLUMN: row.get(BVP_AVG_COLUMN),
         }
 
     for _, row in previous_lineup_df.iterrows():
@@ -1026,12 +1112,18 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
                 "K%": pd.NA,
                 MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_PREVIOUS_LINEUP,
                 MATCHUP_LINES_COLUMN: [],
+                BVP_H_COLUMN: pd.NA,
+                BVP_AB_COLUMN: pd.NA,
+                BVP_AVG_COLUMN: pd.NA,
             },
         )
         existing["PA"] = row.get("PA")
         existing["K%"] = row.get("K%")
         existing[MATCHUP_SOURCE_COLUMN] = MATCHUP_SOURCE_PREVIOUS_LINEUP
         existing[MATCHUP_LINES_COLUMN] = row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else []
+        existing[BVP_H_COLUMN] = row.get(BVP_H_COLUMN)
+        existing[BVP_AB_COLUMN] = row.get(BVP_AB_COLUMN)
+        existing[BVP_AVG_COLUMN] = row.get(BVP_AVG_COLUMN)
         merged_lookup[key] = existing
 
     for _, row in espn_df.iterrows():
@@ -1048,12 +1140,18 @@ def get_opp_data(date: str, schedule: Sequence[Dict[str, Any]]) -> pd.DataFrame:
                 "K%": pd.NA,
                 MATCHUP_SOURCE_COLUMN: MATCHUP_SOURCE_ESPN,
                 MATCHUP_LINES_COLUMN: [],
+                BVP_H_COLUMN: pd.NA,
+                BVP_AB_COLUMN: pd.NA,
+                BVP_AVG_COLUMN: pd.NA,
             },
         )
         existing["PA"] = row.get("PA")
         existing["K%"] = row.get("K%")
         existing[MATCHUP_SOURCE_COLUMN] = MATCHUP_SOURCE_ESPN
         existing[MATCHUP_LINES_COLUMN] = row.get(MATCHUP_LINES_COLUMN) if MATCHUP_LINES_COLUMN in row else []
+        existing[BVP_H_COLUMN] = row.get(BVP_H_COLUMN)
+        existing[BVP_AB_COLUMN] = row.get(BVP_AB_COLUMN)
+        existing[BVP_AVG_COLUMN] = row.get(BVP_AVG_COLUMN)
         merged_lookup[key] = existing
 
     if not merged_lookup:

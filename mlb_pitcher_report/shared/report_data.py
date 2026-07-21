@@ -1036,6 +1036,134 @@ def fetch_pitcher_game_log_splits(pitcher_id: int, season: int) -> List[Dict[str
     return splits
 
 
+def innings_string_to_outs(value: Any) -> int:
+    text = str(value or "").strip()
+    if not text:
+        return 0
+    if "." not in text:
+        try:
+            return int(text) * 3
+        except ValueError:
+            return 0
+    whole_text, remainder_text = text.split(".", 1)
+    try:
+        whole_innings = int(whole_text)
+        remainder_outs = int(remainder_text[:1] or "0")
+    except ValueError:
+        return 0
+    return (whole_innings * 3) + min(max(remainder_outs, 0), 2)
+
+
+def _pitcher_batters_faced(stat: Dict[str, Any]) -> int:
+    batters_faced = to_int(stat.get("battersFaced"))
+    if batters_faced is not None:
+        return batters_faced
+    at_bats = to_int(stat.get("atBats")) or 0
+    walks = to_int(stat.get("baseOnBalls")) or 0
+    hit_batsmen = to_int(stat.get("hitBatsmen"))
+    if hit_batsmen is None:
+        hit_batsmen = to_int(stat.get("hitByPitch")) or 0
+    sac_flies = to_int(stat.get("sacFlies")) or 0
+    return at_bats + walks + hit_batsmen + sac_flies
+
+
+def build_pitcher_form_from_game_logs(
+    game_log_splits: Sequence[Dict[str, Any]],
+    report_date: dt.date,
+    *,
+    starts_only: bool = False,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    rows: List[Dict[str, Any]] = []
+    for split in game_log_splits:
+        game_date = parse_date(split.get("date"))
+        if game_date is None or game_date >= report_date:
+            continue
+        stat = split.get("stat") or {}
+        games_started = to_int(stat.get("gamesStarted")) or 0
+        if starts_only and games_started != 1:
+            continue
+        game_info = split.get("game") or {}
+        outs = to_int(stat.get("outs"))
+        if outs is None:
+            outs = innings_string_to_outs(stat.get("inningsPitched"))
+        rows.append(
+            {
+                "date": game_date,
+                "gamePk": to_int(game_info.get("gamePk")) or 0,
+                "gamesStarted": games_started,
+                "outs": outs or 0,
+                "earnedRuns": to_int(stat.get("earnedRuns")) or 0,
+                "hits": to_int(stat.get("hits")) or 0,
+                "walks": to_int(stat.get("baseOnBalls")) or 0,
+                "strikeOuts": to_int(stat.get("strikeOuts")) or 0,
+                "atBats": to_int(stat.get("atBats")) or 0,
+                "battersFaced": _pitcher_batters_faced(stat),
+            }
+        )
+
+    rows.sort(key=lambda row: (row["date"], row["gamePk"]), reverse=True)
+    if limit is not None:
+        rows = rows[:limit]
+
+    if not rows:
+        return {
+            "Games": 0,
+            "Starts": 0,
+            "IP": None,
+            "IP/start": None,
+            "ERA": None,
+            "WHIP": None,
+            "K/9": None,
+            "BB/9": None,
+            "K/PA": None,
+            "AVG": None,
+        }
+
+    total_outs = sum(row["outs"] for row in rows)
+    total_er = sum(row["earnedRuns"] for row in rows)
+    total_hits = sum(row["hits"] for row in rows)
+    total_walks = sum(row["walks"] for row in rows)
+    total_strikeouts = sum(row["strikeOuts"] for row in rows)
+    total_at_bats = sum(row["atBats"] for row in rows)
+    total_batters_faced = sum(row["battersFaced"] for row in rows)
+    games_count = len(rows)
+    starts_count = sum(1 for row in rows if row["gamesStarted"] == 1)
+    innings_pitched = total_outs / 3.0 if total_outs > 0 else 0.0
+
+    return {
+        "Games": games_count,
+        "Starts": starts_count,
+        "IP": innings_pitched if total_outs > 0 else None,
+        "IP/start": innings_pitched / starts_count if total_outs > 0 and starts_count > 0 else None,
+        "ERA": safe_ratio(total_er * 27.0, total_outs),
+        "WHIP": safe_ratio((total_hits + total_walks) * 3.0, total_outs),
+        "K/9": safe_ratio(total_strikeouts * 27.0, total_outs),
+        "BB/9": safe_ratio(total_walks * 27.0, total_outs),
+        "K/PA": safe_ratio(total_strikeouts * 100.0, total_batters_faced),
+        "AVG": safe_ratio(total_hits, total_at_bats),
+    }
+
+
+def build_pitcher_profile_stats(
+    pitcher_id: int,
+    season: int,
+    report_date: dt.date,
+    *,
+    recent_starts: int = 5,
+) -> Dict[str, Any]:
+    splits = fetch_pitcher_game_log_splits(int(pitcher_id), int(season))
+    return {
+        "season": build_pitcher_form_from_game_logs(splits, report_date),
+        "recent": build_pitcher_form_from_game_logs(
+            splits,
+            report_date,
+            starts_only=True,
+            limit=recent_starts,
+        ),
+    }
+
+
 def fetch_batter_game_log_splits(batter_id: int, season: int) -> List[Dict[str, Any]]:
     cache_key = (int(batter_id), int(season))
     cached = BATTER_GAME_LOG_CACHE.get(cache_key)

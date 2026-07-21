@@ -8,11 +8,14 @@ import pandas as pd
 
 from mlb_pitcher_report.reports import batters as batters_module
 from mlb_pitcher_report.reports.batters import (
+    BVP_AVG_COLUMN,
+    BVP_H_AB_COLUMN,
     HOME_RUN_REPORT_COLUMNS,
     ACTIVE_STREAK_SECTION_MIN,
     RECENT_GAMES,
     RECENT_WINDOW_DAYS,
     STREAK_SECTION_MIN,
+    WORST_PITCHER_REPORT_COLUMNS,
     _final_team_result,
     _final_total_result,
     apply_hot_scores,
@@ -20,15 +23,22 @@ from mlb_pitcher_report.reports.batters import (
     build_good_matchups_section,
     build_home_run_matchup_section,
     build_hot_streak_matchup_section,
+    build_worst_starting_pitchers_section,
     compute_hit_streak,
     compute_recent_metrics,
     extract_espn_game_total,
     format_home_run_focus_dataframe,
     format_report_dataframe,
+    format_worst_pitcher_dataframe,
     rank_active_roster_candidates,
     sort_batters_for_report,
     verify_historical_bvp_for_feature_candidates,
     write_html,
+)
+from mlb_pitcher_report.reports.pitchers import (
+    BVP_AB_COLUMN as PITCHER_BVP_AB_COLUMN,
+    BVP_AVG_COLUMN as PITCHER_BVP_AVG_COLUMN,
+    BVP_H_COLUMN as PITCHER_BVP_H_COLUMN,
 )
 from mlb_pitcher_report.shared.report_data import parse_vs_pitcher_stats
 
@@ -718,6 +728,150 @@ class BattersLogicTests(unittest.TestCase):
         home_run_df = build_home_run_matchup_section(df)
         self.assertEqual(list(home_run_df["Batter"]), ["Rate Bat", "Two Homer Bat", "Volume Bat", "Live Homer"])
 
+    def test_build_worst_starting_pitchers_sorts_by_pitcher_avg_allowed(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Pitcher": "Bad Arm",
+                    "Pitch Hand": "R",
+                    "Team": "Miami Marlins",
+                    "Team Abbrev": "MIA",
+                    "Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Start": "6:40p",
+                    "Status": "Scheduled",
+                    "Season AVG": 0.100,
+                    "__pitcher_id": 1001,
+                },
+                {
+                    "Pitcher": "Good Arm",
+                    "Pitch Hand": "L",
+                    "Team": "Pittsburgh Pirates",
+                    "Team Abbrev": "PIT",
+                    "Team Id": 134,
+                    "Opponent": "Miami Marlins",
+                    "Opponent Abbrev": "MIA",
+                    "Opponent Id": 146,
+                    "Start": "7:05p",
+                    "Status": "Scheduled",
+                    "Season AVG": 0.999,
+                    "__pitcher_id": 1002,
+                },
+            ]
+        )
+        lineup_matchups = pd.DataFrame(
+            [
+                {
+                    "Pitcher": "Bad Arm",
+                    "PA": 12,
+                    "K%": 30.0,
+                    PITCHER_BVP_H_COLUMN: 2,
+                    PITCHER_BVP_AB_COLUMN: 12,
+                    PITCHER_BVP_AVG_COLUMN: 2 / 12,
+                },
+                {
+                    "Pitcher": "Good Arm",
+                    "PA": 40,
+                    "K%": 5.0,
+                    PITCHER_BVP_H_COLUMN: 30,
+                    PITCHER_BVP_AB_COLUMN: 40,
+                    PITCHER_BVP_AVG_COLUMN: 0.750,
+                },
+            ]
+        )
+        profiles = {
+            1001: {
+                "season": {"ERA": 6.20, "WHIP": 1.62, "AVG": 0.291, "K/9": 6.2, "BB/9": 4.8, "K/PA": 15.0},
+                "recent": {"Starts": 5, "ERA": 7.40, "WHIP": 1.80, "AVG": 0.320, "K/9": 5.8},
+            },
+            1002: {
+                "season": {"ERA": 2.10, "WHIP": 0.92, "AVG": 0.181, "K/9": 11.8, "BB/9": 1.4, "K/PA": 33.0},
+                "recent": {"Starts": 5, "ERA": 1.80, "WHIP": 0.84, "AVG": 0.160, "K/9": 12.5},
+            },
+        }
+
+        worst = build_worst_starting_pitchers_section(
+            df,
+            lineup_matchup_df=lineup_matchups,
+            whiff_lookup={"bad arm": 21.0, "good arm": 34.0},
+            profile_lookup=profiles,
+        )
+
+        self.assertEqual(list(worst["Pitcher"]), ["Bad Arm", "Good Arm"])
+        self.assertEqual(worst.iloc[0]["Pitcher Team Abbrev"], "PIT")
+        self.assertEqual(worst.iloc[0]["Opponent Abbrev"], "MIA")
+        self.assertAlmostEqual(worst.iloc[0]["Season AVG"], 0.291)
+        self.assertAlmostEqual(worst.iloc[1]["Season AVG"], 0.181)
+        self.assertGreater(worst.iloc[0]["Season AVG"], worst.iloc[1]["Season AVG"])
+        self.assertAlmostEqual(worst.iloc[0][BVP_AVG_COLUMN], 2 / 12)
+        self.assertAlmostEqual(worst.iloc[1][BVP_AVG_COLUMN], 0.750)
+
+    def test_format_worst_pitcher_dataframe_formats_direct_and_savant_bvp(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "Pitcher": "Bad Arm",
+                    "Pitcher Team": "Pittsburgh Pirates",
+                    "Pitcher Team Abbrev": "PIT",
+                    "Pitcher Team Id": 134,
+                    "Opponent": "Miami Marlins",
+                    "Opponent Abbrev": "MIA",
+                    "Opponent Id": 146,
+                    "Start": "6:40p",
+                    "Status": "Scheduled",
+                    "Season ERA": 6.2,
+                    "Season WHIP": 1.612,
+                    "Season AVG": 0.291,
+                    "L5 ERA": 7.4,
+                    "L5 WHIP": 1.8,
+                    "L5 AVG": 0.32,
+                    "Whiff%": 21.0,
+                    BVP_AVG_COLUMN: 0.375,
+                    PITCHER_BVP_H_COLUMN: 15,
+                    PITCHER_BVP_AB_COLUMN: 40,
+                },
+                {
+                    "Pitcher": "Savant Only",
+                    "Pitcher Team": "Miami Marlins",
+                    "Pitcher Team Abbrev": "MIA",
+                    "Pitcher Team Id": 146,
+                    "Opponent": "Pittsburgh Pirates",
+                    "Opponent Abbrev": "PIT",
+                    "Opponent Id": 134,
+                    "Start": "7:05p",
+                    "Status": "Scheduled",
+                    "Season ERA": 4.4,
+                    "Season WHIP": 1.25,
+                    "Season AVG": 0.245,
+                    "L5 ERA": 4.1,
+                    "L5 WHIP": 1.22,
+                    "L5 AVG": 0.240,
+                    "Whiff%": 26.0,
+                    BVP_AVG_COLUMN: pd.NA,
+                    PITCHER_BVP_H_COLUMN: pd.NA,
+                    PITCHER_BVP_AB_COLUMN: pd.NA,
+                },
+            ]
+        )
+
+        formatted = format_worst_pitcher_dataframe(df)
+
+        self.assertEqual(list(formatted.columns), WORST_PITCHER_REPORT_COLUMNS)
+        self.assertNotIn("Season K/9", formatted.columns)
+        self.assertNotIn("L5 K/9", formatted.columns)
+        self.assertIn("pitcher-team-badge", formatted.iloc[0]["Pitcher"])
+        self.assertIn("Pittsburgh Pirates logo", formatted.iloc[0]["Pitcher"])
+        self.assertNotIn("(R)", formatted.iloc[0]["Pitcher"])
+        self.assertNotIn("(L)", formatted.iloc[1]["Pitcher"])
+        self.assertIn("opp-time", formatted.iloc[0]["Opponent"])
+        self.assertIn("status-pill status-scheduled", formatted.iloc[0]["Opponent"])
+        self.assertEqual(formatted.iloc[0]["Season WHIP"], "1.61")
+        self.assertEqual(formatted.iloc[0][BVP_H_AB_COLUMN], "15-40")
+        self.assertEqual(formatted.iloc[1][BVP_AVG_COLUMN], "")
+        self.assertEqual(formatted.iloc[1][BVP_H_AB_COLUMN], "")
+
     def test_format_report_dataframe_supports_home_run_focus_columns(self) -> None:
         df = pd.DataFrame(
             [
@@ -1122,6 +1276,7 @@ class BattersRenderTests(unittest.TestCase):
             self.assertIn(".featured-tables table.pitchers-table {", archive_html)
             self.assertIn("min-width: 0;", archive_html)
             self.assertIn("<h2>Active Hit Streaks 6+ Games</h2>", archive_html)
+            self.assertIn("<h2>Worst Starting Pitchers</h2>", archive_html)
             self.assertIn("<h2>Home Run History vs Scheduled Pitcher</h2>", archive_html)
             self.assertLess(
                 archive_html.index("<h2>Hot Streaks With Pitcher History</h2>"),
@@ -1129,6 +1284,10 @@ class BattersRenderTests(unittest.TestCase):
             )
             self.assertLess(
                 archive_html.index("<h2>Active Hit Streaks 6+ Games</h2>"),
+                archive_html.index("<h2>Worst Starting Pitchers</h2>"),
+            )
+            self.assertLess(
+                archive_html.index("<h2>Worst Starting Pitchers</h2>"),
                 archive_html.index("<h2>Good Historical Matchups</h2>"),
             )
             self.assertIn(".date-pill-label {", archive_html)

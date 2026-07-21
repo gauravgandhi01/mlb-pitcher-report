@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLB Pitcher Report 07/14/2026</title>
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #0f766e;
+      --line: #dbe3ee;
+      --header: #e5eef9;
+      --group-pitcher: #0f766e;
+      --group-opponent: #b45309;
+      --group-savant: #0369a1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #ffffff 0%, var(--bg) 45%);
+      color: var(--text);
+      padding: 24px;
+    }
+    .layout {
+      max-width: 1800px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+    .hero {
+      background: linear-gradient(120deg, #0f766e 0%, #0369a1 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 14px;
+      box-shadow: 0 10px 35px rgba(3, 105, 161, 0.2);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+    .hero .updated-at {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 13px;
+    }
+    .hero-nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+      margin-top: 14px;
+    }
+    .report-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 0;
+    }
+    .report-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .report-tab:hover {
+      background: rgba(255, 255, 255, 0.20);
+    }
+    .report-tab.active {
+      background: #ffffff;
+      border-color: #ffffff;
+      color: #0f4c81;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+    }
+    .report-tab.disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .date-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 0;
+      width: auto;
+      justify-content: flex-end;
+    }
+    .date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .date-pill:hover {
+      background: rgba(255, 255, 255, 0.20);
+    }
+    .date-pill.active {
+      background: rgba(15, 23, 42, 0.18);
+      border-color: rgba(255, 255, 255, 0.38);
+    }
+    .date-pill.disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .date-pill-label {
+      display: none;
+    }
+    .date-pill-date {
+      opacity: 0.94;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .panel {
+      background: var(--panel);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .table-wrap {
+      overflow-y: auto;
+      overflow-x: auto;
+      max-height: 78vh;
+    }
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px 12px;
+      padding: 8px 12px 0;
+    }
+    .table-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+      font-size: 11px;
+      color: #334155;
+      flex: 1 1 720px;
+      min-width: 0;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .legend-swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      border: 1px solid rgba(15, 23, 42, 0.22);
+      display: inline-block;
+    }
+    .legend-pitcher .legend-swatch {
+      background: color-mix(in srgb, var(--group-pitcher) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-pitcher) 62%, #ffffff);
+    }
+    .legend-opponent .legend-swatch {
+      background: color-mix(in srgb, var(--group-opponent) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-opponent) 62%, #ffffff);
+    }
+    .legend-savant .legend-swatch {
+      background: color-mix(in srgb, var(--group-savant) 22%, #ffffff);
+      border-color: color-mix(in srgb, var(--group-savant) 62%, #ffffff);
+    }
+    .legend-note {
+      color: #475569;
+      font-size: 11px;
+    }
+    .table-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
+    .table-controls-label {
+      color: #334155;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #d1dbe7;
+      background: #f8fbff;
+      color: #0f172a;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .toggle-chip input {
+      margin: 0;
+      accent-color: #0f766e;
+      width: 12px;
+      height: 12px;
+    }
+    table.pitchers-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 10px;
+      table-layout: auto;
+      min-width: 900px;
+    }
+    table.pitchers-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--header);
+      border-bottom: 1px solid var(--line);
+      color: #0b2540;
+      padding: 5px 3px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.08;
+    }
+    table.pitchers-table thead th.stat-tooltip {
+      cursor: help;
+      text-decoration: underline dotted rgba(15, 23, 42, 0.35);
+      text-underline-offset: 2px;
+    }
+    table.pitchers-table thead th.is-sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    table.pitchers-table thead th.is-sortable::after {
+      content: "\2195";
+      display: inline-block;
+      margin-left: 5px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    table.pitchers-table thead th.is-sortable[data-sort-direction="desc"]::after {
+      content: "\2193";
+      color: #0f4c81;
+    }
+    table.pitchers-table thead th.is-sortable[data-sort-direction="asc"]::after {
+      content: "\2191";
+      color: #0f4c81;
+    }
+    table.pitchers-table thead th.is-sortable:focus-visible {
+      outline: 2px solid #0f4c81;
+      outline-offset: -2px;
+    }
+    table.pitchers-table thead th.group-pitcher {
+      border-top: 4px solid var(--group-pitcher);
+      background: color-mix(in srgb, var(--group-pitcher) 10%, var(--header));
+    }
+    table.pitchers-table thead th.group-opponent {
+      border-top: 4px solid var(--group-opponent);
+      background: color-mix(in srgb, var(--group-opponent) 11%, var(--header));
+    }
+    table.pitchers-table thead th.group-savant {
+      border-top: 4px solid var(--group-savant);
+      background: color-mix(in srgb, var(--group-savant) 11%, var(--header));
+    }
+    table.pitchers-table thead th.column-best-odds {
+      min-width: 156px;
+      white-space: normal;
+      line-height: 1.05;
+    }
+    table.pitchers-table tbody td {
+      border-bottom: 1px solid var(--line);
+      padding: 4px 3px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.08;
+      vertical-align: middle;
+    }
+    table.pitchers-table tbody td.group-pitcher {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-pitcher) 28%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-opponent {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-opponent) 28%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-savant {
+      box-shadow: inset 2px 0 0 color-mix(in srgb, var(--group-savant) 30%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-pitcher:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-pitcher) 4%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-opponent:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-opponent) 5%, #ffffff);
+    }
+    table.pitchers-table tbody td.group-savant:not(.cell-elite):not(.cell-strong):not(.cell-weak) {
+      background: color-mix(in srgb, var(--group-savant) 5%, #ffffff);
+    }
+    table.pitchers-table th.column-name,
+    table.pitchers-table td.column-name {
+      min-width: 118px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table td.column-name {
+      overflow: visible;
+      position: relative;
+    }
+    table.pitchers-table th.column-opponent,
+    table.pitchers-table td.column-opponent {
+      min-width: 72px;
+      white-space: nowrap;
+    }
+    table.pitchers-table th.column-opp-hand,
+    table.pitchers-table td.column-opp-hand {
+      min-width: 70px;
+    }
+    table.pitchers-table th.column-opp-hand {
+      white-space: normal;
+      line-height: 1.05;
+    }
+    table.pitchers-table td.column-best-odds {
+      min-width: 156px;
+      white-space: normal;
+    }
+    table.pitchers-table tbody tr:nth-child(even) {
+      background: #f8fbff;
+    }
+    table.pitchers-table tbody tr:hover {
+      background: #eef7ff;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable {
+      cursor: pointer;
+    }
+    table.pitchers-table tbody tr.pitcher-row-selectable.row-selected {
+      outline: 2px solid #0f766e;
+      outline-offset: -2px;
+    }
+    table.pitchers-table tbody tr.row-upcoming {
+      background: linear-gradient(to right, rgba(15, 118, 110, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-live {
+      background: linear-gradient(to right, rgba(249, 115, 22, 0.14), transparent);
+    }
+    table.pitchers-table tbody tr.row-final {
+      background: linear-gradient(to right, rgba(100, 116, 139, 0.10), transparent);
+    }
+    table.pitchers-table tbody tr.row-target {
+      box-shadow: inset 4px 0 0 #16a34a;
+    }
+    table.pitchers-table tbody tr.row-caution {
+      box-shadow: inset 4px 0 0 #dc2626;
+    }
+    table.pitchers-table tbody tr.row-ks-hot {
+      box-shadow: inset 4px 0 0 #7c3aed;
+    }
+    table.pitchers-table tbody tr.row-ks-cold {
+      box-shadow: inset 4px 0 0 #64748b;
+    }
+    table.pitchers-table td.cell-elite {
+      background: #dcfce7;
+      color: #14532d;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-strong {
+      background: #fef9c3;
+      color: #713f12;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-weak {
+      background: #fee2e2;
+      color: #7f1d1d;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-low-confidence {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-confidence-high {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-confidence-low {
+      background: #f8fafc;
+      color: #64748b;
+      font-weight: 600;
+    }
+    table.pitchers-table td.cell-top-rank {
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+    table.pitchers-table td.cell-low-rank {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    table.pitchers-table td.odds-plus {
+      font-weight: 700;
+    }
+    table.pitchers-table td.odds-even {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-juice {
+      font-weight: 600;
+    }
+    table.pitchers-table td.odds-missing {
+      color: #64748b;
+      background: #f8fafc;
+    }
+    .opp-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap;
+      gap: 4px;
+      line-height: 1.08;
+      text-align: center;
+    }
+    .opp-cell .opp-team {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .opp-cell .opp-team a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 5px;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px #e2e8f0;
+    }
+    .opp-logo {
+      display: block;
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+    }
+    .opp-time {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .opp-time-upcoming {
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #155e75;
+    }
+    .opp-time-live {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+    .opp-time-final {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+    .k-src-gap {
+      display: inline-block;
+      width: 4px;
+    }
+    .k-src-marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 13px;
+      height: 13px;
+      padding: 0 3px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 7.5px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      transform: translateY(-1px);
+      letter-spacing: 0.03em;
+    }
+    .k-src-marker.src-espn {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .k-src-marker.src-previous-lineup {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fbbf24;
+    }
+    .k-src-marker.src-savant {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+    .opp-hand-k-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    .opp-hand-rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 14px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: hsl(var(--rank-hue, 140) 78% 92%);
+      border: 1px solid hsl(var(--rank-hue, 140) 58% 68%);
+      color: hsl(var(--rank-hue, 140) 72% 24%);
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      transform: translateY(-1px);
+    }
+    .matchup-k-cell {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .matchup-k-cell.matchup-k-has-popup {
+      cursor: help;
+    }
+    .matchup-k-popup {
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }
+    .matchup-k-popup::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }
+    .matchup-k-cell.matchup-k-has-popup:hover .matchup-k-popup,
+    .matchup-k-cell.matchup-k-has-popup:focus-within .matchup-k-popup {
+      visibility: visible;
+      opacity: 1;
+    }
+    .matchup-k-source-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .matchup-k-source-text {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .matchup-k-line {
+      display: block;
+      white-space: nowrap;
+    }
+    .pitcher-name-cell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      position: relative;
+    }
+    .pitcher-name-cell.pitcher-has-recent {
+      cursor: help;
+    }
+    .pitcher-recent-popup {
+      visibility: hidden;
+      opacity: 0;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      z-index: 80;
+      min-width: max-content;
+      padding: 6px 8px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 90ms ease;
+    }
+    .pitcher-recent-popup::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 5px solid #0f172a;
+    }
+    .pitcher-name-cell.pitcher-has-recent:hover .pitcher-recent-popup,
+    .pitcher-name-cell.pitcher-has-recent:focus-within .pitcher-recent-popup,
+    table.pitchers-table td.column-name:hover .pitcher-name-cell.pitcher-has-recent .pitcher-recent-popup {
+      visibility: visible;
+      opacity: 1;
+    }
+    .pitcher-recent-line {
+      display: block;
+      white-space: nowrap;
+    }
+    .hand-marker {
+      transform: none;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }
+    .hand-marker.hand-right {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .hand-marker.hand-left {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+    }
+    .hand-marker.hand-tbd {
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #cbd5e1;
+    }
+    .best-odds-cell {
+      display: inline-grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 2px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+    }
+    .best-odds-cell-empty {
+      grid-template-columns: auto;
+    }
+    .best-odds-cell-missing-side {
+      display: grid;
+      width: 100%;
+      justify-content: stretch;
+    }
+    .best-odds-summary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .best-odds-cell-missing-side .best-odds-summary {
+      justify-content: flex-start;
+    }
+    .best-odds-point {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.5rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #0f172a;
+      font-weight: 800;
+    }
+    .best-odds-point-elite {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #14532d;
+    }
+    .best-odds-point-strong {
+      background: #fef9c3;
+      border-color: #fde68a;
+      color: #713f12;
+    }
+    .best-odds-point-neutral {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+    .best-odds-point-weak {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #7f1d1d;
+    }
+    .best-odds-divider {
+      color: #94a3b8;
+      font-weight: 700;
+    }
+    .best-odds-side {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .best-odds-side-label {
+      font-size: 8px;
+      color: #64748b;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+    .odds-over, .odds-under {
+      text-align: right;
+      padding: 0 1px;
+      border-radius: 4px;
+    }
+    .sportsbook-badge {
+      transform: none;
+      border-color: color-mix(in srgb, var(--sportsbook-color) 36%, #ffffff);
+      background: color-mix(in srgb, var(--sportsbook-color) 16%, #ffffff);
+      color: var(--sportsbook-color);
+    }
+    .sportsbook-badge-summary {
+      min-width: 18px;
+      height: 14px;
+      padding: 0 4px;
+      font-size: 7.5px;
+    }
+    .sportsbook-badge-detail {
+      min-width: 20px;
+      height: 15px;
+      padding: 0 4px;
+      font-size: 7.5px;
+      justify-self: start;
+    }
+    .odds-details {
+      font-size: 9.5px;
+      color: #334155;
+      display: inline-block;
+      position: relative;
+      margin: 0;
+    }
+    .odds-details summary {
+      cursor: pointer;
+      color: #334155;
+      list-style: none;
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.18);
+      border: 1px solid rgba(100, 116, 139, 0.35);
+      padding: 0;
+    }
+    .odds-details summary::-webkit-details-marker { display: none; }
+    .odds-arrow {
+      font-size: 7px;
+      line-height: 1;
+      transform: translateY(-1px);
+      transition: transform 120ms ease;
+    }
+    .odds-details[open] .odds-arrow {
+      transform: rotate(180deg) translateY(1px);
+    }
+    .odds-details > ul {
+      margin: 0;
+      padding: 5px 7px;
+      list-style: none;
+      display: grid;
+      gap: 2px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 30;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.15);
+      min-width: max-content;
+    }
+    .odds-details-list,
+    .odds-book-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .odds-line-group {
+      display: grid;
+      gap: 3px;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
+    .odds-line-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 9px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .odds-book-list {
+      display: grid;
+      gap: 2px;
+    }
+    .odds-book-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+      column-gap: 4px;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+    .odds-arrow-placeholder {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      opacity: 0;
+    }
+    .odds-over.best-over {
+      color: #15803d;
+      font-weight: 800;
+    }
+    .odds-under.best-under {
+      color: #1d4ed8;
+      font-weight: 800;
+    }
+    table.pitchers-table a {
+      color: #0f4c81;
+      text-decoration: none;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    table.pitchers-table a:hover {
+      text-decoration: underline;
+    }
+    .arsenal-card {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .arsenal-card h2 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #0b2540;
+    }
+    .arsenal-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .arsenal-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .arsenal-metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fbff;
+      display: grid;
+      gap: 4px;
+      transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .arsenal-metric.metric-above {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+    .arsenal-metric.metric-below {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .arsenal-metric.metric-neutral {
+      background: #f8fbff;
+      border-color: var(--line);
+    }
+    .arsenal-metric-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .arsenal-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+    .arsenal-metric-meta {
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.1;
+      min-height: 12px;
+    }
+    .arsenal-pitches {
+      display: grid;
+      gap: 8px;
+      min-height: 42px;
+    }
+    .arsenal-pitch-row {
+      display: grid;
+      grid-template-columns: 90px 56px minmax(120px, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .arsenal-pitch-label {
+      font-weight: 600;
+    }
+    .arsenal-pitch-value {
+      text-align: right;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .arsenal-pitch-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+    .arsenal-pitch-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f766e, #0284c7);
+      border-radius: inherit;
+    }
+    .arsenal-empty {
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }
+    .arsenal-future-slot {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #64748b;
+      font-size: 12px;
+      background: #fafcff;
+    }
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .hero h1 { font-size: 23px; }
+      .hero-nav-row {
+        align-items: stretch;
+      }
+      .report-tabs {
+        width: 100%;
+      }
+      .date-nav {
+        width: 100%;
+      }
+      .table-toolbar {
+        align-items: stretch;
+      }
+      .table-controls {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+      .arsenal-metrics {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+      .arsenal-pitch-row {
+        grid-template-columns: 78px 56px minmax(100px, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header class="hero">
+      <h1>MLB Pitcher Strikeout Report - 07/14/2026</h1>
+      <p class="updated-at">Last updated: 2026-07-14 23:00:12 EDT</p>
+      <div class="hero-nav-row">
+        <nav class="report-tabs" aria-label="Report pages"><span class="report-tab active" title="Pitchers report for 07/14/2026">Pitchers</span><a class="report-tab" href="./batters-report-07142026.html" title="Batters report for 07/14/2026">Batters</a><a class="report-tab" href="./matchups-report-07142026.html" title="Matchups report for 07/14/2026">Matchups</a></nav>
+        <nav class="date-nav" aria-label="Archive dates"><a class="date-pill" href="./report-07132026.html" title="Yesterday archive (07/13/2026)"><span class="date-pill-label">Yesterday</span><span class="date-pill-date">07/13</span></a><span class="date-pill active" title="Today archive (07/14/2026)"><span class="date-pill-label">Today</span><span class="date-pill-date">07/14</span></span><a class="date-pill" href="./report-07152026.html" title="Tomorrow archive (07/15/2026)"><span class="date-pill-label">Tomorrow</span><span class="date-pill-date">07/15</span></a></nav>
+      </div>
+    </header>
+    <section class="panel">
+      <div class="table-toolbar">
+        <div class="table-legend">
+          <span class="legend-item legend-pitcher"><span class="legend-swatch"></span>Pitcher Stats</span>
+          <span class="legend-item legend-opponent"><span class="legend-swatch"></span>Opponent/Matchup Stats</span>
+          <span class="legend-item legend-savant"><span class="legend-swatch"></span>Savant Stats</span>
+          <span class="legend-note">Hover K% for source: E = ESPN confirmed lineup, P = previous lineup BvP, S = Savant fallback.</span>
+        </div>
+        <div class="table-controls" aria-label="Pitcher table controls">
+          <span class="table-controls-label">Show</span>
+          <label class="toggle-chip" for="show-live-toggle">
+            <input type="checkbox" id="show-live-toggle">
+            In Progress
+          </label>
+          <label class="toggle-chip" for="show-final-toggle">
+            <input type="checkbox" id="show-final-toggle">
+            Final
+          </label>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="dataframe pitchers-table">
+<thead>
+<tr style="text-align: right;">
+<th aria-label="Name: Probable starting pitcher." class="column-name stat-tooltip" title="Probable starting pitcher.">Name</th>
+<th aria-label="GP: Games pitched this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="1" data-sort-key="GP" role="button" tabindex="0" title="Games pitched this season.">GP</th>
+<th aria-label="AB: At-bats against this pitcher this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="2" data-sort-key="AB" role="button" tabindex="0" title="At-bats against this pitcher this season.">AB</th>
+<th aria-label="K: Pitcher strikeouts this season." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="3" data-sort-key="K" role="button" tabindex="0" title="Pitcher strikeouts this season.">K</th>
+<th aria-label="AVG: Opponent batting average allowed by this pitcher." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="4" data-sort-key="AVG" role="button" tabindex="0" title="Opponent batting average allowed by this pitcher.">AVG</th>
+<th aria-label="PA/GP: Average plate appearances faced per game pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="5" data-sort-key="PA/GP" role="button" tabindex="0" title="Average plate appearances faced per game pitched.">PA/GP</th>
+<th aria-label="K/9: Strikeouts per 9 innings pitched." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="6" data-sort-key="K/9" role="button" tabindex="0" title="Strikeouts per 9 innings pitched.">K/9</th>
+<th aria-label="Whiff%: Statcast whiff rate (swing-and-miss rate) from Baseball Savant." aria-sort="none" class="group-savant stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="7" data-sort-key="Whiff%" role="button" tabindex="0" title="Statcast whiff rate (swing-and-miss rate) from Baseball Savant.">Whiff%</th>
+<th aria-label="K/PA: Strikeout rate: strikeouts divided by batters faced, shown as a percent." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="8" data-sort-key="K/PA" role="button" tabindex="0" title="Strikeout rate: strikeouts divided by batters faced, shown as a percent.">K/PA</th>
+<th aria-label="K%: Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Hover K% to see the source." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="9" data-sort-key="K%" role="button" tabindex="0" title="Opponent-lineup strikeout context. ESPN confirmed lineups use batter-vs-pitcher history; previous-lineup fallback uses yesterday's lineup batter-vs-pitcher history; Savant uses its probable-lineup sample. Hover K% to see the source.">K%</th>
+<th aria-label="PA: Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="10" data-sort-key="PA" role="button" tabindex="0" title="Matchup sample size shown as a whole number. ESPN source = AB from batter-vs-pitcher splits; previous lineup source = PA from batter-vs-pitcher splits; Savant source = PA. Coloring reflects confidence for the K% matchup sample.">PA</th>
+<th aria-label="Opp K% vH: Opponent team strikeout percent versus the pitcher's handedness." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="11" data-sort-key="Opp K% vH" role="button" tabindex="0" title="Opponent team strikeout percent versus the pitcher's handedness.">Opp K% vH</th>
+<th aria-label="Opp l5 K%: Opponent team strikeout percent over its last 5 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="12" data-sort-key="Opp l5 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 5 completed games before the report date.">Opp l5 K%</th>
+<th aria-label="Opp l10 K%: Opponent team strikeout percent over its last 10 completed games before the report date." aria-sort="none" class="column-opp-hand group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="13" data-sort-key="Opp l10 K%" role="button" tabindex="0" title="Opponent team strikeout percent over its last 10 completed games before the report date.">Opp l10 K%</th>
+<th aria-label="SO/PA: Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="14" data-sort-key="SO/PA" role="button" tabindex="0" title="Opponent team strikeouts per plate appearance (season percent), used for the overall MLB rank in r.">SO/PA</th>
+<th aria-label="r: Overall MLB rank of the opponent's season strikeout rate (1 = most strikeout-prone opponent)." aria-sort="none" class="group-opponent stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="15" data-sort-key="r" role="button" tabindex="0" title="Overall MLB rank of the opponent's season strikeout rate (1 = most strikeout-prone opponent).">r</th>
+<th aria-label="Ks: Strikeouts recorded by this pitcher in the game once started/final." aria-sort="none" class="group-pitcher stat-tooltip is-sortable" data-sort-direction="default" data-sort-index="16" data-sort-key="Ks" role="button" tabindex="0" title="Strikeouts recorded by this pitcher in the game once started/final.">Ks</th>
+<th aria-label="Opponent: Team this pitcher is facing, with the game time color-coded by status (pregame, in progress, or final)." class="column-opponent stat-tooltip" title="Team this pitcher is facing, with the game time color-coded by status (pregame, in progress, or final).">Opponent</th>
+<th aria-label="Best K Odds: Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines." class="column-best-odds stat-tooltip" title="Consensus strikeout prop line plus best over and under prices. Expand for all books and alternate lines.">Best K Odds</th>
+</tr>
+</thead>
+<tbody>
+<tr class="pitcher-row-selectable row-live" data-initial-index="0" data-pitcher-key="dylan cease">
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Dylan%20Cease-k-log">Dylan Cease</a><span class="k-src-marker hand-marker hand-tbd" title="Pitcher handedness: TBD">TBD</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ SF 11K 118P</span><span class="pitcher-recent-line">@ SEA 9K 102P</span><span class="pitcher-recent-line">v TEX 10K 107P</span><span class="pitcher-recent-line">v HOU 8K 110P</span><span class="pitcher-recent-line">@ BOS 7K 108P</span></span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="17">17</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="353">353</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="148">148</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.19">.190</td>
+<td class="group-pitcher cell-weak" data-sort-key="PA/GP" data-sort-value="23.5882352941">23.6</td>
+<td class="group-pitcher cell-elite" data-sort-key="K/9" data-sort-value="13.55">13.6</td>
+<td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="35.9">35.9</td>
+<td class="group-pitcher cell-elite" data-sort-key="K/PA" data-sort-value="36.9077306733">36.91</td>
+<td class="group-opponent" data-sort-key="K%">-</td>
+<td class="group-opponent" data-sort-key="PA">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%">-</td>
+<td class="group-opponent" data-sort-key="SO/PA">-</td>
+<td class="group-opponent" data-sort-key="r">-</td>
+<td class="group-pitcher cell-strong" data-sort-key="Ks" data-sort-value="3">3</td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/National%20League%20All-Stars-k-per-pa-log" title="National League All-Stars">National League All-Stars</a></span><span class="opp-time opp-time-live" title="Game status: In Progress">8:00p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+<tr class="pitcher-row-selectable row-live" data-initial-index="1" data-pitcher-key="cristopher sanchez">
+<td class="column-name"><span class="pitcher-name-cell pitcher-has-recent"><a href="https://statmuse.com/mlb/ask/Cristopher%20S%C3%A1nchez-k-log">Cristopher Sánchez</a><span class="k-src-marker hand-marker hand-tbd" title="Pitcher handedness: TBD">TBD</span><span aria-label="Last 5 pitcher games" class="pitcher-recent-popup" role="tooltip"><span class="pitcher-recent-line">@ DET 7K 103P</span><span class="pitcher-recent-line">@ KC 1K 83P</span><span class="pitcher-recent-line">v PIT 9K 92P</span><span class="pitcher-recent-line">@ WSH 6K 92P</span><span class="pitcher-recent-line">v NYM 5K 91P</span></span></span></td>
+<td class="group-pitcher" data-sort-key="GP" data-sort-value="20">20</td>
+<td class="group-pitcher" data-sort-key="AB" data-sort-value="496">496</td>
+<td class="group-pitcher" data-sort-key="K" data-sort-value="144">144</td>
+<td class="group-pitcher" data-sort-key="AVG" data-sort-value="0.254">.254</td>
+<td class="group-pitcher cell-strong" data-sort-key="PA/GP" data-sort-value="26.25">26.2</td>
+<td class="group-pitcher cell-weak" data-sort-key="K/9" data-sort-value="10.18">10.2</td>
+<td class="group-savant cell-elite" data-sort-key="Whiff%" data-sort-value="32">32.0</td>
+<td class="group-pitcher cell-weak" data-sort-key="K/PA" data-sort-value="27.4285714286">27.43</td>
+<td class="group-opponent" data-sort-key="K%">-</td>
+<td class="group-opponent" data-sort-key="PA">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp K% vH">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l5 K%">-</td>
+<td class="column-opp-hand group-opponent" data-sort-key="Opp l10 K%">-</td>
+<td class="group-opponent" data-sort-key="SO/PA">-</td>
+<td class="group-opponent" data-sort-key="r">-</td>
+<td class="group-pitcher" data-sort-key="Ks" data-sort-value="2">2</td>
+<td class="column-opponent"><span class="opp-cell"><span class="opp-team"><a href="https://statmuse.com/mlb/ask/American%20League%20All-Stars-k-per-pa-log" title="American League All-Stars">American League All-Stars</a></span><span class="opp-time opp-time-live" title="Game status: In Progress">8:00p</span></span></td>
+<td class="column-best-odds"><div class="best-odds-cell best-odds-cell-empty" title="No strikeout odds available"><span class="best-odds-summary">-</span></div></td>
+</tr>
+</tbody>
+</table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="arsenal-card">
+        <div>
+          <h2 id="arsenal-name">Pitcher Arsenal Snapshot</h2>
+          <p class="arsenal-subtitle">Select a pitcher row above to inspect swing-and-miss profile and pitch mix.</p>
+        </div>
+        <div class="arsenal-metrics">
+          <div class="arsenal-metric metric-neutral" id="arsenal-whiff-box">
+            <span class="arsenal-metric-label">Whiff%</span>
+            <span class="arsenal-metric-value" id="arsenal-whiff">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-whiff-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-z-miss-box">
+            <span class="arsenal-metric-label">Z-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-z-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-z-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-oz-miss-box">
+            <span class="arsenal-metric-label">OZ-Swing Miss%</span>
+            <span class="arsenal-metric-value" id="arsenal-oz-miss">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-oz-miss-avg">Lg Avg: -</span>
+          </div>
+          <div class="arsenal-metric metric-neutral" id="arsenal-fastball-box">
+            <span class="arsenal-metric-label">Fastball%</span>
+            <span class="arsenal-metric-value" id="arsenal-fastball">-</span>
+            <span class="arsenal-metric-meta" id="arsenal-fastball-avg"></span>
+          </div>
+        </div>
+        <div class="arsenal-pitches" id="arsenal-pitches"></div>
+        <div class="arsenal-empty" id="arsenal-empty">
+          Arsenal details are only available for pitchers returned by the Savant qualified leaderboard feed.
+        </div>
+        <div class="arsenal-future-slot">
+          Reserved for additional pitcher detail modules.
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const arsenalData = {"__league_averages__": {"whiff_percent": 24.72412342215989, "z_swing_miss_percent": 16.025105189340813, "oz_swing_miss_percent": 42.10408450704225}, "dylan cease": {"name": "Dylan Cease", "whiff_percent": 35.9, "z_swing_miss_percent": 26.3, "oz_swing_miss_percent": 49.5, "fastball_percent": 45.7, "arsenal": [{"code": "FF", "label": "Four-Seam", "usage_percent": 36.3}, {"code": "SL", "label": "Slider", "usage_percent": 29.0}, {"code": "CH", "label": "Changeup", "usage_percent": 11.5}, {"code": "CU", "label": "Curveball", "usage_percent": 9.5}, {"code": "SI", "label": "Sinker", "usage_percent": 9.4}, {"code": "ST", "label": "Sweeper", "usage_percent": 4.3}]}, "cristopher sanchez": {"name": "Cristopher S\u00e1nchez", "whiff_percent": 32.0, "z_swing_miss_percent": 19.5, "oz_swing_miss_percent": 51.3, "fastball_percent": 42.5, "arsenal": [{"code": "SI", "label": "Sinker", "usage_percent": 42.5}, {"code": "CH", "label": "Changeup", "usage_percent": 39.2}, {"code": "SL", "label": "Slider", "usage_percent": 18.3}]}};
+    const leagueAverages = arsenalData["__league_averages__"] || {};
+    const tableBody = document.querySelector("table.pitchers-table tbody");
+    const pitcherRows = Array.from(document.querySelectorAll("table.pitchers-table tbody tr[data-pitcher-key]"));
+    const sortableHeaders = Array.from(document.querySelectorAll("table.pitchers-table thead th.is-sortable"));
+    const showLiveToggle = document.getElementById("show-live-toggle");
+    const showFinalToggle = document.getElementById("show-final-toggle");
+    const nameEl = document.getElementById("arsenal-name");
+    const whiffBoxEl = document.getElementById("arsenal-whiff-box");
+    const whiffEl = document.getElementById("arsenal-whiff");
+    const whiffAvgEl = document.getElementById("arsenal-whiff-avg");
+    const zMissBoxEl = document.getElementById("arsenal-z-miss-box");
+    const zMissEl = document.getElementById("arsenal-z-miss");
+    const zMissAvgEl = document.getElementById("arsenal-z-miss-avg");
+    const ozMissBoxEl = document.getElementById("arsenal-oz-miss-box");
+    const ozMissEl = document.getElementById("arsenal-oz-miss");
+    const ozMissAvgEl = document.getElementById("arsenal-oz-miss-avg");
+    const fastballBoxEl = document.getElementById("arsenal-fastball-box");
+    const fastballEl = document.getElementById("arsenal-fastball");
+    const fastballAvgEl = document.getElementById("arsenal-fastball-avg");
+    const pitchesEl = document.getElementById("arsenal-pitches");
+    const emptyEl = document.getElementById("arsenal-empty");
+    let selectedPitcherKey = null;
+    let sortState = { key: null, index: null, direction: null };
+
+    function toNumberOrNull(value) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function formatPercent(value) {
+      const numeric = toNumberOrNull(value);
+      if (numeric === null) {
+        return "-";
+      }
+      return `${numeric.toFixed(1)}%`;
+    }
+
+    function setMetricTile(boxEl, valueEl, avgEl, value, leagueAvg, useComparison = true) {
+      const numericValue = toNumberOrNull(value);
+      const numericLeagueAvg = toNumberOrNull(leagueAvg);
+
+      valueEl.textContent = formatPercent(numericValue);
+
+      if (avgEl) {
+        avgEl.textContent = useComparison ? `Lg Avg: ${formatPercent(numericLeagueAvg)}` : "";
+      }
+
+      boxEl.classList.remove("metric-above", "metric-below", "metric-neutral");
+      if (!useComparison || numericValue === null || numericLeagueAvg === null) {
+        boxEl.classList.add("metric-neutral");
+        return;
+      }
+
+      const delta = numericValue - numericLeagueAvg;
+      if (delta >= 1.0) {
+        boxEl.classList.add("metric-above");
+      } else if (delta <= -1.0) {
+        boxEl.classList.add("metric-below");
+      } else {
+        boxEl.classList.add("metric-neutral");
+      }
+    }
+
+    function resetArsenalPanel(label = "Pitcher Arsenal Snapshot") {
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      nameEl.textContent = label;
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+      clearPitches();
+      emptyEl.style.display = "block";
+    }
+
+    function clearPitches() {
+      while (pitchesEl.firstChild) {
+        pitchesEl.removeChild(pitchesEl.firstChild);
+      }
+    }
+
+    function renderPitchMix(arsenalList) {
+      clearPitches();
+      if (!Array.isArray(arsenalList) || arsenalList.length === 0) {
+        return false;
+      }
+
+      arsenalList.forEach((pitch) => {
+        const usage = Number(pitch.usage_percent);
+        if (Number.isNaN(usage)) {
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "arsenal-pitch-row";
+
+        const label = document.createElement("span");
+        label.className = "arsenal-pitch-label";
+        label.textContent = pitch.label || pitch.code || "Pitch";
+
+        const value = document.createElement("span");
+        value.className = "arsenal-pitch-value";
+        value.textContent = formatPercent(usage);
+
+        const track = document.createElement("div");
+        track.className = "arsenal-pitch-track";
+        const fill = document.createElement("div");
+        fill.className = "arsenal-pitch-fill";
+        fill.style.width = `${Math.max(0, Math.min(100, usage))}%`;
+        track.appendChild(fill);
+
+        row.appendChild(label);
+        row.appendChild(value);
+        row.appendChild(track);
+        pitchesEl.appendChild(row);
+      });
+
+      return pitchesEl.children.length > 0;
+    }
+
+    function applyRowSelection() {
+      pitcherRows.forEach((row) => {
+        row.classList.toggle("row-selected", selectedPitcherKey !== null && row.dataset.pitcherKey === selectedPitcherKey);
+      });
+    }
+
+    function renderSelectedPitcher() {
+      const selectedRow = pitcherRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
+      const whiffLeagueAvg = toNumberOrNull(leagueAverages.whiff_percent);
+      const zMissLeagueAvg = toNumberOrNull(leagueAverages.z_swing_miss_percent);
+      const ozMissLeagueAvg = toNumberOrNull(leagueAverages.oz_swing_miss_percent);
+      if (!selectedPitcherKey || !selectedRow) {
+        resetArsenalPanel();
+        return;
+      }
+
+      const details = arsenalData[selectedPitcherKey];
+      const fallbackName = selectedRow.querySelector("td")?.innerText?.trim() || "Pitcher Arsenal Snapshot";
+
+      if (!details) {
+        nameEl.textContent = fallbackName || "Pitcher Arsenal Snapshot";
+        setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, null, whiffLeagueAvg, true);
+        setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, null, zMissLeagueAvg, true);
+        setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, null, ozMissLeagueAvg, true);
+        setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, null, null, false);
+        clearPitches();
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      nameEl.textContent = details.name || fallbackName || "Pitcher Arsenal Snapshot";
+      setMetricTile(whiffBoxEl, whiffEl, whiffAvgEl, details.whiff_percent, whiffLeagueAvg, true);
+      setMetricTile(zMissBoxEl, zMissEl, zMissAvgEl, details.z_swing_miss_percent, zMissLeagueAvg, true);
+      setMetricTile(ozMissBoxEl, ozMissEl, ozMissAvgEl, details.oz_swing_miss_percent, ozMissLeagueAvg, true);
+      setMetricTile(fastballBoxEl, fastballEl, fastballAvgEl, details.fastball_percent, null, false);
+
+      const hasPitches = renderPitchMix(details.arsenal);
+      emptyEl.style.display = hasPitches ? "none" : "block";
+    }
+
+    function selectPitcher(pitcherKey) {
+      selectedPitcherKey = pitcherKey || null;
+      applyRowSelection();
+      renderSelectedPitcher();
+    }
+
+    function visiblePitcherRows() {
+      return pitcherRows.filter((row) => !row.hidden);
+    }
+
+    function syncSelectedPitcher() {
+      const visibleRows = visiblePitcherRows();
+      if (selectedPitcherKey) {
+        const activeRow = visibleRows.find((row) => row.dataset.pitcherKey === selectedPitcherKey);
+        if (activeRow) {
+          applyRowSelection();
+          renderSelectedPitcher();
+          return;
+        }
+      }
+
+      const preferredRow =
+        visibleRows.find((row) => Object.prototype.hasOwnProperty.call(arsenalData, row.dataset.pitcherKey))
+        || visibleRows[0];
+      if (preferredRow) {
+        selectPitcher(preferredRow.dataset.pitcherKey);
+        return;
+      }
+      selectPitcher(null);
+    }
+
+    function readCellSortValue(row, columnIndex) {
+      const cell = row.children[columnIndex];
+      if (!cell) {
+        return null;
+      }
+      const rawValue = cell.dataset.sortValue;
+      if (rawValue === undefined || rawValue === "") {
+        return null;
+      }
+      const numeric = Number(rawValue);
+      return Number.isFinite(numeric) ? numeric : null;
+    }
+
+    function compareRows(a, b) {
+      const columnIndex = sortState.index;
+      const aValue = readCellSortValue(a, columnIndex);
+      const bValue = readCellSortValue(b, columnIndex);
+      const aHasValue = aValue !== null;
+      const bHasValue = bValue !== null;
+      if (aHasValue !== bHasValue) {
+        return aHasValue ? -1 : 1;
+      }
+      if (aHasValue && bHasValue && aValue !== bValue) {
+        return sortState.direction === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      return Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex);
+    }
+
+    function syncSortHeaders() {
+      sortableHeaders.forEach((header) => {
+        let direction = "default";
+        if (sortState.key === header.dataset.sortKey && sortState.direction) {
+          direction = sortState.direction;
+        }
+        header.dataset.sortDirection = direction;
+        header.setAttribute(
+          "aria-sort",
+          direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none",
+        );
+      });
+    }
+
+    function applySort() {
+      const rowsToRender = pitcherRows.slice();
+      if (sortState.key && sortState.direction && Number.isInteger(sortState.index)) {
+        rowsToRender.sort(compareRows);
+      } else {
+        rowsToRender.sort((a, b) => Number(a.dataset.initialIndex) - Number(b.dataset.initialIndex));
+      }
+      rowsToRender.forEach((row) => tableBody.appendChild(row));
+      syncSortHeaders();
+    }
+
+    function applyVisibility() {
+      const showLive = Boolean(showLiveToggle?.checked);
+      const showFinal = Boolean(showFinalToggle?.checked);
+      pitcherRows.forEach((row) => {
+        const isLive = row.classList.contains("row-live");
+        const isFinal = row.classList.contains("row-final");
+        row.hidden = (!showLive && isLive) || (!showFinal && isFinal);
+      });
+    }
+
+    function applyTableState() {
+      applySort();
+      applyVisibility();
+      syncSelectedPitcher();
+    }
+
+    function cycleSort(header) {
+      const sortKey = header.dataset.sortKey || null;
+      const sortIndex = Number(header.dataset.sortIndex);
+      if (!sortKey || !Number.isInteger(sortIndex)) {
+        return;
+      }
+
+      if (sortState.key !== sortKey) {
+        sortState = { key: sortKey, index: sortIndex, direction: "desc" };
+      } else if (sortState.direction === "desc") {
+        sortState = { key: sortKey, index: sortIndex, direction: "asc" };
+      } else if (sortState.direction === "asc") {
+        sortState = { key: null, index: null, direction: null };
+      } else {
+        sortState = { key: sortKey, index: sortIndex, direction: "desc" };
+      }
+
+      applyTableState();
+    }
+
+    pitcherRows.forEach((row) => {
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("a")) {
+          return;
+        }
+        selectPitcher(row.dataset.pitcherKey);
+      });
+    });
+
+    sortableHeaders.forEach((header) => {
+      header.addEventListener("click", () => cycleSort(header));
+      header.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        cycleSort(header);
+      });
+    });
+
+    showLiveToggle?.addEventListener("change", applyTableState);
+    showFinalToggle?.addEventListener("change", applyTableState);
+
+    applyTableState();
+  </script>
+</body>
+</html>

@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 
 from mlb_pitcher_report.shared.report_data import (
     aggregate_stat_lines,
+    build_pitcher_profile_stats,
     build_espn_event_snapshot_lookup,
     compute_hit_streak,
     compute_recent_metrics,
@@ -30,6 +31,7 @@ from mlb_pitcher_report.shared.report_data import (
     filter_active_hitters,
     format_local_start_time as _format_local_start_time,
     index_stat_blocks,
+    normalize_person_name as _normalize_person_name,
     normalize_team_name as _normalize_team_name,
     parse_vs_pitcher_stats,
     resolve_date_input,
@@ -37,6 +39,13 @@ from mlb_pitcher_report.shared.report_data import (
     resolve_lineup_player_ids,
     to_float as _to_float,
     to_int as _to_int,
+)
+from mlb_pitcher_report.reports.pitchers import (
+    BVP_AB_COLUMN as PITCHER_BVP_AB_COLUMN,
+    BVP_AVG_COLUMN as PITCHER_BVP_AVG_COLUMN,
+    BVP_H_COLUMN as PITCHER_BVP_H_COLUMN,
+    get_opp_data as get_pitcher_lineup_matchup_data,
+    prepare_pitcher_whiff_lookup,
 )
 from mlb_pitcher_report.shared.site_nav import build_date_nav_html, build_report_tabs
 from mlb_pitcher_report.shared.team_logos import get_team_logo_src
@@ -62,6 +71,9 @@ HOT_SECTION_LIMIT = 20
 MATCHUP_SECTION_LIMIT = 30
 HOME_RUN_MIN_HR = 1
 HOME_RUN_SECTION_LIMIT = 20
+WORST_PITCHERS_SECTION_LIMIT = 10
+BVP_AVG_COLUMN = "BvP AVG"
+BVP_H_AB_COLUMN = "BvP H-AB"
 REPORT_COLUMNS = [
     "Batter",
     "Opponent",
@@ -81,6 +93,19 @@ HOME_RUN_REPORT_COLUMNS = [
     "VsP PA",
     "VsP HR/PA",
     "VsP H-AB",
+]
+WORST_PITCHER_REPORT_COLUMNS = [
+    "Pitcher",
+    "Opponent",
+    "Season ERA",
+    "Season WHIP",
+    "Season AVG",
+    "L5 ERA",
+    "L5 WHIP",
+    "L5 AVG",
+    "Whiff%",
+    BVP_AVG_COLUMN,
+    BVP_H_AB_COLUMN,
 ]
 
 
@@ -516,6 +541,144 @@ def build_home_run_matchup_section(df: pd.DataFrame) -> pd.DataFrame:
         kind="mergesort",
     )
     return home_run_rows.head(HOME_RUN_SECTION_LIMIT)
+
+
+def _empty_worst_pitchers_frame() -> pd.DataFrame:
+    return pd.DataFrame(columns=WORST_PITCHER_REPORT_COLUMNS)
+
+
+def _pitcher_matchup_lookup(lineup_matchup_df: Optional[pd.DataFrame]) -> Dict[str, Dict[str, Any]]:
+    if lineup_matchup_df is None or lineup_matchup_df.empty or "Pitcher" not in lineup_matchup_df.columns:
+        return {}
+
+    lookup: Dict[str, Dict[str, Any]] = {}
+    for _, row in lineup_matchup_df.iterrows():
+        pitcher_name = str(row.get("Pitcher") or "").strip()
+        if not pitcher_name:
+            continue
+        lookup[_normalize_person_name(pitcher_name)] = dict(row)
+    return lookup
+
+
+def _pitcher_profile_lookup(
+    pitcher_ids: Sequence[int],
+    report_year: Optional[int],
+    report_date: Optional[dt.date],
+    profile_lookup: Optional[Dict[int, Dict[str, Any]]] = None,
+) -> Dict[int, Dict[str, Any]]:
+    if profile_lookup is not None:
+        return {int(key): value for key, value in profile_lookup.items()}
+    if report_year is None or report_date is None:
+        return {}
+
+    unique_pitcher_ids = sorted({int(pitcher_id) for pitcher_id in pitcher_ids})
+    if not unique_pitcher_ids:
+        return {}
+
+    profiles: Dict[int, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=min(12, len(unique_pitcher_ids))) as executor:
+        future_to_pitcher_id = {
+            executor.submit(build_pitcher_profile_stats, pitcher_id, int(report_year), report_date): pitcher_id
+            for pitcher_id in unique_pitcher_ids
+        }
+        for future in as_completed(future_to_pitcher_id):
+            pitcher_id = future_to_pitcher_id[future]
+            try:
+                profiles[pitcher_id] = future.result()
+            except Exception:
+                profiles[pitcher_id] = {}
+    return profiles
+
+
+def build_worst_starting_pitchers_section(
+    df: pd.DataFrame,
+    report_year: Optional[int] = None,
+    report_date: Optional[dt.date] = None,
+    lineup_matchup_df: Optional[pd.DataFrame] = None,
+    whiff_lookup: Optional[Dict[str, float]] = None,
+    profile_lookup: Optional[Dict[int, Dict[str, Any]]] = None,
+) -> pd.DataFrame:
+    if df.empty:
+        return _empty_worst_pitchers_frame()
+
+    source = df.copy()
+    if "__pitcher_id" not in source.columns:
+        source["__pitcher_id"] = pd.NA
+    source["__pitcher_id_int"] = pd.to_numeric(source["__pitcher_id"], errors="coerce")
+    source["__pitcher_key"] = [
+        str(int(pitcher_id)) if pd.notna(pitcher_id) else _normalize_person_name(name)
+        for pitcher_id, name in zip(source["__pitcher_id_int"], source.get("Pitcher", pd.Series("", index=source.index)))
+    ]
+    source["__status_sort"] = source["Status"].astype(str).map(_status_sort_value)
+    source = source[source["__pitcher_key"].astype(str).str.len() > 0].copy()
+    if source.empty:
+        return _empty_worst_pitchers_frame()
+
+    source = source.sort_values(
+        by=["__status_sort", "Start", "Pitcher", "Team"],
+        ascending=[True, True, True, True],
+        kind="mergesort",
+    )
+    starters = source.drop_duplicates(subset=["__pitcher_key"], keep="first").copy()
+    pitcher_ids = [
+        int(value)
+        for value in pd.to_numeric(starters["__pitcher_id"], errors="coerce").dropna().unique()
+    ]
+    profiles = _pitcher_profile_lookup(pitcher_ids, report_year, report_date, profile_lookup)
+    matchup_lookup = _pitcher_matchup_lookup(lineup_matchup_df)
+    whiff_lookup = whiff_lookup or {}
+
+    rows: List[Dict[str, Any]] = []
+    for _, row in starters.iterrows():
+        pitcher_name = str(row.get("Pitcher") or "").strip()
+        if not pitcher_name:
+            continue
+        pitcher_id = _to_int(row.get("__pitcher_id"))
+        profile = profiles.get(int(pitcher_id)) if pitcher_id is not None else {}
+        season = dict((profile or {}).get("season") or {})
+        recent = dict((profile or {}).get("recent") or {})
+        matchup = matchup_lookup.get(_normalize_person_name(pitcher_name), {})
+
+        rows.append(
+            {
+                "Pitcher": pitcher_name,
+                "Pitcher Team": row.get("Opponent", ""),
+                "Pitcher Team Abbrev": row.get("Opponent Abbrev", ""),
+                "Pitcher Team Id": row.get("Opponent Id", pd.NA),
+                "Opponent": row.get("Team", ""),
+                "Opponent Abbrev": row.get("Team Abbrev", ""),
+                "Opponent Id": row.get("Team Id", pd.NA),
+                "Start": row.get("Start", ""),
+                "Status": row.get("Status", ""),
+                "Season ERA": row.get("Season ERA", season.get("ERA")),
+                "Season WHIP": row.get("Season WHIP", season.get("WHIP")),
+                "Season AVG": season.get("AVG"),
+                "L5 ERA": row.get("L5 ERA", recent.get("ERA")),
+                "L5 WHIP": row.get("L5 WHIP", recent.get("WHIP")),
+                "L5 AVG": row.get("L5 AVG", recent.get("AVG")),
+                "Whiff%": row.get("Whiff%", whiff_lookup.get(_normalize_person_name(pitcher_name))),
+                PITCHER_BVP_H_COLUMN: row.get(PITCHER_BVP_H_COLUMN, matchup.get(PITCHER_BVP_H_COLUMN)),
+                PITCHER_BVP_AB_COLUMN: row.get(PITCHER_BVP_AB_COLUMN, matchup.get(PITCHER_BVP_AB_COLUMN)),
+                BVP_AVG_COLUMN: row.get(BVP_AVG_COLUMN, matchup.get(PITCHER_BVP_AVG_COLUMN)),
+            }
+        )
+
+    if not rows:
+        return _empty_worst_pitchers_frame()
+
+    result = pd.DataFrame(rows)
+    result["__status_sort"] = result["Status"].astype(str).map(_status_sort_value)
+    result["__season_avg_sort"] = pd.to_numeric(result["Season AVG"], errors="coerce").fillna(-1.0)
+    result["__l5_avg_sort"] = pd.to_numeric(result["L5 AVG"], errors="coerce").fillna(-1.0)
+    result = result.sort_values(
+        by=["__status_sort", "__season_avg_sort", "__l5_avg_sort", "Start", "Pitcher"],
+        ascending=[True, False, False, True, True],
+        kind="mergesort",
+    )
+    return result.head(WORST_PITCHERS_SECTION_LIMIT).drop(
+        columns=["__status_sort", "__season_avg_sort", "__l5_avg_sort"],
+        errors="ignore",
+    )
 
 
 def verify_historical_bvp_for_feature_candidates(
@@ -1032,6 +1195,252 @@ def format_home_run_focus_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _format_decimal(value: Any, places: int) -> str:
+    numeric = _to_float(value)
+    if numeric is None:
+        return ""
+    return f"{numeric:.{places}f}"
+
+
+def _render_pitcher_focus_name(
+    name: Any,
+    team_name: Any = "",
+    team_abbrev: Any = "",
+    team_id: Any = None,
+) -> str:
+    name_text = str(name or "").strip()
+    last_name = _format_pitcher_last_name(name_text)
+    team_name_text = str(team_name or "").strip()
+    team_abbrev_text = str(team_abbrev or "").strip() or team_name_text[:3].upper()
+    team_logo = ""
+    if team_name_text or team_abbrev_text or team_id is not None:
+        logo_url = escape(
+            get_team_logo_src(team_id=team_id, team_abbrev=team_abbrev_text, team_name=team_name_text),
+            quote=True,
+        )
+        team_title = escape(team_name_text or team_abbrev_text, quote=True)
+        team_logo = (
+            '<span class="team-badge pitcher-team-badge" title="'
+            + team_title
+            + '"><img class="team-logo" src="'
+            + logo_url
+            + '" alt="'
+            + team_title
+            + ' logo"></span>'
+        )
+    title = escape(name_text or last_name, quote=True)
+    return (
+        '<span class="pitcher-name pitcher-focus-name" title="'
+        + title
+        + '">'
+        + team_logo
+        + '<span class="pitcher-name-text">'
+        + escape(last_name)
+        + "</span></span>"
+    )
+
+
+def format_worst_pitcher_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame(columns=WORST_PITCHER_REPORT_COLUMNS)
+
+    formatted = df.copy()
+    for column_name, default_value in (
+        ("Opponent Abbrev", ""),
+        ("Opponent Id", pd.NA),
+        ("Pitcher Team", ""),
+        ("Pitcher Team Abbrev", ""),
+        ("Pitcher Team Id", pd.NA),
+        (PITCHER_BVP_H_COLUMN, pd.NA),
+        (PITCHER_BVP_AB_COLUMN, pd.NA),
+    ):
+        if column_name not in formatted.columns:
+            formatted[column_name] = default_value
+
+    formatted["Pitcher"] = [
+        _render_pitcher_focus_name(name, team_name, team_abbrev, team_id)
+        for name, team_name, team_abbrev, team_id in zip(
+            formatted["Pitcher"],
+            formatted.get("Pitcher Team", pd.Series("", index=formatted.index)),
+            formatted.get("Pitcher Team Abbrev", pd.Series("", index=formatted.index)),
+            formatted.get("Pitcher Team Id", pd.Series(pd.NA, index=formatted.index)),
+        )
+    ]
+    formatted["Opponent"] = [
+        _render_opponent_cell(opponent_name, opponent_abbrev, opponent_id, start_time, status)
+        for opponent_name, opponent_abbrev, opponent_id, start_time, status in zip(
+            formatted["Opponent"],
+            formatted["Opponent Abbrev"],
+            formatted["Opponent Id"],
+            formatted.get("Start", pd.Series("", index=formatted.index)),
+            formatted.get("Status", pd.Series("", index=formatted.index)),
+        )
+    ]
+    for column in ["Season ERA", "L5 ERA", "Whiff%"]:
+        if column in formatted.columns:
+            formatted[column] = formatted[column].apply(lambda value: _format_decimal(value, 1))
+    for column in ["Season WHIP", "L5 WHIP"]:
+        if column in formatted.columns:
+            formatted[column] = formatted[column].apply(lambda value: _format_decimal(value, 2))
+    for column in ["Season AVG", "L5 AVG", BVP_AVG_COLUMN]:
+        if column in formatted.columns:
+            formatted[column] = formatted[column].apply(_format_rate)
+    formatted[BVP_H_AB_COLUMN] = [
+        _format_hit_ab(hits, at_bats)
+        for hits, at_bats in zip(formatted[PITCHER_BVP_H_COLUMN], formatted[PITCHER_BVP_AB_COLUMN])
+    ]
+    for column in WORST_PITCHER_REPORT_COLUMNS:
+        if column not in formatted.columns:
+            formatted[column] = ""
+    return formatted[WORST_PITCHER_REPORT_COLUMNS]
+
+
+def _classify_pitcher_metric(
+    value: Any,
+    *,
+    elite: float,
+    strong: float,
+    weak: float,
+    lower_is_better_for_bats: bool = False,
+) -> Optional[str]:
+    numeric = _to_float(value)
+    if numeric is None:
+        return None
+    if lower_is_better_for_bats:
+        if numeric <= elite:
+            return "cell-elite"
+        if numeric <= strong:
+            return "cell-strong"
+        if numeric >= weak:
+            return "cell-weak"
+        return None
+    if numeric >= elite:
+        return "cell-elite"
+    if numeric >= strong:
+        return "cell-strong"
+    if numeric <= weak:
+        return "cell-weak"
+    return None
+
+
+def _build_worst_pitcher_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame) -> str:
+    if report_df.empty:
+        return '<p class="empty-state">No rows available.</p>'
+
+    table_html = report_df.to_html(
+        index=False,
+        escape=False,
+        classes="pitchers-table batters-table worst-pitchers-table",
+        border=0,
+    )
+    soup = BeautifulSoup(table_html, "html.parser")
+    table = soup.find("table")
+    if table is None:
+        return table_html
+
+    headers = [th.get_text(strip=True) for th in table.find_all("th")]
+    column_map = {header: idx for idx, header in enumerate(headers)}
+    header_group_map = {
+        "Pitcher": "group-context",
+        "Opponent": "group-context",
+        "Season ERA": "group-batter",
+        "Season WHIP": "group-batter",
+        "Season AVG": "group-batter",
+        "L5 ERA": "group-batter",
+        "L5 WHIP": "group-batter",
+        "L5 AVG": "group-batter",
+        "Whiff%": "group-batter",
+        BVP_AVG_COLUMN: "group-matchup",
+        BVP_H_AB_COLUMN: "group-matchup",
+    }
+    semantic_classes = {
+        "Pitcher": "column-pitcher",
+        "Opponent": "column-opponent",
+    }
+
+    thead = table.find("thead")
+    tbody = table.find("tbody")
+    if thead is None or tbody is None:
+        return table_html
+
+    compact_header_labels = {
+        "Opponent": "Opp",
+        "Season ERA": "ERA",
+        "Season WHIP": "WHIP",
+        "Season AVG": "AVG",
+        "L5 ERA": "L5 ERA",
+        "L5 WHIP": "L5 WHIP",
+        "L5 AVG": "L5 AVG",
+        BVP_AVG_COLUMN: "BvP AVG",
+        BVP_H_AB_COLUMN: "H-AB",
+    }
+    for col_name, col_index in column_map.items():
+        header_cell = thead.find_all("th")[col_index]
+        if col_name in compact_header_labels:
+            header_cell.string = compact_header_labels[col_name]
+        group_class = header_group_map.get(col_name)
+        if group_class:
+            _add_tag_class(header_cell, group_class)
+        semantic_class = semantic_classes.get(col_name)
+        if semantic_class:
+            _add_tag_class(header_cell, semantic_class)
+
+    row_tags = tbody.find_all("tr")
+    for row_index, row_tag in enumerate(row_tags):
+        if row_index >= len(raw_df):
+            break
+        row_data = raw_df.iloc[row_index]
+        row_classes = row_tag.get("class", [])
+        status_text = str(row_data.get("Status") or "").strip()
+        if status_text in NOT_STARTED_STATUSES:
+            row_classes.append("row-upcoming")
+        elif status_text == "In Progress":
+            row_classes.append("row-live")
+        elif status_text == "Final":
+            row_classes.append("row-final")
+        season_avg_value = _to_float(row_data.get("Season AVG")) or 0.0
+        if season_avg_value >= 0.260:
+            row_classes.append("row-target")
+        elif season_avg_value <= 0.220:
+            row_classes.append("row-caution")
+        if row_classes:
+            row_tag["class"] = row_classes
+
+        cells = row_tag.find_all("td")
+        for col_name, semantic_class in semantic_classes.items():
+            _add_cell_class(cells, column_map, col_name, semantic_class)
+        for col_name, group_class in header_group_map.items():
+            _add_cell_class(cells, column_map, col_name, group_class)
+
+        metric_thresholds = (
+            ("Season ERA", {"elite": 5.00, "strong": 4.20, "weak": 3.20}),
+            ("L5 ERA", {"elite": 5.00, "strong": 4.20, "weak": 3.20}),
+            ("Season WHIP", {"elite": 1.38, "strong": 1.25, "weak": 1.10}),
+            ("L5 WHIP", {"elite": 1.38, "strong": 1.25, "weak": 1.10}),
+            ("Season AVG", {"elite": 0.260, "strong": 0.245, "weak": 0.220}),
+            ("L5 AVG", {"elite": 0.260, "strong": 0.245, "weak": 0.220}),
+            (BVP_AVG_COLUMN, {"elite": 0.300, "strong": 0.260, "weak": 0.200}),
+        )
+        for column_name, thresholds in metric_thresholds:
+            metric_class = _classify_pitcher_metric(row_data.get(column_name), **thresholds)
+            if metric_class:
+                _add_cell_class(cells, column_map, column_name, metric_class)
+
+        inverse_thresholds = (
+            ("Whiff%", {"elite": 23.0, "strong": 26.0, "weak": 31.0}),
+        )
+        for column_name, thresholds in inverse_thresholds:
+            metric_class = _classify_pitcher_metric(
+                row_data.get(column_name),
+                **thresholds,
+                lower_is_better_for_bats=True,
+            )
+            if metric_class:
+                _add_cell_class(cells, column_map, column_name, metric_class)
+
+    return str(table)
+
+
 def _build_focus_table_html(report_df: pd.DataFrame, raw_df: pd.DataFrame, *, focus_mode: str = "default") -> str:
     if report_df.empty:
         return '<p class="empty-state">No rows available.</p>'
@@ -1189,12 +1598,18 @@ def write_html(
     report_key: str,
     display_date: str,
     *,
+    worst_pitcher_df: Optional[pd.DataFrame] = None,
     write_root: bool = True,
 ) -> Path:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     updated_at = dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     streak_table = _build_focus_table_html(format_focus_dataframe(streak_df), streak_df)
     hot_table = _build_focus_table_html(format_focus_dataframe(hot_df), hot_df)
+    worst_pitcher_df = worst_pitcher_df if worst_pitcher_df is not None else _empty_worst_pitchers_frame()
+    worst_pitcher_table = _build_worst_pitcher_table_html(
+        format_worst_pitcher_dataframe(worst_pitcher_df),
+        worst_pitcher_df,
+    )
     home_run_table = _build_focus_table_html(
         format_home_run_focus_dataframe(home_run_df),
         home_run_df,
@@ -1376,6 +1791,10 @@ def write_html(
     .panel-header.section-streak {{
       background: #eef6ff;
       border-bottom-color: #d5e2f4;
+    }}
+    .panel-header.section-worst-pitchers {{
+      background: #f5f3ff;
+      border-bottom-color: #ddd6fe;
     }}
     .panel-header h2 {{
       margin: 0;
@@ -1657,6 +2076,17 @@ def write_html(
       font-size: 9px;
       letter-spacing: 0;
     }}
+    .pitcher-focus-name {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px;
+      white-space: nowrap;
+    }}
+    .pitcher-team-badge {{
+      width: 22px;
+      height: 22px;
+    }}
     .team-cell,
     .opp-cell {{
       display: inline-flex;
@@ -1881,6 +2311,16 @@ def write_html(
             {streak_table}
           </div>
         </section>
+
+        <section class="panel">
+          <div class="panel-header section-worst-pitchers">
+            <h2>Worst Starting Pitchers</h2>
+            <div class="note">Sorted by highest pitcher AVG allowed, with lineup BvP context.</div>
+          </div>
+          <div class="table-wrap">
+            {worst_pitcher_table}
+          </div>
+        </section>
       </div>
 
       <div class="featured-column">
@@ -2088,6 +2528,15 @@ def main(raw_date_input: str, *, allow_roll_forward: bool = True, write_root: bo
     hot_df = build_hot_streak_matchup_section(final_df)
     home_run_df = build_home_run_matchup_section(final_df)
     matchup_df = build_good_matchups_section(final_df, hot_df)
+    lineup_matchup_df = get_pitcher_lineup_matchup_data(report_date, schedule)
+    whiff_lookup = prepare_pitcher_whiff_lookup(report_date_obj.year)
+    worst_pitcher_df = build_worst_starting_pitchers_section(
+        final_df,
+        report_year=report_date_obj.year,
+        report_date=report_date_obj,
+        lineup_matchup_df=lineup_matchup_df,
+        whiff_lookup=whiff_lookup,
+    )
     write_html(
         streak_df,
         hot_df,
@@ -2095,6 +2544,7 @@ def main(raw_date_input: str, *, allow_roll_forward: bool = True, write_root: bo
         matchup_df,
         report_key,
         report_date,
+        worst_pitcher_df=worst_pitcher_df,
         write_root=write_root,
     )
 

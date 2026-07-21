@@ -10,6 +10,9 @@ from bs4 import BeautifulSoup
 from mlb_pitcher_report.reports import pitchers as pitchers_module
 from mlb_pitcher_report.reports.pitchers import (
     BEST_K_ODDS_COLUMN,
+    BVP_AB_COLUMN,
+    BVP_AVG_COLUMN,
+    BVP_H_COLUMN,
     K_PA_COLUMN,
     MATCHUP_LINES_COLUMN,
     MATCHUP_SOURCE_COLUMN,
@@ -537,6 +540,9 @@ class PitchersRenderTests(unittest.TestCase):
         self.assertIn("NYY", result)
         self.assertEqual(result["NYY"]["PA"], 27.0)
         self.assertAlmostEqual(result["NYY"]["K%"], 100 * 10 / 27)
+        self.assertEqual(result["NYY"][BVP_H_COLUMN], 9.0)
+        self.assertEqual(result["NYY"][BVP_AB_COLUMN], 27.0)
+        self.assertAlmostEqual(result["NYY"][BVP_AVG_COLUMN], 9 / 27)
         self.assertIn("Batter1 1-3 2K", result["NYY"][MATCHUP_LINES_COLUMN])
 
     def test_previous_lineup_k_percent_aggregates_batter_vs_pitcher_stats(self) -> None:
@@ -583,6 +589,9 @@ class PitchersRenderTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["PA"], 90.0)
         self.assertAlmostEqual(result["K%"], 50.0)
+        self.assertEqual(result[BVP_H_COLUMN], 9)
+        self.assertEqual(result[BVP_AB_COLUMN], 27)
+        self.assertAlmostEqual(result[BVP_AVG_COLUMN], 9 / 27)
         self.assertEqual(len(result[MATCHUP_LINES_COLUMN]), 9)
         self.assertIn("Last101 1-3 1K", result[MATCHUP_LINES_COLUMN])
         fetch_people.assert_called_once_with(
